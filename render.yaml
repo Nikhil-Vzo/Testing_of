@@ -1,15 +1,10 @@
 services:
   - type: web
-    name: other-half
+    name: other-half-server
     runtime: node
-    buildCommand: npm run build
-    startCommand: npm start
+    rootDirectory: server      # <--- CRITICAL: Tells Render to look in the server folder
+    buildCommand: npm install  # <--- CRITICAL: Installs dependencies instead of failing on "build"
+    startCommand: node index.js
     envVars:
       - key: NODE_ENV
         value: production
-      - key: VITE_SUPABASE_URL
-        sync: false
-      - key: VITE_SUPABASE_ANON_KEY
-        sync: false
-      - key: VITE_GEMINI_API_KEY
-        sync: false
