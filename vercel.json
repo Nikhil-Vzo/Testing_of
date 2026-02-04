@@ -1,13 +1,12 @@
 {
-  "functions": {
-    "server/index.js": {
-      "runtime": "nodejs20.x"
-    }
-  },
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "server/index.js"
+      "source": "/api/(.*)",
+      "destination": "https://testing-of.onrender.com/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
