@@ -1,0 +1,24 @@
+{
+    "name": "OthrHalff",
+    "short_name": "OthrHalff",
+    "description": "Anonymous campus dating app for university students",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#000000",
+    "theme_color": "#00FF88",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "/favicon.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": [
+        "social",
+        "lifestyle"
+    ],
+    "screenshots": [],
+    "prefer_related_applications": false
+}

@@ -1,0 +1,9 @@
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://othrhalff.com/sitemap.xml
+
+# Block sensitive paths (if any)
+Disallow: /api/
