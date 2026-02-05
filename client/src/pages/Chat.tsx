@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCall } from '../context/CallContext';
-import { MatchProfile, Message, CallType } from '../types';
-import { ArrowLeft, Send, Phone, Video, MoreVertical, Ghost, Shield, Clock } from 'lucide-react';
+import { MatchProfile, Message } from '../types';
+import { ArrowLeft, Send, Phone, Video, MoreVertical, Ghost, Shield, Clock, User, AlertTriangle, Ban } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { VideoCall } from '../components/VideoCall';
 
 export const Chat: React.FC = () => {
   const { id: matchId } = useParams<{ id: string }>(); // This is the MATCH ID from the URL
@@ -17,6 +18,7 @@ export const Chat: React.FC = () => {
   const [partner, setPartner] = useState<MatchProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isRevealed, setIsRevealed] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -209,15 +211,53 @@ export const Chat: React.FC = () => {
     }
   };
 
-  const startVideoCall = () => {
-    if (partner) {
-      startCall(CallType.VIDEO, partner.realName || partner.anonymousId);
+  const startVideoCall = async () => {
+    if (!partner) return;
+
+    try {
+      // Create Daily.co room via backend
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/create-room`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const data = await response.json();
+
+      if (data.roomUrl) {
+        startCall(isRevealed ? partner.realName : partner.anonymousId, data.roomUrl);
+      } else {
+        alert('Failed to create call room');
+      }
+    } catch (error) {
+      console.error('Error creating call:', error);
+      alert('Failed to start call');
     }
   };
 
-  const startAudioCall = () => {
+  const startAudioCall = async () => {
+    // For now, audio calls use the same video room (user can disable video)
+    await startVideoCall();
+  };
+
+  const handleViewProfile = () => {
     if (partner) {
-      startCall(CallType.AUDIO, partner.realName || partner.anonymousId);
+      navigate(`/profile/${partner.id}`);
+    }
+    setShowMenu(false);
+  };
+
+  const handleBlockUser = () => {
+    if (confirm('Are you sure you want to block this user?')) {
+      alert('Block feature coming soon!');
+      setShowMenu(false);
+    }
+  };
+
+  const handleReport = () => {
+    if (confirm('Report this user for inappropriate behavior?')) {
+      alert('Report feature coming soon!');
+      setShowMenu(false);
     }
   };
 
@@ -299,9 +339,49 @@ export const Chat: React.FC = () => {
           <button onClick={startAudioCall} className="p-2.5 text-gray-400 hover:text-green-400 hover:bg-gray-800 rounded-full transition-all">
             <Phone className="w-5 h-5" />
           </button>
-          <button className="p-2.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full transition-all">
-            <MoreVertical className="w-5 h-5" />
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="p-2.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full transition-all"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+
+            {/* Dropdown Menu */}
+            {showMenu && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowMenu(false)}
+                />
+                <div className="absolute right-0 top-12 z-50 w-48 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden">
+                  <button
+                    onClick={() => { handleViewProfile(); setShowMenu(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+                  >
+                    <User className="w-4 h-4" />
+                    View Profile
+                  </button>
+                  <div className="h-px bg-gray-800" />
+                  <button
+                    onClick={handleBlockUser}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-gray-300 hover:bg-gray-800 hover:text-orange-400 transition-colors"
+                  >
+                    <Ban className="w-4 h-4" />
+                    Block User
+                  </button>
+                  <div className="h-px bg-gray-800" />
+                  <button
+                    onClick={handleReport}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-red-400 hover:bg-gray-800 hover:text-red-300 transition-colors"
+                  >
+                    <AlertTriangle className="w-4 h-4" />
+                    Report User
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

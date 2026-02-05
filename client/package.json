@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@daily-co/daily-js": "^0.87.0",
     "@google/genai": "^1.30.0",
     "@supabase/supabase-js": "^2.39.0",
     "@types/three": "^0.182.0",

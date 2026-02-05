@@ -1,12 +1,10 @@
-
 import React, { createContext, useContext, useState } from 'react';
-import { CallType } from '../types';
 
 interface CallContextType {
   isCallActive: boolean;
-  callType: CallType;
-  remoteName: string;
-  startCall: (type: CallType, name: string) => void;
+  roomUrl: string;
+  partnerName: string;
+  startCall: (name: string, roomUrl: string) => void;
   endCall: () => void;
 }
 
@@ -14,22 +12,23 @@ const CallContext = createContext<CallContextType | undefined>(undefined);
 
 export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isCallActive, setIsCallActive] = useState(false);
-  const [callType, setCallType] = useState<CallType>(CallType.VIDEO);
-  const [remoteName, setRemoteName] = useState('');
+  const [roomUrl, setRoomUrl] = useState('');
+  const [partnerName, setPartnerName] = useState('');
 
-  const startCall = (type: CallType, name: string) => {
-    setCallType(type);
-    setRemoteName(name);
+  const startCall = (name: string, url: string) => {
+    setPartnerName(name);
+    setRoomUrl(url);
     setIsCallActive(true);
   };
 
   const endCall = () => {
     setIsCallActive(false);
-    setRemoteName('');
+    setRoomUrl('');
+    setPartnerName('');
   };
 
   return (
-    <CallContext.Provider value={{ isCallActive, callType, remoteName, startCall, endCall }}>
+    <CallContext.Provider value={{ isCallActive, roomUrl, partnerName, startCall, endCall }}>
       {children}
     </CallContext.Provider>
   );

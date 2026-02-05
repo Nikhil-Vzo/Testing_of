@@ -4,13 +4,12 @@ import { useAuth } from '../context/AuthContext';
 import { useCall } from '../context/CallContext';
 import { Ghost, Search, MessageCircle, Bell, CalendarHeart, User, MessageSquarePlus, Sparkles, MoreHorizontal } from 'lucide-react';
 import { VideoCall } from '../components/VideoCall';
-import { CallType } from '../types';
 import { StarField } from '../components/StarField';
 import { supabase } from '../lib/supabase'; // Use Supabase directly
 
 export const AppLayout: React.FC = () => {
   const { currentUser } = useAuth();
-  const { isCallActive, callType, remoteName, endCall } = useCall();
+  const { isCallActive, roomUrl, partnerName, endCall } = useCall();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -29,7 +28,7 @@ export const AppLayout: React.FC = () => {
         .select('*', { count: 'exact', head: true })
         .eq('user_id', currentUser.id)
         .eq('read', false);
-      
+
       setUnreadCount(notifCount || 0);
 
       // 2. Count Matches
@@ -37,7 +36,7 @@ export const AppLayout: React.FC = () => {
         .from('matches')
         .select('*', { count: 'exact', head: true })
         .or(`user_a.eq.${currentUser.id},user_b.eq.${currentUser.id}`);
-        
+
       setMatchCount(matchesCount || 0);
     };
 
@@ -241,12 +240,13 @@ export const AppLayout: React.FC = () => {
       </main>
 
       {/* Global Video Call Overlay */}
-      <VideoCall
-        isActive={isCallActive}
-        onEndCall={endCall}
-        remoteName={remoteName}
-        isVideo={callType === CallType.VIDEO}
-      />
+      {isCallActive && roomUrl && (
+        <VideoCall
+          roomUrl={roomUrl}
+          onLeave={endCall}
+          partnerName={partnerName}
+        />
+      )}
     </div>
   );
 };

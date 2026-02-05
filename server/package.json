@@ -9,9 +9,11 @@
     "dev": "nodemon index.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
+    "@daily-co/daily-js": "^0.87.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "node-fetch": "^3.3.2",
     "socket.io": "^4.7.2"
   },
   "devDependencies": {

@@ -1,154 +1,126 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, ShieldCheck, Loader2 } from 'lucide-react';
+import DailyIframe from '@daily-co/daily-js';
+import { X, Mic, MicOff, Video, VideoOff, PhoneOff, ShieldCheck } from 'lucide-react';
 
 interface VideoCallProps {
-  isActive: boolean;
-  onEndCall: () => void;
-  remoteName: string;
-  isVideo: boolean;
+  roomUrl: string;
+  onLeave: () => void;
+  partnerName: string;
 }
 
-export const VideoCall: React.FC<VideoCallProps> = ({ isActive, onEndCall, remoteName, isVideo }) => {
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-  
-  const [micOn, setMicOn] = useState(true);
-  const [cameraOn, setCameraOn] = useState(true);
-  const [connectionStatus, setConnectionStatus] = useState('Connecting...');
+export const VideoCall: React.FC<VideoCallProps> = ({ roomUrl, onLeave, partnerName }) => {
+  const callFrameRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isVideoOff, setIsVideoOff] = useState(false);
+  const [isJoined, setIsJoined] = useState(false);
 
   useEffect(() => {
-    if (!isActive) return;
+    if (!containerRef.current || !roomUrl) return;
 
-    let localStream: MediaStream | null = null;
+    // Create Daily.co call frame
+    const callFrame = DailyIframe.createFrame(containerRef.current, {
+      iframeStyle: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        border: 'none',
+        borderRadius: '0'
+      },
+      showLeaveButton: false,
+      showFullscreenButton: true
+    });
 
-    const startCall = async () => {
-      try {
-        setConnectionStatus('Securing Channel...');
-        const constraints = {
-          audio: true,
-          video: isVideo
-        };
-        
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        localStream = stream;
-        
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-        }
+    callFrameRef.current = callFrame;
 
-        setTimeout(() => {
-          setConnectionStatus('Connected');
-        }, 2000);
+    // Join the room
+    callFrame.join({ url: roomUrl })
+      .then(() => {
+        setIsJoined(true);
+      })
+      .catch((error: any) => {
+        console.error('Error joining call:', error);
+        alert('Failed to join call');
+        onLeave();
+      });
 
-      } catch (err) {
-        console.error("Error accessing media devices:", err);
-        setConnectionStatus('Failed to access camera/mic');
-      }
-    };
-
-    startCall();
-
-    const handleVisibilityChange = () => {
-      if (document.hidden && localVideoRef.current) {
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
+    // Cleanup on unmount
     return () => {
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
+      if (callFrame) {
+        callFrame.leave().then(() => callFrame.destroy());
       }
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isActive, isVideo]);
+  }, [roomUrl, onLeave]);
 
-  if (!isActive) return null;
-
-  const toggleMic = () => {
-    if (localVideoRef.current?.srcObject) {
-      const stream = localVideoRef.current.srcObject as MediaStream;
-      stream.getAudioTracks().forEach(track => track.enabled = !micOn);
-      setMicOn(!micOn);
+  const toggleMute = () => {
+    if (callFrameRef.current) {
+      callFrameRef.current.setLocalAudio(!isMuted);
+      setIsMuted(!isMuted);
     }
   };
 
-  const toggleCamera = () => {
-    if (localVideoRef.current?.srcObject) {
-      const stream = localVideoRef.current.srcObject as MediaStream;
-      stream.getVideoTracks().forEach(track => track.enabled = !cameraOn);
-      setCameraOn(!cameraOn);
+  const toggleVideo = () => {
+    if (callFrameRef.current) {
+      callFrameRef.current.setLocalVideo(!isVideoOff);
+      setIsVideoOff(!isVideoOff);
     }
+  };
+
+  const handleEndCall = () => {
+    if (callFrameRef.current) {
+      callFrameRef.current.leave();
+    }
+    onLeave();
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center overflow-hidden">
-      <div className="absolute top-6 left-0 right-0 flex justify-center z-20">
-        <div className="bg-gray-900/80 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 border border-gray-700">
-          <ShieldCheck className="w-4 h-4 text-neon" />
-          <span className="text-xs text-gray-300 font-mono">E2E ENCRYPTED • ANONYMOUS</span>
-        </div>
-      </div>
-
-      <div className="relative w-full h-full flex items-center justify-center bg-gray-900">
-        {connectionStatus === 'Connected' ? (
-           <div className="text-center">
-             <div className="w-32 h-32 bg-neon/20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-                <span className="text-4xl font-bold text-neon">{remoteName.charAt(remoteName.length - 1)}</span>
-             </div>
-             <p className="text-xl text-white font-bold">{remoteName}</p>
-             {isVideo ? (
-               <p className="text-gray-500 text-sm mt-2">Remote camera disabled in demo</p>
-             ) : (
-               <p className="text-gray-500 text-sm mt-2">Audio Call</p>
-             )}
-           </div>
-        ) : (
-          <div className="flex flex-col items-center animate-pulse">
-             <Loader2 className="w-12 h-12 text-neon animate-spin mb-4" />
-             <p className="text-neon font-mono">{connectionStatus}</p>
+    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+      {/* Header */}
+      <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 to-transparent backdrop-blur z-10 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <ShieldCheck className="w-5 h-5 text-neon" />
+          <div>
+            <h3 className="text-white font-bold">{partnerName}</h3>
+            <p className="text-xs text-gray-400">{isJoined ? 'Connected • Encrypted' : 'Connecting...'}</p>
           </div>
-        )}
+        </div>
+        <button
+          onClick={handleEndCall}
+          className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+        >
+          <X className="w-6 h-6 text-white" />
+        </button>
       </div>
 
-      {isVideo && (
-        <div className="absolute top-20 right-4 w-32 h-48 bg-black rounded-xl overflow-hidden border-2 border-gray-800 shadow-lg">
-           <video 
-             ref={localVideoRef} 
-             autoPlay 
-             playsInline 
-             muted 
-             className={`w-full h-full object-cover ${!cameraOn ? 'hidden' : ''}`}
-           />
-           {!cameraOn && (
-             <div className="w-full h-full flex items-center justify-center bg-gray-800">
-               <VideoOff className="text-gray-500" />
-             </div>
-           )}
-        </div>
-      )}
+      {/* Video Container - Daily.co  iframe */}
+      <div ref={containerRef} className="flex-1 relative bg-gray-900" />
 
-      <div className="absolute bottom-10 left-0 right-0 flex justify-center items-center gap-6 z-20">
-        <button 
-          onClick={toggleMic}
-          className={`p-4 rounded-full ${micOn ? 'bg-gray-800 text-white' : 'bg-white text-black'}`}
+      {/* Call Controls */}
+      <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent backdrop-blur flex items-center justify-center gap-6 z-10">
+        <button
+          onClick={toggleMute}
+          className={`p-4 rounded-full transition-all ${isMuted ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-700 hover:bg-gray-600'
+            }`}
         >
-          {micOn ? <Mic /> : <MicOff />}
+          {isMuted ? <MicOff className="w-6 h-6 text-white" /> : <Mic className="w-6 h-6 text-white" />}
         </button>
 
-        <button 
-          onClick={onEndCall}
-          className="p-5 rounded-full bg-red-600 text-white hover:bg-red-700 transform hover:scale-110 transition-all shadow-lg shadow-red-900/50"
+        <button
+          onClick={handleEndCall}
+          className="p-5 rounded-full bg-red-600 hover:bg-red-700 transition-all shadow-lg"
         >
-          <PhoneOff className="w-8 h-8" />
+          <PhoneOff className="w-8 h-8 text-white" />
         </button>
 
-        {isVideo && (
-          <button 
-            onClick={toggleCamera}
-            className={`p-4 rounded-full ${cameraOn ? 'bg-gray-800 text-white' : 'bg-white text-black'}`}
-          >
-            {cameraOn ? <Video /> : <VideoOff />}
-          </button>
-        )}
+        <button
+          onClick={toggleVideo}
+          className={`p-4 rounded-full transition-all ${isVideoOff ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-700 hover:bg-gray-600'
+            }`}
+        >
+          {isVideoOff ? <VideoOff className="w-6 h-6 text-white" /> : <Video className="w-6 h-6 text-white" />}
+        </button>
       </div>
     </div>
   );
