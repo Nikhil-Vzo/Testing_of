@@ -22,8 +22,8 @@ export const VideoCall: React.FC<VideoCallProps> = ({ roomUrl, onLeave, partnerN
     const callFrame = DailyIframe.createFrame(containerRef.current, {
       iframeStyle: {
         position: 'absolute',
-        top: 0,
-        left: 0,
+        top: '0',
+        left: '0',
         width: '100%',
         height: '100%',
         border: 'none',

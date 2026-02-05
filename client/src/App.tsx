@@ -3,7 +3,6 @@ import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { useCall } from './context/CallContext';
-import { CallType } from './types';
 import { AppLayout } from './layouts/AppLayout';
 import { IntroAnimation } from './components/IntroAnimation';
 import { VideoCall } from './components/VideoCall';
@@ -60,7 +59,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 export default function App() {
   const [showIntro, setShowIntro] = useState(true);
-  const { isCallActive, callType, remoteName, endCall } = useCall();
+  const { isCallActive, roomUrl, partnerName, endCall } = useCall();
 
   useEffect(() => {
     // Check if we've already shown intro this session (optional, here we show it every refresh for effect as requested)
@@ -80,12 +79,13 @@ export default function App() {
   return (
     <>
       {/* Video/Audio Call Overlay */}
-      <VideoCall
-        isActive={isCallActive}
-        onEndCall={endCall}
-        remoteName={remoteName}
-        isVideo={callType === CallType.VIDEO}
-      />
+      {isCallActive && roomUrl && (
+        <VideoCall
+          roomUrl={roomUrl}
+          onLeave={endCall}
+          partnerName={partnerName}
+        />
+      )}
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public Routes */}
