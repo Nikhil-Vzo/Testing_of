@@ -235,6 +235,7 @@ export const Home: React.FC = () => {
             setCurrentIndex(prev => prev + 1);
 
             try {
+                // CLEANED UP: Only insert swipe. The DB Trigger handles notification creation.
                 const { error: swipeError } = await supabase
                     .from('swipes')
                     .insert({
@@ -244,19 +245,9 @@ export const Home: React.FC = () => {
                     });
 
                 if (swipeError) console.error('Swipe error:', swipeError);
+                
+                // Note: Notification logic removed here. Handled by DB Trigger 'on_new_like'.
 
-                if (action === 'like') {
-                    await supabase
-                        .from('notifications')
-                        .insert({
-                            user_id: targetId,
-                            from_user_id: currentUser.id,
-                            type: 'like',
-                            title: 'Someone likes you! 💖',
-                            message: 'A student from your campus is interested. Accept to start chatting!',
-                            read: false
-                        });
-                }
             } catch (err) {
                 console.error('Swipe logic error:', err);
             }
@@ -277,8 +268,6 @@ export const Home: React.FC = () => {
 
             {/* === REACTIVE BACKGROUND === */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                {/* Base gradient removed to show global stars */}
-
                 {/* Reactive blob - shifts with swipe direction */}
                 <div
                     className="absolute top-[-30%] left-[-30%] w-[80%] h-[80%] rounded-full blur-[120px] transition-all duration-500 ease-out"
