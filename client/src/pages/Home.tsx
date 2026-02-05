@@ -245,7 +245,7 @@ export const Home: React.FC = () => {
                     });
 
                 if (swipeError) console.error('Swipe error:', swipeError);
-                
+
                 // Note: Notification logic removed here. Handled by DB Trigger 'on_new_like'.
 
             } catch (err) {
@@ -322,19 +322,6 @@ export const Home: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    {/* Notification Button */}
-                    <button
-                        onClick={() => navigate('/notifications')}
-                        className="relative p-2.5 bg-black/60 backdrop-blur-2xl rounded-full border border-white/10 text-gray-400 hover:text-neon transition-all hover:border-neon/30 hover:scale-105 active:scale-95"
-                    >
-                        <Bell className="w-5 h-5" />
-                        {unreadNotifs > 0 && (
-                            <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-neon text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-black animate-pulse">
-                                {unreadNotifs > 9 ? '9+' : unreadNotifs}
-                            </span>
-                        )}
-                    </button>
-
                     {/* Premium Filter Toggle */}
                     <div className="flex bg-black/60 backdrop-blur-2xl rounded-full p-1 border border-white/10 shadow-2xl">
                         <button
@@ -358,6 +345,19 @@ export const Home: React.FC = () => {
                             Global
                         </button>
                     </div>
+
+                    {/* Notification Button - Now rightmost for better mobile reach */}
+                    <button
+                        onClick={() => navigate('/notifications')}
+                        className="relative p-2.5 bg-black/60 backdrop-blur-2xl rounded-full border border-white/10 text-gray-400 hover:text-neon transition-all hover:border-neon/30 hover:scale-105 active:scale-95"
+                    >
+                        <Bell className="w-5 h-5" />
+                        {unreadNotifs > 0 && (
+                            <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-neon text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-black animate-pulse">
+                                {unreadNotifs > 9 ? '9+' : unreadNotifs}
+                            </span>
+                        )}
+                    </button>
                 </div>
             </div>
 
