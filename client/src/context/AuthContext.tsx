@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile } from '../types';
 import { authService } from '../services/auth';
-import { dataService } from '../services/data';
 import { supabase } from '../lib/supabase';
 
 interface AuthContextType {
@@ -19,22 +18,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // --- CHANGED: Load from DB on mount ---
+  // Load from DB on mount
   useEffect(() => {
     const initializeAuth = async () => {
-      // 1. Try Local Storage first (Fastest) to prevent flicker
       const localUser = authService.getCurrentUser();
-      if (localUser) {
-        setCurrentUser(localUser);
-      }
+      if (localUser) setCurrentUser(localUser);
 
-      // 2. Try Supabase Session & Database (Most Accurate)
       if (supabase) {
-        // Check if there is an active Supabase session
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session?.user) {
-          // Fetch full profile from 'profiles' table in DB
           const { data: profile, error } = await supabase
             .from('profiles')
             .select('*')
@@ -42,7 +35,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .single();
 
           if (profile && !error) {
-            // Convert Snake_Case DB fields to CamelCase App Types
             const appUser: UserProfile = {
               id: profile.id,
               anonymousId: profile.anonymous_id,
@@ -61,19 +53,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             };
 
             setCurrentUser(appUser);
-            // Update local storage to keep it fresh with DB data
             localStorage.setItem('otherhalf_session', JSON.stringify(appUser));
           }
-        } else if (localUser) {
-          // If local storage has a user but Supabase says "no session", 
-          // it means the session expired. We should log them out.
-          // Optional: You can decide to keep them logged in offline or force logout.
-          // For now, we will respect the session expiry:
-          // setCurrentUser(null);
-          // localStorage.removeItem('otherhalf_session');
         }
       }
-
       setIsLoading(false);
     };
 
@@ -82,13 +65,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = (user: UserProfile) => {
     setCurrentUser(user);
-    authService.login(user); // This calls the function that upserts to DB
+    authService.login(user);
   };
 
   const logout = () => {
     setCurrentUser(null);
     authService.logout();
-    dataService.reset();
+    // Removed dataService.reset() as it is deprecated
+    
     // Clear all cached data
     sessionStorage.removeItem('otherhalf_discover_cache');
     sessionStorage.removeItem('otherhalf_discover_cache_expiry');
@@ -102,7 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!currentUser) return;
     const updatedUser = { ...currentUser, ...updates };
     setCurrentUser(updatedUser);
-    authService.login(updatedUser); // Update persistence in DB
+    authService.login(updatedUser);
   };
 
   return (
