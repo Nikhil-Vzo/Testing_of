@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Bell, Heart, MessageCircle, Zap, Check, X, Ghost, Loader2 } from 'lucide-react';
+import { Bell, Heart, MessageCircle, Zap, Check, X, Ghost, Loader2, Eye } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { ProfilePreviewModal } from '../components/ProfilePreviewModal';
 
 // Cache keys
 const NOTIF_CACHE_KEY = 'otherhalf_notifications_cache';
@@ -31,6 +32,8 @@ export const Notifications: React.FC = () => {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [selectedProfile, setSelectedProfile] = useState<any | null>(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Request browser notification permission
   useEffect(() => {
@@ -73,7 +76,7 @@ export const Notifications: React.FC = () => {
           .from('profiles')
           .select('id, anonymous_id, avatar, university')
           .in('id', senderIds);
-        
+
         if (profiles) {
           profileMap = new Map(profiles.map(p => [p.id, p]));
         }
@@ -106,7 +109,7 @@ export const Notifications: React.FC = () => {
       });
 
       setNotifications(enriched);
-      
+
       // Update Cache
       sessionStorage.setItem(NOTIF_CACHE_KEY, JSON.stringify(enriched));
       sessionStorage.setItem(NOTIF_CACHE_EXPIRY_KEY, (Date.now() + CACHE_DURATION).toString());
@@ -135,7 +138,7 @@ export const Notifications: React.FC = () => {
 
     // Realtime Listener
     const channel = supabase!.channel('public:notifications')
-      .on('postgres_changes', 
+      .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
         () => {
           fetchNotifications(false); // Refetch on new notification
@@ -172,7 +175,7 @@ export const Notifications: React.FC = () => {
 
       // 3. UI Update
       setNotifications(prev => prev.filter(n => n.id !== notif.id));
-      
+
       // 4. Redirect
       navigate(`/chat/${notif.fromUserId}`); // Or /matches
 
@@ -202,6 +205,88 @@ export const Notifications: React.FC = () => {
     await supabase.from('notifications').update({ read: true }).eq('user_id', currentUser.id);
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
+
+  // View Profile Handler
+  const handleViewProfile = async (notif: NotificationItem) => {
+    if (!notif.fromUserId || !supabase) return;
+
+    // Fetch full profile data
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', notif.fromUserId)
+      .single();
+
+    if (error || !data) {
+      console.error('Error fetching profile:', error);
+      return;
+    }
+
+    setSelectedProfile({
+      id: data.id,
+      anonymousId: data.anonymous_id,
+      realName: data.real_name,
+      avatar: data.avatar,
+      university: data.university,
+      year: data.year,
+      branch: data.branch,
+      bio: data.bio,
+      interests: data.interests || [],
+      isVerified: data.is_verified,
+      notificationId: notif.id
+    });
+    setShowProfileModal(true);
+  };
+
+  // Like Back from Modal
+  const handleLikeBackFromModal = async (notificationId: string, userId: string) => {
+    if (!currentUser || !supabase) return;
+    setProcessingId(notificationId);
+
+    try {
+      // Create match
+      const { error: matchError } = await supabase
+        .from('matches')
+        .insert({
+          user_a: userId,
+          user_b: currentUser.id
+        });
+
+      if (matchError && matchError.code !== '23505') throw matchError;
+
+      // Remove notification
+      await supabase.from('notifications').delete().eq('id', notificationId);
+      setNotifications(prev => prev.filter(n => n.id !== notificationId));
+
+      // Close modal and navigate
+      setShowProfileModal(false);
+      setSelectedProfile(null);
+      navigate(`/chat/${userId}`);
+    } catch (err) {
+      console.error('Like back error:', err);
+      alert('Something went wrong. Please try again.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  // Reject from Modal
+  const handleRejectFromModal = async (notificationId: string) => {
+    if (!supabase) return;
+    setProcessingId(notificationId);
+
+    try {
+      await supabase.from('notifications').delete().eq('id', notificationId);
+      setNotifications(prev => prev.filter(n => n.id !== notificationId));
+      setShowProfileModal(false);
+      setSelectedProfile(null);
+    } catch (err) {
+      console.error('Reject error:', err);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
 
   return (
     <div className="h-full flex flex-col bg-transparent">
@@ -238,9 +323,8 @@ export const Notifications: React.FC = () => {
           notifications.map(notif => (
             <div
               key={notif.id}
-              className={`p-5 rounded-2xl border transition-all ${
-                notif.read ? 'bg-gray-900/30 border-gray-800/50' : 'bg-gray-900 border-neon/50 shadow-[0_0_15px_rgba(255,0,127,0.05)]'
-              }`}
+              className={`p-5 rounded-2xl border transition-all ${notif.read ? 'bg-gray-900/30 border-gray-800/50' : 'bg-gray-900 border-neon/50 shadow-[0_0_15px_rgba(255,0,127,0.05)]'
+                }`}
             >
               <div className="flex items-start gap-4">
                 {/* Avatar / Icon */}
@@ -251,14 +335,13 @@ export const Notifications: React.FC = () => {
                     className="w-14 h-14 rounded-full object-cover border-2 border-neon/50 cursor-pointer hover:scale-105 transition-transform"
                   />
                 ) : (
-                  <div className={`mt-1 p-3 rounded-xl flex-shrink-0 ${
-                    notif.type === 'match' ? 'bg-green-500/10 text-green-400' :
+                  <div className={`mt-1 p-3 rounded-xl flex-shrink-0 ${notif.type === 'match' ? 'bg-green-500/10 text-green-400' :
                     notif.type === 'message' ? 'bg-blue-500/10 text-blue-400' :
-                    'bg-gray-700/30 text-gray-300'
-                  }`}>
-                    {notif.type === 'match' ? <Zap className="w-5 h-5" /> : 
-                     notif.type === 'message' ? <MessageCircle className="w-5 h-5" /> : 
-                     <Bell className="w-5 h-5" />}
+                      'bg-gray-700/30 text-gray-300'
+                    }`}>
+                    {notif.type === 'match' ? <Zap className="w-5 h-5" /> :
+                      notif.type === 'message' ? <MessageCircle className="w-5 h-5" /> :
+                        <Bell className="w-5 h-5" />}
                   </div>
                 )}
 
@@ -283,23 +366,35 @@ export const Notifications: React.FC = () => {
 
                   {/* Action Buttons for Likes */}
                   {notif.type === 'like' && !notif.read && (
-                    <div className="flex gap-2 mt-4">
+                    <div className="space-y-2 mt-4">
+                      {/* View Profile Button */}
                       <button
-                        onClick={() => handleAccept(notif)}
-                        disabled={processingId === notif.id}
-                        className="flex items-center gap-2 px-4 py-2 bg-neon text-white rounded-xl font-bold text-sm hover:bg-neon/80 transition-all shadow-lg hover:shadow-neon/30 active:scale-95 disabled:opacity-50"
+                        onClick={() => handleViewProfile(notif)}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-800/50 text-white rounded-xl font-bold text-sm hover:bg-gray-800 border border-gray-700 hover:border-neon/50 transition-all active:scale-95"
                       >
-                        {processingId === notif.id ? <Loader2 className="w-4 h-4 animate-spin"/> : <Check className="w-4 h-4" />}
-                        Accept
+                        <Eye className="w-4 h-4" />
+                        View Profile
                       </button>
-                      <button
-                        onClick={() => handleIgnore(notif)}
-                        disabled={processingId === notif.id}
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-gray-300 rounded-xl font-bold text-sm hover:bg-gray-700 transition-all active:scale-95 disabled:opacity-50"
-                      >
-                        <X className="w-4 h-4" />
-                        Ignore
-                      </button>
+
+                      {/* Accept/Ignore */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleAccept(notif)}
+                          disabled={processingId === notif.id}
+                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-neon text-white rounded-xl font-bold text-sm hover:bg-neon/80 transition-all shadow-lg hover:shadow-neon/30 active:scale-95 disabled:opacity-50"
+                        >
+                          {processingId === notif.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                          Accept
+                        </button>
+                        <button
+                          onClick={() => handleIgnore(notif)}
+                          disabled={processingId === notif.id}
+                          className="flex-1 flex items-center gap-2 justify-center px-4 py-2 bg-gray-800 text-gray-300 rounded-xl font-bold text-sm hover:bg-gray-700 transition-all active:scale-95 disabled:opacity-50"
+                        >
+                          <X className="w-4 h-4" />
+                          Ignore
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -308,6 +403,20 @@ export const Notifications: React.FC = () => {
           ))
         )}
       </div>
+
+      {/* Profile Preview Modal */}
+      <ProfilePreviewModal
+        isOpen={showProfileModal}
+        profile={selectedProfile}
+        notificationId={selectedProfile?.notificationId || ''}
+        onClose={() => {
+          setShowProfileModal(false);
+          setSelectedProfile(null);
+        }}
+        onLikeBack={handleLikeBackFromModal}
+        onReject={handleRejectFromModal}
+        isProcessing={processingId !== null}
+      />
     </div>
   );
 };

@@ -138,7 +138,7 @@
 // };
 
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCall } from '../context/CallContext';
@@ -148,16 +148,47 @@ import { VideoCall } from '../components/VideoCall';
 import { CallType } from '../types';
 import { dataService } from '../services/data';
 import { StarField } from '../components/StarField';
+import { supabase } from '../lib/supabase';
 
 export const AppLayout: React.FC = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, isAuthenticated } = useAuth();
   const { isCallActive, callType, remoteName, endCall } = useCall();
   const location = useLocation();
   const navigate = useNavigate();
 
-  const notifications = dataService.getNotifications();
+  // Real-time notification count from Supabase
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
+
+  useEffect(() => {
+    if (!currentUser || !supabase) return;
+
+    const fetchUnreadCount = async () => {
+      const { count } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', currentUser.id)
+        .eq('read', false);
+
+      setUnreadNotifs(count || 0);
+    };
+
+    fetchUnreadCount();
+
+    // Subscribe to changes
+    const channel = supabase
+      .channel('layout_notifications')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
+        () => fetchUnreadCount()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser]);
+
   const matches = dataService.getMatches();
-  const unreadNotifs = notifications.filter(n => !n.read).length;
 
   const isActive = (path: string) => location.pathname === path;
 
