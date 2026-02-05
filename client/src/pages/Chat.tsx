@@ -16,6 +16,7 @@ export const Chat: React.FC = () => {
   const [newMessage, setNewMessage] = useState('');
   const [partner, setPartner] = useState<MatchProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isRevealed, setIsRevealed] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -73,8 +74,9 @@ export const Chat: React.FC = () => {
           return;
         }
 
-        // B. Identify Partner
+        // B. Identify Partner and check if names are revealed
         const partnerId = matchData.user_a === currentUser.id ? matchData.user_b : matchData.user_a;
+        setIsRevealed(matchData.is_revealed || false);
 
         // C. Get Partner Profile
         const { data: profileData } = await supabase
@@ -282,7 +284,7 @@ export const Chat: React.FC = () => {
 
           <div>
             <h3 className="text-sm font-bold text-white leading-tight">
-              {partner.realName || partner.anonymousId}
+              {isRevealed ? partner.realName : partner.anonymousId}
             </h3>
             <span className="text-[10px] text-gray-400 flex items-center gap-1">
               {partner.university}

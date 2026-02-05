@@ -168,7 +168,8 @@ export const Notifications: React.FC = () => {
         .from('matches')
         .insert({
           user_a: notif.fromUserId, // The original liker
-          user_b: currentUser.id    // Me (The acceptor)
+          user_b: currentUser.id,   // Me (The acceptor)
+          is_revealed: true          // Show real names after matching
         })
         .select()
         .single();
@@ -304,7 +305,8 @@ export const Notifications: React.FC = () => {
         .from('matches')
         .insert({
           user_a: userId,
-          user_b: currentUser.id
+          user_b: currentUser.id,
+          is_revealed: true  // Show real names after matching
         })
         .select()
         .single();
