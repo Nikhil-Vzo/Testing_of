@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCall } from '../context/CallContext';
 import { MatchProfile, Message, CallType } from '../types';
-import { ArrowLeft, Send, Phone, Video, MoreVertical, Ghost } from 'lucide-react';
+import { ArrowLeft, Send, Phone, Video, MoreVertical, Ghost, Shield, Clock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export const Chat: React.FC = () => {
@@ -18,6 +18,41 @@ export const Chat: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Screenshot Protection
+  useEffect(() => {
+    const preventScreenshot = (e: Event) => {
+      e.preventDefault();
+      return false;
+    };
+
+    const container = chatContainerRef.current;
+    if (container) {
+      // Disable context menu
+      container.addEventListener('contextmenu', preventScreenshot);
+
+      // Disable keyboard shortcuts for screenshots
+      const handleKeyDown = (e: KeyboardEvent) => {
+        // Print Screen, Win+Shift+S, Cmd+Shift+4/5
+        if (
+          e.key === 'PrintScreen' ||
+          (e.metaKey && e.shiftKey && (e.key === '4' || e.key === '5')) ||
+          (e.key === 's' && e.shiftKey && e.metaKey)
+        ) {
+          e.preventDefault();
+          alert('Screenshots are disabled to protect privacy');
+        }
+      };
+
+      document.addEventListener('keydown', handleKeyDown);
+
+      return () => {
+        container.removeEventListener('contextmenu', preventScreenshot);
+        document.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, []);
 
   // 1. Fetch Match Details & Messages
   useEffect(() => {
@@ -256,7 +291,26 @@ export const Chat: React.FC = () => {
       </div>
 
       {/* 2. Messages Area */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+      <div ref={chatContainerRef} className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4 select-none" style={{ userSelect: 'none', WebkitUserSelect: 'none' }}>
+        {/* Privacy Notice */}
+        <div className="sticky top-0 z-10 mb-4">
+          <div className="bg-gradient-to-r from-yellow-900/20 to-orange-900/20 border border-yellow-600/30 rounded-2xl p-3 backdrop-blur-sm">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-yellow-600/20 rounded-full mt-0.5">
+                <Shield className="w-4 h-4 text-yellow-500" />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-xs font-bold text-yellow-500 mb-1 flex items-center gap-2">
+                  <Clock className="w-3 h-3" />
+                  Privacy Protection Active
+                </h4>
+                <p className="text-[11px] text-yellow-200/80 leading-relaxed">
+                  Messages are automatically deleted after <span className="font-bold text-yellow-400">3 days</span>. Screenshots are disabled for your safety.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full opacity-50 space-y-4">
             <div className="w-20 h-20 bg-gray-900 rounded-full flex items-center justify-center border border-gray-800">
@@ -324,6 +378,25 @@ export const Chat: React.FC = () => {
           </button>
         </form>
       </div>
+
+      {/* CSS for Screenshot Protection */}
+      <style>{`
+        /* Disable text selection in chat */
+        .select-none {
+          -webkit-user-select: none;
+          -moz-user-select: none;
+          -ms-user-select: none;
+          user-select: none;
+        }
+        
+        /* Disable drag/drop */
+        .select-none img {
+          pointer-events: none;
+          -webkit-user-drag: none;
+          -moz-user-drag: none;
+          user-drag: none;
+        }
+      `}</style>
     </div>
   );
 };

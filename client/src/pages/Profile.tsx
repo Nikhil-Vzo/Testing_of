@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { dataService } from '../services/data';
-import { UserProfile, MatchProfile } from '../types';
+import { supabase } from '../lib/supabase'; // Changed: Import Supabase
+import { UserProfile } from '../types';
 import { NeonButton, NeonInput } from '../components/Common';
 import {
-    Edit2, Camera, Save, Ghost, User, GraduationCap, CheckCircle2,
-    LogOut, ChevronDown, Settings, Lock, ShieldBan, X,
-    MapPin, ArrowLeft, Heart, MessageCircle, Mail, Phone
+    Edit2, Camera, X, Ghost, User, GraduationCap, CheckCircle2,
+    LogOut, ChevronDown, Settings, Lock, ShieldBan,
+    MessageCircle, Mail, Phone, Loader2
 } from 'lucide-react';
 import { AVATAR_PRESETS } from '../constants';
 
@@ -22,12 +22,69 @@ export const Profile: React.FC = () => {
     const [showVerification, setShowVerification] = useState(false);
     const [verifyStep, setVerifyStep] = useState(1);
     const [verifyData, setVerifyData] = useState({ college: '', email: '', file: null as File | null });
+    
+    // New State for fetching external profiles
+    const [fetchedProfile, setFetchedProfile] = useState<UserProfile | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
 
-    // Context
+    // Determine if viewing self
     const isSelf = !id || id === currentUser?.id;
-    const profileUser: UserProfile | MatchProfile | undefined | null = isSelf
-        ? currentUser
-        : dataService.getMatches().find(m => m.id === id);
+    
+    // Resolve which profile to show
+    const profileUser = isSelf ? currentUser : fetchedProfile;
+
+    // Fetch Profile Data (if not self)
+    useEffect(() => {
+        if (isSelf || !id || !supabase) return;
+
+        const fetchProfile = async () => {
+            setLoading(true);
+            try {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', id)
+                    .single();
+
+                if (error) throw error;
+                
+                if (data) {
+                    // Map DB snake_case to Client camelCase
+                    const mapped: UserProfile = {
+                        id: data.id,
+                        anonymousId: data.anonymous_id,
+                        realName: data.real_name,
+                        gender: data.gender,
+                        university: data.university,
+                        universityEmail: data.university_email,
+                        branch: data.branch,
+                        year: data.year,
+                        interests: data.interests || [],
+                        bio: data.bio,
+                        dob: data.dob,
+                        isVerified: data.is_verified,
+                        avatar: data.avatar,
+                        isPremium: data.is_premium
+                    };
+                    setFetchedProfile(mapped);
+                }
+            } catch (err) {
+                console.error('Error fetching profile:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProfile();
+    }, [id, isSelf]);
+
+    // Loading State
+    if (loading) return (
+        <div className="h-full flex items-center justify-center bg-black text-white">
+            <Loader2 className="w-10 h-10 text-neon animate-spin" />
+        </div>
+    );
 
     if (!profileUser) return (
         <div className="h-full flex flex-col items-center justify-center bg-black text-white">
@@ -45,10 +102,40 @@ export const Profile: React.FC = () => {
         }
     };
 
-    const saveProfile = () => {
-        if (editForm) {
+    const saveProfile = async () => {
+        if (!editForm || !currentUser || !supabase) return;
+        setSaving(true);
+
+        try {
+            // 1. Prepare DB Payload (snake_case)
+            const updates = {
+                real_name: editForm.realName,
+                branch: editForm.branch,
+                year: editForm.year,
+                bio: editForm.bio,
+                dob: editForm.dob,
+                avatar: editForm.avatar,
+                interests: editForm.interests,
+                updated_at: new Date().toISOString()
+            };
+
+            // 2. Update Supabase
+            const { error } = await supabase
+                .from('profiles')
+                .update(updates)
+                .eq('id', currentUser.id);
+
+            if (error) throw error;
+
+            // 3. Update Local Context
             updateProfile(editForm);
             setIsEditing(false);
+
+        } catch (err) {
+            console.error('Failed to update profile:', err);
+            alert('Failed to save changes.');
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -57,6 +144,8 @@ export const Profile: React.FC = () => {
         if (file) {
             const reader = new FileReader();
             reader.onloadend = () => {
+                // In production, we should upload to Supabase Storage and get a URL.
+                // For now, base64 string works for small images but isn't scalable.
                 setEditForm(prev => ({ ...prev, avatar: reader.result as string }));
             };
             reader.readAsDataURL(file);
@@ -78,7 +167,7 @@ export const Profile: React.FC = () => {
                 {/* Mobile Nav */}
                 <div className="flex md:hidden justify-between items-center mb-6">
                     <button onClick={() => navigate(-1)} className="p-2 bg-gray-900/80 backdrop-blur rounded-full text-white border border-gray-800">
-                        <ArrowLeft className="w-5 h-5" />
+                        <ChevronDown className="w-5 h-5 rotate-90" />
                     </button>
                     <span className="font-bold text-sm tracking-widest uppercase text-gray-400">{isSelf ? 'My Profile' : 'Student Profile'}</span>
                     <div className="w-9" />
@@ -121,7 +210,8 @@ export const Profile: React.FC = () => {
                             <div className="flex-1 text-center md:text-left w-full">
                                 <div className="mb-4 md:mb-6">
                                     <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight mb-2">
-                                        {isSelf || (profileUser as any).isRevealed ? profileUser.realName : profileUser.anonymousId}
+                                        {/* Show Real Name if Self or Revealed (Matches usually revealed). For now we assume matches are revealed in chat context, but here let's stick to strict privacy unless isSelf */}
+                                        {isSelf ? profileUser.realName : profileUser.anonymousId}
                                     </h1>
                                     <div className="flex flex-col md:flex-row items-center gap-3 text-gray-400 font-medium">
                                         <div className="flex items-center gap-2">
@@ -138,7 +228,7 @@ export const Profile: React.FC = () => {
                                             </span>
                                             {profileUser.dob && (
                                                 <span className="bg-gray-800 px-3 py-1 rounded-full text-xs md:text-sm border border-gray-700 text-gray-300">
-                                                    DOB: {new Date(profileUser.dob).toLocaleDateString()}
+                                                    {new Date(profileUser.dob).getFullYear()}
                                                 </span>
                                             )}
                                         </div>
@@ -209,12 +299,12 @@ export const Profile: React.FC = () => {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div>
                                                 <label className="text-xs text-gray-500 uppercase font-bold block mb-2">Real Name</label>
-                                                <NeonInput value={editForm.realName} onChange={e => setEditForm({ ...editForm, realName: e.target.value })} />
+                                                <NeonInput value={editForm.realName || ''} onChange={e => setEditForm({ ...editForm, realName: e.target.value })} />
                                                 <p className="text-[10px] text-gray-600 mt-1 flex items-center gap-1"><Lock className="w-3 h-3" /> Private until match.</p>
                                             </div>
                                             <div>
                                                 <label className="text-xs text-gray-500 uppercase font-bold block mb-2">Branch</label>
-                                                <NeonInput value={editForm.branch} onChange={e => setEditForm({ ...editForm, branch: e.target.value })} />
+                                                <NeonInput value={editForm.branch || ''} onChange={e => setEditForm({ ...editForm, branch: e.target.value })} />
                                             </div>
                                         </div>
 
@@ -224,7 +314,7 @@ export const Profile: React.FC = () => {
                                                 <div className="relative">
                                                     <select
                                                         className="w-full bg-gray-900 border border-gray-700 text-white px-4 py-3 rounded-xl outline-none focus:border-neon appearance-none"
-                                                        value={editForm.year}
+                                                        value={editForm.year || 'Freshman'}
                                                         onChange={e => setEditForm({ ...editForm, year: e.target.value })}
                                                     >
                                                         {['Freshman', 'Sophomore', 'Junior', 'Senior', 'Grad'].map(y => <option key={y} value={y}>{y}</option>)}
@@ -246,14 +336,16 @@ export const Profile: React.FC = () => {
                                             <label className="text-xs text-gray-500 uppercase font-bold block mb-2">Bio</label>
                                             <textarea
                                                 className="w-full bg-gray-900 border border-gray-700 text-white px-4 py-3 rounded-xl outline-none focus:border-neon h-32 resize-none transition-all focus:ring-1 focus:ring-neon/50"
-                                                value={editForm.bio}
+                                                value={editForm.bio || ''}
                                                 onChange={e => setEditForm({ ...editForm, bio: e.target.value })}
                                                 placeholder="Express yourself..."
                                             />
                                         </div>
 
                                         <div className="flex gap-4 pt-4 border-t border-gray-800">
-                                            <NeonButton onClick={saveProfile} className="flex-1">Save Changes</NeonButton>
+                                            <NeonButton onClick={saveProfile} className="flex-1" disabled={saving}>
+                                                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Save Changes'}
+                                            </NeonButton>
                                             <button onClick={() => setIsEditing(false)} className="px-6 py-3 rounded-xl border border-gray-700 text-gray-400 hover:text-white hover:bg-gray-800 transition-all font-bold">Cancel</button>
                                         </div>
                                     </div>
