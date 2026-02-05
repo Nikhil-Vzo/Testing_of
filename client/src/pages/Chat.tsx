@@ -175,6 +175,17 @@ export const Chat: React.FC = () => {
     const textToSend = newMessage.trim();
     setNewMessage(''); // Clear input immediately
 
+    // Optimistic UI update - show message immediately
+    const optimisticMessage: Message = {
+      id: `temp-${Date.now()}`, // Temporary ID until database assigns real one
+      senderId: currentUser.id,
+      text: textToSend,
+      timestamp: Date.now(),
+      isSystem: false
+    };
+
+    setMessages(prev => [...prev, optimisticMessage]);
+
     try {
       // Database Insert
       const { error } = await supabase
@@ -187,10 +198,12 @@ export const Chat: React.FC = () => {
 
       if (error) throw error;
 
-      // (Realtime subscription will pick this up, but we can optimistically add it here if network is slow)
+      // Real-time subscription will replace the optimistic message with the database version
     } catch (err) {
       console.error('Failed to send:', err);
       alert('Failed to send message');
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
     }
   };
 

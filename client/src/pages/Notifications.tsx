@@ -246,6 +246,17 @@ export const Notifications: React.FC = () => {
   const handleViewProfile = async (notif: NotificationItem) => {
     if (!notif.fromUserId || !supabase) return;
 
+    // Mark notification as read when viewing
+    await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('id', notif.id);
+
+    // Update local state
+    setNotifications(prev =>
+      prev.map(n => n.id === notif.id ? { ...n, read: true } : n)
+    );
+
     // Fetch full profile data
     const { data, error } = await supabase
       .from('profiles')
