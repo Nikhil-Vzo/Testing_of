@@ -216,8 +216,8 @@ export const Matches: React.FC = () => {
             return (
               <div
                 key={match.id}
-                // Navigate using the MATCH PROFILE ID (or Match ID depending on Chat.tsx logic - using ID for now)
-                onClick={() => navigate(`/chat/${match.id}`)}
+                // Navigate using the MATCH ID from the session, not the user profile ID
+                onClick={() => navigate(`/chat/${session.matchId}`)}
                 className="group relative p-4 rounded-2xl hover:bg-gray-900/40 border border-transparent hover:border-gray-800 transition-all cursor-pointer flex items-center gap-4 active:scale-[0.99]"
               >
                 {/* Avatar with Status Ring */}

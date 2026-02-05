@@ -154,34 +154,70 @@ export const Notifications: React.FC = () => {
 
   const handleAccept = async (notif: NotificationItem) => {
     if (!currentUser || !supabase || !notif.fromUserId) return;
+
+    // Prevent double-processing
+    if (processingId === notif.id) return;
     setProcessingId(notif.id);
+
+    // Optimistic UI update - remove notification immediately
+    setNotifications(prev => prev.filter(n => n.id !== notif.id));
 
     try {
       // 1. Insert Match (Triggers 'handle_new_match' DB function for the other user)
-      const { error: matchError } = await supabase
+      const { data: matchData, error: matchError } = await supabase
         .from('matches')
         .insert({
           user_a: notif.fromUserId, // The original liker
           user_b: currentUser.id    // Me (The acceptor)
-        });
+        })
+        .select()
+        .single();
 
       if (matchError) {
-        // Ignore duplicate key error (already matched)
-        if (matchError.code !== '23505') throw matchError;
+        // If duplicate key error, fetch existing match
+        if (matchError.code === '23505') {
+          const { data: existingMatch } = await supabase
+            .from('matches')
+            .select('id')
+            .or(`and(user_a.eq.${notif.fromUserId},user_b.eq.${currentUser.id}),and(user_a.eq.${currentUser.id},user_b.eq.${notif.fromUserId})`)
+            .single();
+
+          if (existingMatch) {
+            // Delete notification and navigate to existing match
+            await supabase.from('notifications').delete().eq('id', notif.id);
+            navigate(`/chat/${existingMatch.id}`);
+            return;
+          }
+        }
+        throw matchError;
       }
 
       // 2. Delete the Notification (Cleanup)
       await supabase.from('notifications').delete().eq('id', notif.id);
 
-      // 3. UI Update
-      setNotifications(prev => prev.filter(n => n.id !== notif.id));
+      // 3. Navigate to chat with the MATCH ID
+      if (matchData?.id) {
+        navigate(`/chat/${matchData.id}`);
+      } else {
+        // Fallback: query for the match if ID not returned
+        const { data: match } = await supabase
+          .from('matches')
+          .select('id')
+          .or(`and(user_a.eq.${notif.fromUserId},user_b.eq.${currentUser.id}),and(user_a.eq.${currentUser.id},user_b.eq.${notif.fromUserId})`)
+          .single();
 
-      // 4. Redirect
-      navigate(`/chat/${notif.fromUserId}`); // Or /matches
+        if (match) {
+          navigate(`/chat/${match.id}`);
+        } else {
+          throw new Error('Failed to create or find match');
+        }
+      }
 
     } catch (err) {
       console.error('Accept error:', err);
       alert('Something went wrong. Please try again.');
+      // Restore notification on error
+      await fetchNotifications(false);
     } finally {
       setProcessingId(null);
     }
@@ -241,30 +277,71 @@ export const Notifications: React.FC = () => {
   // Like Back from Modal
   const handleLikeBackFromModal = async (notificationId: string, userId: string) => {
     if (!currentUser || !supabase) return;
+
+    // Prevent double-processing
+    if (processingId === notificationId) return;
     setProcessingId(notificationId);
+
+    // Optimistic UI update
+    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    setShowProfileModal(false);
+    setSelectedProfile(null);
 
     try {
       // Create match
-      const { error: matchError } = await supabase
+      const { data: matchData, error: matchError } = await supabase
         .from('matches')
         .insert({
           user_a: userId,
           user_b: currentUser.id
-        });
+        })
+        .select()
+        .single();
 
-      if (matchError && matchError.code !== '23505') throw matchError;
+      if (matchError) {
+        // If duplicate key error, fetch existing match
+        if (matchError.code === '23505') {
+          const { data: existingMatch } = await supabase
+            .from('matches')
+            .select('id')
+            .or(`and(user_a.eq.${userId},user_b.eq.${currentUser.id}),and(user_a.eq.${currentUser.id},user_b.eq.${userId})`)
+            .single();
+
+          if (existingMatch) {
+            await supabase.from('notifications').delete().eq('id', notificationId);
+            navigate(`/chat/${existingMatch.id}`);
+            return;
+          }
+        }
+        throw matchError;
+      }
 
       // Remove notification
       await supabase.from('notifications').delete().eq('id', notificationId);
-      setNotifications(prev => prev.filter(n => n.id !== notificationId));
 
-      // Close modal and navigate
-      setShowProfileModal(false);
-      setSelectedProfile(null);
-      navigate(`/chat/${userId}`);
+      // Navigate to chat with MATCH ID
+      if (matchData?.id) {
+        navigate(`/chat/${matchData.id}`);
+      } else {
+        // Fallback: query for the match
+        const { data: match } = await supabase
+          .from('matches')
+          .select('id')
+          .or(`and(user_a.eq.${userId},user_b.eq.${currentUser.id}),and(user_a.eq.${currentUser.id},user_b.eq.${userId})`)
+          .single();
+
+        if (match) {
+          navigate(`/chat/${match.id}`);
+        } else {
+          throw new Error('Failed to create or find match');
+        }
+      }
     } catch (err) {
       console.error('Like back error:', err);
       alert('Something went wrong. Please try again.');
+      // Restore UI on error
+      await fetchNotifications(false);
+      setShowProfileModal(true);
     } finally {
       setProcessingId(null);
     }
