@@ -7,7 +7,7 @@ import { NeonButton, NeonInput } from '../components/Common';
 import {
     Edit2, Camera, X, Ghost, User, GraduationCap, CheckCircle2,
     LogOut, ChevronDown, Settings, Lock, ShieldBan,
-    MessageCircle, Mail, Phone, Loader2
+    MessageCircle, Mail, Phone, Loader2, Heart
 } from 'lucide-react';
 import { AVATAR_PRESETS } from '../constants';
 
@@ -22,7 +22,7 @@ export const Profile: React.FC = () => {
     const [showVerification, setShowVerification] = useState(false);
     const [verifyStep, setVerifyStep] = useState(1);
     const [verifyData, setVerifyData] = useState({ college: '', email: '', file: null as File | null });
-    
+
     // New State for fetching external profiles
     const [fetchedProfile, setFetchedProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(false);
@@ -30,7 +30,7 @@ export const Profile: React.FC = () => {
 
     // Determine if viewing self
     const isSelf = !id || id === currentUser?.id;
-    
+
     // Resolve which profile to show
     const profileUser = isSelf ? currentUser : fetchedProfile;
 
@@ -48,7 +48,7 @@ export const Profile: React.FC = () => {
                     .single();
 
                 if (error) throw error;
-                
+
                 if (data) {
                     // Map DB snake_case to Client camelCase
                     const mapped: UserProfile = {
