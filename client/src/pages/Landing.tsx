@@ -5,10 +5,19 @@ import { NeonButton } from '../components/Common';
 import { useNavigate, Link } from 'react-router-dom';
 import { LiquidBackground } from '../components/LiquidBackground';
 import { HeartCursor } from '../components/HeartCursor';
+import { useAuth } from '../context/AuthContext';
 
 export const Landing: React.FC = () => {
   const navigate = useNavigate();
+  const { isAuthenticated, isLoading } = useAuth();
   const onEnter = () => navigate('/login');
+
+  // Redirect authenticated users to home
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      navigate('/home');
+    }
+  }, [isAuthenticated, isLoading, navigate]);
 
   // Scroll-triggered animations for feature cards
   const [featuresVisible, setFeaturesVisible] = useState(false);
