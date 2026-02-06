@@ -8,3 +8,5 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: DAILY_API_KEY
+        sync: false  # Set this in Render Dashboard for security

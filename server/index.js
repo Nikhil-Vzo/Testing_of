@@ -8,7 +8,19 @@ dotenv.config();
 const app = express();
 const port = parseInt(process.env.PORT || '5000', 10);
 
-app.use(cors());
+// CORS Configuration - Allow both production and development origins
+const corsOptions = {
+  origin: [
+    'http://localhost:5173', // Local Vite dev server
+    'http://localhost:3000', // Alternative local port
+    'https://testing-of-client.vercel.app', // Production frontend
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Health Check

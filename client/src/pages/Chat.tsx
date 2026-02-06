@@ -216,7 +216,9 @@ export const Chat: React.FC = () => {
 
     try {
       // Create Daily.co room via backend
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      // In production (Vercel), use relative URL which goes through Vercel proxy to Render
+      // In development, use localhost directly
+      const apiUrl = import.meta.env.VITE_API_URL || '';
       const response = await fetch(`${apiUrl}/api/create-room`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
