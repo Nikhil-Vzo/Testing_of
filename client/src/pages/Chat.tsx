@@ -134,17 +134,13 @@ export const Chat: React.FC = () => {
 
     fetchChatData();
 
-    // 2. REALTIME SUBSCRIPTION (The Magic Part)
+    // 2. REALTIME SUBSCRIPTION - Listen for new messages from database
     const channel = supabase
       .channel(`chat:${matchId}`)
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `match_id=eq.${matchId}` },
         (payload) => {
           const newMsg = payload.new;
-          // Only add if it wasn't sent by me (because I add mine immediately for UI speed)
-          // OR if I want to confirm receipt. simpler: Just append everything incoming.
-          // To prevent dupes from my own optimistic update, we can check IDs or just rely on fetching.
-          // For simplicity/speed:
           const incoming: Message = {
             id: newMsg.id,
             senderId: newMsg.sender_id,
@@ -154,8 +150,29 @@ export const Chat: React.FC = () => {
           };
 
           setMessages(prev => {
-            // Avoid duplicate if we optimistically added it
-            if (prev.some(m => m.id === incoming.id)) return prev;
+            // Check if message already exists (by ID or by temporary optimistic ID)
+            const exists = prev.some(m => m.id === incoming.id);
+            if (exists) return prev;
+
+            // Replace optimistic message with real one if it matches
+            const hasOptimistic = prev.some(m =>
+              m.id.toString().startsWith('temp-') &&
+              m.senderId === incoming.senderId &&
+              m.text === incoming.text
+            );
+
+            if (hasOptimistic) {
+              // Replace the optimistic message with the real one
+              return prev.map(m =>
+                m.id.toString().startsWith('temp-') &&
+                  m.senderId === incoming.senderId &&
+                  m.text === incoming.text
+                  ? incoming
+                  : m
+              );
+            }
+
+            // New message from partner - add it
             return [...prev, incoming];
           });
         }
@@ -187,19 +204,20 @@ export const Chat: React.FC = () => {
     const textToSend = newMessage.trim();
     setNewMessage(''); // Clear input immediately
 
-    // Optimistic UI update - show message immediately
+    // Optimistic UI update - show message immediately with temporary ID
     const optimisticMessage: Message = {
-      id: `temp-${Date.now()}`, // Temporary ID until database assigns real one
+      id: `temp-${Date.now()}-${Math.random()}`, // Temporary ID
       senderId: currentUser.id,
       text: textToSend,
       timestamp: Date.now(),
       isSystem: false
     };
 
+    // Add optimistic message to UI immediately for instant feedback
     setMessages(prev => [...prev, optimisticMessage]);
 
     try {
-      // Database Insert
+      // Insert into database - real-time subscription will handle updating UI
       const { error } = await supabase
         .from('messages')
         .insert({
@@ -210,7 +228,10 @@ export const Chat: React.FC = () => {
 
       if (error) throw error;
 
-      // Real-time subscription will replace the optimistic message with the database version
+      // The real-time subscription will:
+      // 1. Receive the message from the database with real ID
+      // 2. Replace the optimistic message with the real one
+      // 3. Partner will also receive it via their subscription
     } catch (err) {
       console.error('Failed to send:', err);
       alert('Failed to send message');
