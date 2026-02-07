@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { usePresence } from '../context/PresenceContext';
 import { MatchProfile, ChatSession } from '../types';
 import { Ghost, Search, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -12,6 +13,7 @@ const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes (shorter since matches update
 
 export const Matches: React.FC = () => {
   const { currentUser } = useAuth();
+  const { subscribeToUser, unsubscribeFromUser, isUserOnline } = usePresence();
   const navigate = useNavigate();
   const [sessions, setSessions] = useState<{ match: MatchProfile; session: ChatSession }[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -145,6 +147,23 @@ export const Matches: React.FC = () => {
     fetchMatchesOptimized(true);
   }, [currentUser, fetchMatchesOptimized]);
 
+  // Subscribe to presence for all matched users
+  useEffect(() => {
+    if (sessions.length === 0) return;
+
+    // Subscribe to each user's presence
+    sessions.forEach(({ match }) => {
+      subscribeToUser(match.id);
+    });
+
+    return () => {
+      // Cleanup: unsubscribe from all
+      sessions.forEach(({ match }) => {
+        unsubscribeFromUser(match.id);
+      });
+    };
+  }, [sessions.length]); // Only re-run when number of sessions changes
+
   const filtered = sessions.filter(s =>
     s.match.anonymousId.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.match.realName.toLowerCase().includes(searchTerm.toLowerCase())
@@ -166,7 +185,7 @@ export const Matches: React.FC = () => {
             <h1 className="text-3xl font-black tracking-tighter uppercase">Messages</h1>
           </div>
           <div className="bg-gray-900/50 backdrop-blur rounded-full px-3 py-1 text-xs font-bold text-gray-400 border border-gray-800">
-            {sessions.length} Active
+            {sessions.length} {sessions.length === 1 ? 'Match' : 'Matches'}
           </div>
         </div>
 
@@ -225,9 +244,12 @@ export const Matches: React.FC = () => {
                   <div className="w-14 h-14 rounded-full p-0.5 bg-gradient-to-tr from-gray-800 to-gray-700 group-hover:from-neon group-hover:to-purple-600 transition-all duration-500">
                     <img src={match.avatar} className="w-full h-full rounded-full object-cover border-2 border-[#000000]" alt="Avatar" />
                   </div>
-                  {/* Online Indicator (Mock) */}
+                  {/* Real-time Online/Offline Indicator */}
                   <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-black rounded-full flex items-center justify-center">
-                    <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></div>
+                    <div className={`w-2.5 h-2.5 rounded-full ${isUserOnline(match.id)
+                        ? 'bg-green-500 animate-pulse'
+                        : 'bg-gray-600'
+                      }`}></div>
                   </div>
                 </div>
 
