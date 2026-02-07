@@ -18,59 +18,79 @@ export const VideoCall: React.FC<VideoCallProps> = ({ roomUrl, onLeave, partnerN
   useEffect(() => {
     if (!containerRef.current || !roomUrl) return;
 
-    // CRITICAL: Destroy any existing Daily instances before creating a new one
-    // This prevents the "Duplicate DailyIframe instances are not allowed" error
-    if (callFrameRef.current) {
-      console.log('Destroying existing Daily instance before creating new one');
-      callFrameRef.current.destroy();
-      callFrameRef.current = null;
-    }
-
-    // Additional safety: Check if there are any existing Daily iframes globally
-    const existingFrames = DailyIframe.getCallInstance();
-    if (existingFrames) {
-      console.log('Found existing Daily instance, destroying it');
-      existingFrames.destroy();
-    }
-
     let callFrame: any = null;
+    let isMounted = true;
 
-    try {
-      // Create Daily.co call frame
-      callFrame = DailyIframe.createFrame(containerRef.current, {
-        iframeStyle: {
-          position: 'absolute',
-          top: '0',
-          left: '0',
-          width: '100%',
-          height: '100%',
-          border: 'none',
-          borderRadius: '0'
-        },
-        showLeaveButton: false,
-        showFullscreenButton: true
-      });
+    const initializeCall = async () => {
+      try {
+        // CRITICAL: Destroy any existing Daily instances ASYNCHRONOUSLY before creating a new one
+        // This prevents the "Duplicate DailyIframe instances are not allowed" error
 
-      callFrameRef.current = callFrame;
+        // First, clean up our ref if it exists
+        if (callFrameRef.current) {
+          console.log('Destroying existing ref instance');
+          try {
+            await callFrameRef.current.destroy();
+          } catch (err) {
+            console.warn('Error destroying ref instance:', err);
+          }
+          callFrameRef.current = null;
+        }
 
-      // Join the room
-      callFrame.join({ url: roomUrl })
-        .then(() => {
-          setIsJoined(true);
-        })
-        .catch((error: any) => {
-          console.error('Error joining call:', error);
-          alert('Failed to join call');
-          onLeave();
+        // Then check for any global Daily instances
+        const existingFrames = DailyIframe.getCallInstance();
+        if (existingFrames) {
+          console.log('Found existing global Daily instance, destroying it');
+          try {
+            await existingFrames.destroy();
+          } catch (err) {
+            console.warn('Error destroying global instance:', err);
+          }
+          // Wait a bit to ensure cleanup is complete
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        // Only proceed if component is still mounted
+        if (!isMounted) return;
+
+        // Create Daily.co call frame
+        callFrame = DailyIframe.createFrame(containerRef.current!, {
+          iframeStyle: {
+            position: 'absolute',
+            top: '0',
+            left: '0',
+            width: '100%',
+            height: '100%',
+            border: 'none',
+            borderRadius: '0'
+          },
+          showLeaveButton: false,
+          showFullscreenButton: true
         });
-    } catch (error) {
-      console.error('Error creating Daily iframe:', error);
-      alert('Failed to initialize video call. Please try again.');
-      onLeave();
-    }
+
+        callFrameRef.current = callFrame;
+
+        // Join the room
+        await callFrame.join({ url: roomUrl });
+
+        if (isMounted) {
+          setIsJoined(true);
+        }
+      } catch (error: any) {
+        console.error('Error initializing call:', error);
+        if (isMounted) {
+          alert('Failed to join call: ' + (error.message || 'Unknown error'));
+          onLeave();
+        }
+      }
+    };
+
+    // Start initialization
+    initializeCall();
 
     // Cleanup on unmount
     return () => {
+      isMounted = false;
       if (callFrame) {
         callFrame.leave()
           .then(() => callFrame.destroy())
