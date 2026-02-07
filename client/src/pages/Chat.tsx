@@ -19,6 +19,7 @@ export const Chat: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isRevealed, setIsRevealed] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [isStartingCall, setIsStartingCall] = useState(false); // Prevent multiple call initiations
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -167,6 +168,13 @@ export const Chat: React.FC = () => {
 
   }, [matchId, currentUser]);
 
+  // Reset call starting state when user returns from a call
+  useEffect(() => {
+    // When user is not in a call anymore, reset the button state
+    setIsStartingCall(false);
+  }, []);
+
+
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -212,8 +220,9 @@ export const Chat: React.FC = () => {
   };
 
   const startVideoCall = async () => {
-    if (!partner) return;
+    if (!partner || isStartingCall) return; // Prevent multiple simultaneous calls
 
+    setIsStartingCall(true); // Lock the button
     try {
       // Create Daily.co room via backend
       // In production (Vercel), use relative URL which goes through Vercel proxy to Render
@@ -230,11 +239,14 @@ export const Chat: React.FC = () => {
         startCall(isRevealed ? partner.realName : partner.anonymousId, data.roomUrl);
       } else {
         alert('Failed to create call room');
+        setIsStartingCall(false); // Unlock on failure
       }
     } catch (error) {
       console.error('Error creating call:', error);
       alert('Failed to start call');
+      setIsStartingCall(false); // Unlock on error
     }
+    // Note: Don't unlock on success - the call UI will take over
   };
 
   const startAudioCall = async () => {
@@ -335,10 +347,18 @@ export const Chat: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-1">
-          <button onClick={startVideoCall} className="p-2.5 text-gray-400 hover:text-neon hover:bg-gray-800 rounded-full transition-all">
+          <button
+            onClick={startVideoCall}
+            disabled={isStartingCall}
+            className="p-2.5 text-gray-400 hover:text-neon hover:bg-gray-800 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <Video className="w-5 h-5" />
           </button>
-          <button onClick={startAudioCall} className="p-2.5 text-gray-400 hover:text-green-400 hover:bg-gray-800 rounded-full transition-all">
+          <button
+            onClick={startAudioCall}
+            disabled={isStartingCall}
+            className="p-2.5 text-gray-400 hover:text-green-400 hover:bg-gray-800 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <Phone className="w-5 h-5" />
           </button>
           <div className="relative">

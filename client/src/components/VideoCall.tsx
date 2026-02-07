@@ -18,39 +18,73 @@ export const VideoCall: React.FC<VideoCallProps> = ({ roomUrl, onLeave, partnerN
   useEffect(() => {
     if (!containerRef.current || !roomUrl) return;
 
-    // Create Daily.co call frame
-    const callFrame = DailyIframe.createFrame(containerRef.current, {
-      iframeStyle: {
-        position: 'absolute',
-        top: '0',
-        left: '0',
-        width: '100%',
-        height: '100%',
-        border: 'none',
-        borderRadius: '0'
-      },
-      showLeaveButton: false,
-      showFullscreenButton: true
-    });
+    // CRITICAL: Destroy any existing Daily instances before creating a new one
+    // This prevents the "Duplicate DailyIframe instances are not allowed" error
+    if (callFrameRef.current) {
+      console.log('Destroying existing Daily instance before creating new one');
+      callFrameRef.current.destroy();
+      callFrameRef.current = null;
+    }
 
-    callFrameRef.current = callFrame;
+    // Additional safety: Check if there are any existing Daily iframes globally
+    const existingFrames = DailyIframe.getCallInstance();
+    if (existingFrames) {
+      console.log('Found existing Daily instance, destroying it');
+      existingFrames.destroy();
+    }
 
-    // Join the room
-    callFrame.join({ url: roomUrl })
-      .then(() => {
-        setIsJoined(true);
-      })
-      .catch((error: any) => {
-        console.error('Error joining call:', error);
-        alert('Failed to join call');
-        onLeave();
+    let callFrame: any = null;
+
+    try {
+      // Create Daily.co call frame
+      callFrame = DailyIframe.createFrame(containerRef.current, {
+        iframeStyle: {
+          position: 'absolute',
+          top: '0',
+          left: '0',
+          width: '100%',
+          height: '100%',
+          border: 'none',
+          borderRadius: '0'
+        },
+        showLeaveButton: false,
+        showFullscreenButton: true
       });
+
+      callFrameRef.current = callFrame;
+
+      // Join the room
+      callFrame.join({ url: roomUrl })
+        .then(() => {
+          setIsJoined(true);
+        })
+        .catch((error: any) => {
+          console.error('Error joining call:', error);
+          alert('Failed to join call');
+          onLeave();
+        });
+    } catch (error) {
+      console.error('Error creating Daily iframe:', error);
+      alert('Failed to initialize video call. Please try again.');
+      onLeave();
+    }
 
     // Cleanup on unmount
     return () => {
       if (callFrame) {
-        callFrame.leave().then(() => callFrame.destroy());
+        callFrame.leave()
+          .then(() => callFrame.destroy())
+          .catch((err: any) => {
+            console.error('Error during cleanup:', err);
+            // Force destroy even if leave fails
+            try {
+              callFrame.destroy();
+            } catch (destroyErr) {
+              console.error('Error destroying call frame:', destroyErr);
+            }
+          });
       }
+      callFrameRef.current = null;
     };
   }, [roomUrl, onLeave]);
 
