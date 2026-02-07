@@ -59,7 +59,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 export default function App() {
   const [showIntro, setShowIntro] = useState(true);
-  const { isCallActive, roomUrl, partnerName, endCall } = useCall();
+  const { isCallActive, appId, channelName, token, partnerName, endCall } = useCall();
 
   useEffect(() => {
     // Check if we've already shown intro this session (optional, here we show it every refresh for effect as requested)
@@ -79,9 +79,11 @@ export default function App() {
   return (
     <>
       {/* Video/Audio Call Overlay */}
-      {isCallActive && roomUrl && (
+      {isCallActive && appId && channelName && token && (
         <VideoCall
-          roomUrl={roomUrl}
+          appId={appId}
+          channelName={channelName}
+          token={token}
           onLeave={endCall}
           partnerName={partnerName}
         />
