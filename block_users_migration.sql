@@ -18,7 +18,11 @@ CREATE INDEX IF NOT EXISTS idx_blocked_users_blocked ON blocked_users(blocked_id
 -- 3. Enable Row Level Security
 ALTER TABLE blocked_users ENABLE ROW LEVEL SECURITY;
 
--- 4. RLS Policies
+-- 4. RLS Policies (drop existing first to avoid conflicts)
+DROP POLICY IF EXISTS "Users can view blocks they created" ON blocked_users;
+DROP POLICY IF EXISTS "Users can create blocks" ON blocked_users;
+DROP POLICY IF EXISTS "Users can delete their blocks" ON blocked_users;
+
 -- Users can view blocks they created
 CREATE POLICY "Users can view blocks they created"
   ON blocked_users FOR SELECT
