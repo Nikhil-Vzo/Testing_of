@@ -10,10 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@daily-co/daily-js": "^0.87.0",
     "@google/genai": "^1.30.0",
     "@supabase/supabase-js": "^2.39.0",
     "@types/three": "^0.182.0",
+    "agora-rtc-react": "^2.5.1",
+    "agora-rtc-sdk-ng": "^4.24.2",
     "emoji-picker-react": "^4.16.1",
     "lucide-react": "^0.344.0",
     "peerjs": "^1.5.5",

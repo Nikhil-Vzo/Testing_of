@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabase'; // Use Supabase directly
 
 export const AppLayout: React.FC = () => {
   const { currentUser } = useAuth();
-  const { isCallActive, roomUrl, partnerName, endCall } = useCall();
+  const { isCallActive, appId, channelName, token, partnerName, endCall } = useCall();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -240,9 +240,11 @@ export const AppLayout: React.FC = () => {
       </main>
 
       {/* Global Video Call Overlay */}
-      {isCallActive && roomUrl && (
+      {isCallActive && appId && channelName && token && (
         <VideoCall
-          roomUrl={roomUrl}
+          appId={appId}
+          channelName={channelName}
+          token={token}
           onLeave={endCall}
           partnerName={partnerName}
         />

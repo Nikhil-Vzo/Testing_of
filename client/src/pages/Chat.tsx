@@ -224,25 +224,28 @@ export const Chat: React.FC = () => {
 
     setIsStartingCall(true); // Lock the button
     try {
-      // Create Daily.co room via backend
-      // In production (Vercel), use relative URL which goes through Vercel proxy to Render
-      // In development, use localhost directly
+      // Create Agora token via backend
       const apiUrl = import.meta.env.VITE_API_URL || '';
-      const response = await fetch(`${apiUrl}/api/create-room`, {
+      const response = await fetch(`${apiUrl}/api/agora-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
 
       const data = await response.json();
 
-      if (data.roomUrl) {
-        startCall(isRevealed ? partner.realName : partner.anonymousId, data.roomUrl);
+      if (data.token && data.channelName && data.appId) {
+        startCall(
+          isRevealed ? partner.realName : partner.anonymousId,
+          data.appId,
+          data.channelName,
+          data.token
+        );
       } else {
-        alert('Failed to create call room');
+        alert('Failed to create call session');
         setIsStartingCall(false); // Unlock on failure
       }
     } catch (error) {
-      console.error('Error creating call:', error);
+      console.error('Error starting call:', error);
       alert('Failed to start call');
       setIsStartingCall(false); // Unlock on error
     }

@@ -2,9 +2,11 @@ import React, { createContext, useContext, useState } from 'react';
 
 interface CallContextType {
   isCallActive: boolean;
-  roomUrl: string;
+  appId: string;
+  channelName: string;
+  token: string;
   partnerName: string;
-  startCall: (name: string, roomUrl: string) => void;
+  startCall: (name: string, appId: string, channelName: string, token: string) => void;
   endCall: () => void;
 }
 
@@ -12,23 +14,29 @@ const CallContext = createContext<CallContextType | undefined>(undefined);
 
 export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isCallActive, setIsCallActive] = useState(false);
-  const [roomUrl, setRoomUrl] = useState('');
+  const [appId, setAppId] = useState('');
+  const [channelName, setChannelName] = useState('');
+  const [token, setToken] = useState('');
   const [partnerName, setPartnerName] = useState('');
 
-  const startCall = (name: string, url: string) => {
+  const startCall = (name: string, appIdParam: string, channelNameParam: string, tokenParam: string) => {
     setPartnerName(name);
-    setRoomUrl(url);
+    setAppId(appIdParam);
+    setChannelName(channelNameParam);
+    setToken(tokenParam);
     setIsCallActive(true);
   };
 
   const endCall = () => {
     setIsCallActive(false);
-    setRoomUrl('');
+    setAppId('');
+    setChannelName('');
+    setToken('');
     setPartnerName('');
   };
 
   return (
-    <CallContext.Provider value={{ isCallActive, roomUrl, partnerName, startCall, endCall }}>
+    <CallContext.Provider value={{ isCallActive, appId, channelName, token, partnerName, startCall, endCall }}>
       {children}
     </CallContext.Provider>
   );

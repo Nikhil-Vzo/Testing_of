@@ -1,131 +1,122 @@
-import React, { useEffect, useRef, useState } from 'react';
-import DailyIframe from '@daily-co/daily-js';
-import { X, Mic, MicOff, Video, VideoOff, PhoneOff, ShieldCheck } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import AgoraRTC, {
+  IAgoraRTCRemoteUser,
+  ICameraVideoTrack,
+  IMicrophoneAudioTrack
+} from 'agora-rtc-sdk-ng';
+import { X, Mic, MicOff, Video as VideoIcon, VideoOff, PhoneOff, ShieldCheck } from 'lucide-react';
 
 interface VideoCallProps {
-  roomUrl: string;
+  appId: string;
+  channelName: string;
+  token: string;
   onLeave: () => void;
   partnerName: string;
 }
 
-export const VideoCall: React.FC<VideoCallProps> = ({ roomUrl, onLeave, partnerName }) => {
-  const callFrameRef = useRef<any>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token, onLeave, partnerName }) => {
+  const [localVideoTrack, setLocalVideoTrack] = useState<ICameraVideoTrack | null>(null);
+  const [localAudioTrack, setLocalAudioTrack] = useState<IMicrophoneAudioTrack | null>(null);
+  const [remoteUsers, setRemoteUsers] = useState<IAgoraRTCRemoteUser[]>([]);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isJoined, setIsJoined] = useState(false);
+  const [client] = useState(() => AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' }));
 
   useEffect(() => {
-    if (!containerRef.current || !roomUrl) return;
-
-    let callFrame: any = null;
-    let isMounted = true;
-
-    const initializeCall = async () => {
+    const init = async () => {
       try {
-        // CRITICAL: Destroy any existing Daily instances ASYNCHRONOUSLY before creating a new one
-        // This prevents the "Duplicate DailyIframe instances are not allowed" error
+        // Set up event listeners
+        client.on('user-published', async (user, mediaType) => {
+          await client.subscribe(user, mediaType);
+          console.log('Subscribed to user:', user.uid);
 
-        // First, clean up our ref if it exists
-        if (callFrameRef.current) {
-          console.log('Destroying existing ref instance');
-          try {
-            await callFrameRef.current.destroy();
-          } catch (err) {
-            console.warn('Error destroying ref instance:', err);
+          if (mediaType === 'video') {
+            setRemoteUsers((prev) => {
+              const exists = prev.find(u => u.uid === user.uid);
+              if (exists) return prev;
+              return [...prev, user];
+            });
           }
-          callFrameRef.current = null;
-        }
 
-        // Then check for any global Daily instances
-        const existingFrames = DailyIframe.getCallInstance();
-        if (existingFrames) {
-          console.log('Found existing global Daily instance, destroying it');
-          try {
-            await existingFrames.destroy();
-          } catch (err) {
-            console.warn('Error destroying global instance:', err);
+          if (mediaType === 'audio') {
+            user.audioTrack?.play();
           }
-          // Wait a bit to ensure cleanup is complete
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-
-        // Only proceed if component is still mounted
-        if (!isMounted) return;
-
-        // Create Daily.co call frame
-        callFrame = DailyIframe.createFrame(containerRef.current!, {
-          iframeStyle: {
-            position: 'absolute',
-            top: '0',
-            left: '0',
-            width: '100%',
-            height: '100%',
-            border: 'none',
-            borderRadius: '0'
-          },
-          showLeaveButton: false,
-          showFullscreenButton: true
         });
 
-        callFrameRef.current = callFrame;
+        client.on('user-unpublished', (user, mediaType) => {
+          console.log('User unpublished:', user.uid, mediaType);
+          if (mediaType === 'video') {
+            setRemoteUsers((prev) => prev.filter(u => u.uid !== user.uid));
+          }
+        });
 
-        // Join the room
-        await callFrame.join({ url: roomUrl });
+        client.on('user-left', (user) => {
+          console.log('User left:', user.uid);
+          setRemoteUsers((prev) => prev.filter(u => u.uid !== user.uid));
+        });
 
-        if (isMounted) {
-          setIsJoined(true);
-        }
-      } catch (error: any) {
-        console.error('Error initializing call:', error);
-        if (isMounted) {
-          alert('Failed to join call: ' + (error.message || 'Unknown error'));
-          onLeave();
-        }
+        // Join channel
+        await client.join(appId, channelName, token, null);
+        console.log('Joined channel successfully');
+
+        // Create and publish local tracks
+        const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
+        setLocalAudioTrack(audioTrack);
+        setLocalVideoTrack(videoTrack);
+
+        await client.publish([audioTrack, videoTrack]);
+        console.log('Published local tracks');
+
+        setIsJoined(true);
+
+        // Play local video
+        videoTrack.play('local-video');
+      } catch (error) {
+        console.error('Failed to join channel:', error);
+        alert('Failed to join call: ' + (error as Error).message);
+        onLeave();
       }
     };
 
-    // Start initialization
-    initializeCall();
+    init();
 
-    // Cleanup on unmount
     return () => {
-      isMounted = false;
-      if (callFrame) {
-        callFrame.leave()
-          .then(() => callFrame.destroy())
-          .catch((err: any) => {
-            console.error('Error during cleanup:', err);
-            // Force destroy even if leave fails
-            try {
-              callFrame.destroy();
-            } catch (destroyErr) {
-              console.error('Error destroying call frame:', destroyErr);
-            }
-          });
-      }
-      callFrameRef.current = null;
+      // Cleanup
+      localAudioTrack?.close();
+      localVideoTrack?.close();
+      client.leave();
+      client.removeAllListeners();
     };
-  }, [roomUrl, onLeave]);
+  }, [appId, channelName, token, onLeave]);
+
+  // Play remote video when users join
+  useEffect(() => {
+    remoteUsers.forEach((user) => {
+      if (user.videoTrack) {
+        user.videoTrack.play(`remote-video-${user.uid}`);
+      }
+    });
+  }, [remoteUsers]);
 
   const toggleMute = () => {
-    if (callFrameRef.current) {
-      callFrameRef.current.setLocalAudio(!isMuted);
+    if (localAudioTrack) {
+      localAudioTrack.setEnabled(isMuted);
       setIsMuted(!isMuted);
     }
   };
 
   const toggleVideo = () => {
-    if (callFrameRef.current) {
-      callFrameRef.current.setLocalVideo(!isVideoOff);
+    if (localVideoTrack) {
+      localVideoTrack.setEnabled(isVideoOff);
       setIsVideoOff(!isVideoOff);
     }
   };
 
   const handleEndCall = () => {
-    if (callFrameRef.current) {
-      callFrameRef.current.leave();
-    }
+    localAudioTrack?.close();
+    localVideoTrack?.close();
+    client.leave();
     onLeave();
   };
 
@@ -148,8 +139,42 @@ export const VideoCall: React.FC<VideoCallProps> = ({ roomUrl, onLeave, partnerN
         </button>
       </div>
 
-      {/* Video Container - Daily.co  iframe */}
-      <div ref={containerRef} className="flex-1 relative bg-gray-900" />
+      {/* Video Container */}
+      <div className="flex-1 relative bg-gray-900">
+        {/* Remote Video (full screen) */}
+        {remoteUsers.length > 0 ? (
+          <div className="absolute inset-0">
+            <div
+              id={`remote-video-${remoteUsers[0].uid}`}
+              className="w-full h-full"
+              style={{ objectFit: 'cover' }}
+            />
+          </div>
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl">👻</span>
+              </div>
+              <p className="text-gray-400">Waiting for {partnerName} to join...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Local Video (picture-in-picture) */}
+        <div className="absolute top-20 right-4 w-32 h-44 md:w-40 md:h-56 bg-gray-800 rounded-2xl overflow-hidden border-2 border-gray-700 shadow-2xl">
+          <div
+            id="local-video"
+            className="w-full h-full"
+            style={{ objectFit: 'cover', transform: 'scaleX(-1)' }}
+          />
+          {isVideoOff && (
+            <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
+              <VideoOff className="w-8 h-8 text-gray-500" />
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Call Controls */}
       <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent backdrop-blur flex items-center justify-center gap-6 z-10">
@@ -173,7 +198,7 @@ export const VideoCall: React.FC<VideoCallProps> = ({ roomUrl, onLeave, partnerN
           className={`p-4 rounded-full transition-all ${isVideoOff ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-700 hover:bg-gray-600'
             }`}
         >
-          {isVideoOff ? <VideoOff className="w-6 h-6 text-white" /> : <Video className="w-6 h-6 text-white" />}
+          {isVideoOff ? <VideoOff className="w-6 h-6 text-white" /> : <VideoIcon className="w-6 h-6 text-white" />}
         </button>
       </div>
     </div>
