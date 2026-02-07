@@ -6,6 +6,8 @@ import { useCall } from './context/CallContext';
 import { AppLayout } from './layouts/AppLayout';
 import { IntroAnimation } from './components/IntroAnimation';
 import { VideoCall } from './components/VideoCall';
+import { IncomingCallModal } from './components/IncomingCallModal';
+import { OutgoingCallModal } from './components/OutgoingCallModal';
 import { Loader2 } from 'lucide-react';
 
 // Lazy load all pages for code splitting (production optimization)
@@ -59,7 +61,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 export default function App() {
   const [showIntro, setShowIntro] = useState(true);
-  const { isCallActive, appId, channelName, token, partnerName, endCall } = useCall();
+  const { isCallActive, appId, channelName, token, partnerName, endCall, incomingCall, outgoingCall, acceptCall, rejectCall, setOutgoingCall } = useCall();
 
   useEffect(() => {
     // Check if we've already shown intro this session (optional, here we show it every refresh for effect as requested)
@@ -88,6 +90,28 @@ export default function App() {
           partnerName={partnerName}
         />
       )}
+
+      {/* Incoming Call Modal */}
+      {incomingCall && (
+        <IncomingCallModal
+          callerName={incomingCall.callerName}
+          callerAvatar={incomingCall.callerAvatar}
+          onAccept={acceptCall}
+          onReject={rejectCall}
+          isVideoCall={true}
+        />
+      )}
+
+      {/* Outgoing Call Modal */}
+      {outgoingCall && (
+        <OutgoingCallModal
+          receiverName={outgoingCall.receiverName}
+          receiverAvatar={outgoingCall.receiverAvatar}
+          onCancel={() => setOutgoingCall(null)}
+          isVideoCall={true}
+        />
+      )}
+
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public Routes */}

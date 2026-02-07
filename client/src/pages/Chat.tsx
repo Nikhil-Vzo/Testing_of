@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCall } from '../context/CallContext';
+import { usePresence } from '../context/PresenceContext';
 import { MatchProfile, Message } from '../types';
 import { ArrowLeft, Send, Phone, Video, MoreVertical, Ghost, Shield, Clock, User, AlertTriangle, Ban } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -10,7 +11,8 @@ import { VideoCall } from '../components/VideoCall';
 export const Chat: React.FC = () => {
   const { id: matchId } = useParams<{ id: string }>(); // This is the MATCH ID from the URL
   const { currentUser } = useAuth();
-  const { startCall } = useCall();
+  const { startCall, setOutgoingCall } = useCall();
+  const { subscribeToUser, unsubscribeFromUser, isUserOnline, getLastSeen } = usePresence();
   const navigate = useNavigate();
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -134,6 +136,11 @@ export const Chat: React.FC = () => {
 
     fetchChatData();
 
+    // Subscribe to partner's presence
+    if (partner) {
+      subscribeToUser(partner.id);
+    }
+
     // 2. REALTIME SUBSCRIPTION - Listen for new messages from database
     const channel = supabase
       .channel(`chat:${matchId}`)
@@ -181,6 +188,9 @@ export const Chat: React.FC = () => {
 
     return () => {
       supabase.removeChannel(channel);
+      if (partner) {
+        unsubscribeFromUser(partner.id);
+      }
     };
 
   }, [matchId, currentUser]);
@@ -241,36 +251,128 @@ export const Chat: React.FC = () => {
   };
 
   const startVideoCall = async () => {
-    if (!partner || isStartingCall) return; // Prevent multiple simultaneous calls
+    if (!partner || isStartingCall || !matchId) return;
 
-    setIsStartingCall(true); // Lock the button
+    // Check if partner is online
+    const partnerOnline = isUserOnline(partner.id);
+
+    if (!partnerOnline) {
+      const lastSeen = getLastSeen(partner.id);
+      const lastSeenText = lastSeen
+        ? `Last seen ${formatLastSeen(lastSeen)}`
+        : 'Currently offline';
+
+      if (!confirm(`${isRevealed ? partner.realName : partner.anonymousId} is ${lastSeenText}. Call anyway? They'll receive a missed call notification.`)) {
+        return;
+      }
+    }
+
+    setIsStartingCall(true);
+
+    // Show outgoing call modal
+    setOutgoingCall({
+      receiverName: isRevealed ? partner.realName : partner.anonymousId,
+      receiverAvatar: partner.avatar || 'https://via.placeholder.com/150'
+    });
+
     try {
-      // Create Agora token via backend
+      // Get Agora token and create call session
       const apiUrl = import.meta.env.VITE_API_URL || '';
-      const response = await fetch(`${apiUrl}/api/agora-token`, {
+      const tokenResponse = await fetch(`${apiUrl}/api/initiate-call`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ receiverId: partner.id, matchId })
       });
 
-      const data = await response.json();
+      const tokenData = await tokenResponse.json();
 
-      if (data.token && data.channelName && data.appId) {
-        startCall(
-          isRevealed ? partner.realName : partner.anonymousId,
-          data.appId,
-          data.channelName,
-          data.token
-        );
-      } else {
-        alert('Failed to create call session');
-        setIsStartingCall(false); // Unlock on failure
+      if (!tokenData.channelName || !tokenData.token || !tokenData.appId) {
+        throw new Error('Failed to create call session');
       }
+
+      // Create call session in database
+      const { data: callSession, error: sessionError } = await supabase
+        .from('call_sessions')
+        .insert({
+          caller_id: currentUser!.id,
+          receiver_id: partner.id,
+          match_id: matchId,
+          channel_name: tokenData.channelName,
+          token: tokenData.token,
+          app_id: tokenData.appId,
+          status: 'ringing'
+        })
+        .select()
+        .single();
+
+      if (sessionError) throw sessionError;
+
+      // Wait for receiver to accept (handled by real-time subscription in CallContext)
+      // Or timeout after 30 seconds
+      const timeoutId = setTimeout(() => {
+        setOutgoingCall(null);
+        setIsStartingCall(false);
+        alert('No answer. They may be busy or offline.');
+      }, 30000);
+
+      // Listen for call acceptance
+      const callChannel = supabase
+        .channel(`call_status:${callSession.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'call_sessions',
+            filter: `id=eq.${callSession.id}`
+          },
+          (payload) => {
+            const updatedSession = payload.new as any;
+
+            if (updatedSession.status === 'active') {
+              clearTimeout(timeoutId);
+              supabase.removeChannel(callChannel);
+
+              // Start the call
+              startCall(
+                isRevealed ? partner.realName : partner.anonymousId,
+                tokenData.appId,
+                tokenData.channelName,
+                tokenData.token
+              );
+              setIsStartingCall(false);
+            } else if (updatedSession.status === 'rejected') {
+              clearTimeout(timeoutId);
+              supabase.removeChannel(callChannel);
+              setOutgoingCall(null);
+              setIsStartingCall(false);
+              alert('Call was declined.');
+            }
+          }
+        )
+        .subscribe();
+
     } catch (error) {
       console.error('Error starting call:', error);
       alert('Failed to start call');
-      setIsStartingCall(false); // Unlock on error
+      setOutgoingCall(null);
+      setIsStartingCall(false);
     }
-    // Note: Don't unlock on success - the call UI will take over
+  };
+
+  // Helper function to format last seen time
+  const formatLastSeen = (date: Date): string => {
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (minutes < 1) return 'just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+    return date.toLocaleDateString();
   };
 
   const startAudioCall = async () => {
@@ -364,8 +466,17 @@ export const Chat: React.FC = () => {
             <h3 className="text-sm font-bold text-white leading-tight">
               {isRevealed ? partner.realName : partner.anonymousId}
             </h3>
-            <span className="text-[10px] text-gray-400 flex items-center gap-1">
-              {partner.university}
+            <span className="text-[10px] flex items-center gap-1">
+              {isUserOnline(partner.id) ? (
+                <span className="text-green-400">Active now</span>
+              ) : (
+                <span className="text-gray-500">
+                  {getLastSeen(partner.id)
+                    ? `Last seen ${formatLastSeen(getLastSeen(partner.id)!)}`
+                    : 'Offline'
+                  }
+                </span>
+              )}
             </span>
           </div>
         </div>

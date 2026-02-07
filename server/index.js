@@ -73,7 +73,51 @@ app.post('/api/agora-token', async (req, res) => {
   }
 });
 
-// Root Message
+// Agora: Initiate Call with Database Session
+app.post('/api/initiate-call', async (req, res) => {
+  try {
+    const { receiverId, matchId } = req.body;
+
+    if (!receiverId || !matchId) {
+      return res.status(400).json({ error: 'receiverId and matchId are required' });
+    }
+
+    const appId = process.env.AGORA_APP_ID;
+    const appCertificate = process.env.AGORA_APP_CERTIFICATE;
+
+    if (!appId || !appCertificate) {
+      throw new Error('Agora credentials not configured');
+    }
+
+    // Generate unique channel name
+    const channelName = `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const uid = 0;
+    const expirationTimeInSeconds = 3600; // 1 hour
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
+
+    // Generate token
+    const token = RtcTokenBuilder.buildTokenWithUid(
+      appId,
+      appCertificate,
+      channelName,
+      uid,
+      RtcRole.PUBLISHER,
+      privilegeExpiredTs
+    );
+
+    // Return call session info (caller will insert into Supabase)
+    res.json({
+      channelName,
+      token,
+      appId,
+      uid: uid.toString()
+    });
+  } catch (error) {
+    console.error('Error initiating call:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 app.get('/', (req, res) => {
   res.send('Backend API is running. Use the Vercel Frontend to interact.');
 });
