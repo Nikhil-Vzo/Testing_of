@@ -544,22 +544,15 @@ export const Chat: React.FC = () => {
 
       {/* 2. Messages Area */}
       <div ref={chatContainerRef} className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4 select-none" style={{ userSelect: 'none', WebkitUserSelect: 'none' }}>
-        {/* Privacy Notice */}
-        <div className="sticky top-0 z-10 mb-4">
-          <div className="bg-gradient-to-r from-yellow-900/20 to-orange-900/20 border border-yellow-600/30 rounded-2xl p-3 backdrop-blur-sm">
-            <div className="flex items-start gap-3">
-              <div className="p-2 bg-yellow-600/20 rounded-full mt-0.5">
-                <Shield className="w-4 h-4 text-yellow-500" />
-              </div>
-              <div className="flex-1">
-                <h4 className="text-xs font-bold text-yellow-500 mb-1 flex items-center gap-2">
-                  <Clock className="w-3 h-3" />
-                  Privacy Protection Active
-                </h4>
-                <p className="text-[11px] text-yellow-200/80 leading-relaxed">
-                  Messages are automatically deleted after <span className="font-bold text-yellow-400">3 days</span>. Screenshots are disabled for your safety.
-                </p>
-              </div>
+        {/* Privacy Notice - Subtle, non-sticky */}
+        <div className="mb-4">
+          <div className="bg-gray-900/40 border border-gray-800/50 rounded-xl p-2.5 backdrop-blur-sm">
+            <div className="flex items-center gap-2">
+              <Shield className="w-3.5 h-3.5 text-gray-500" />
+              <p className="text-[10px] text-gray-500 flex items-center gap-1.5">
+                <Clock className="w-3 h-3" />
+                Messages auto-delete after <span className="text-gray-400 font-medium">3 days</span> • Screenshots disabled
+              </p>
             </div>
           </div>
         </div>
