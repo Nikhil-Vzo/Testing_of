@@ -7,6 +7,7 @@ import { MatchProfile, Message } from '../types';
 import { ArrowLeft, Send, Phone, Video, MoreVertical, Ghost, Shield, Clock, User, AlertTriangle, Ban } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { VideoCall } from '../components/VideoCall';
+import { blockUser, unblockUser, isUserBlocked, isBlockedBy } from '../services/blockService';
 
 export const Chat: React.FC = () => {
   const { id: matchId } = useParams<{ id: string }>(); // This is the MATCH ID from the URL
@@ -22,6 +23,8 @@ export const Chat: React.FC = () => {
   const [isRevealed, setIsRevealed] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [isStartingCall, setIsStartingCall] = useState(false); // Prevent multiple call initiations
+  const [isBlocked, setIsBlocked] = useState(false); // Track if we blocked this user
+  const [isBlockedByThem, setIsBlockedByThem] = useState(false); // Track if they blocked us
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -139,6 +142,17 @@ export const Chat: React.FC = () => {
     // Subscribe to partner's presence
     if (partner) {
       subscribeToUser(partner.id);
+
+      // Check block status
+      checkBlockStatus();
+    }
+
+    async function checkBlockStatus() {
+      if (!partner) return;
+      const blocked = await isUserBlocked(partner.id);
+      const blockedBy = await isBlockedBy(partner.id);
+      setIsBlocked(blocked);
+      setIsBlockedByThem(blockedBy);
     }
 
     // 2. REALTIME SUBSCRIPTION - Listen for new messages from database
@@ -387,18 +401,38 @@ export const Chat: React.FC = () => {
     setShowMenu(false);
   };
 
-  const handleBlockUser = () => {
-    if (confirm('Are you sure you want to block this user?')) {
-      alert('Block feature coming soon!');
-      setShowMenu(false);
+  const handleBlockUser = async () => {
+    if (!partner) return;
+
+    if (isBlocked) {
+      // Unblock
+      if (confirm(`Unblock ${isRevealed ? partner.realName : partner.anonymousId}?`)) {
+        const success = await unblockUser(partner.id);
+        if (success) {
+          setIsBlocked(false);
+          setShowMenu(false);
+        } else {
+          alert('Failed to unblock user. Please try again.');
+        }
+      }
+    } else {
+      // Block
+      if (confirm(`Block ${isRevealed ? partner.realName : partner.anonymousId}? You won't be able to message each other.`)) {
+        const success = await blockUser(partner.id);
+        if (success) {
+          setIsBlocked(true);
+          setShowMenu(false);
+        } else {
+          alert('Failed to block user. Please try again.');
+        }
+      }
     }
   };
 
   const handleReport = () => {
-    if (confirm('Report this user for inappropriate behavior?')) {
-      alert('Report feature coming soon!');
-      setShowMenu(false);
-    }
+    setShowMenu(false);
+    // Navigate to contact page with report context
+    navigate('/contact', { state: { reportUserId: partner?.id, reportUserName: isRevealed ? partner?.realName : partner?.anonymousId } });
   };
 
   if (loading) return (
@@ -525,7 +559,7 @@ export const Chat: React.FC = () => {
                     className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-gray-300 hover:bg-gray-800 hover:text-orange-400 transition-colors"
                   >
                     <Ban className="w-4 h-4" />
-                    Block User
+                    {isBlocked ? 'Unblock User' : 'Block User'}
                   </button>
                   <div className="h-px bg-gray-800" />
                   <button
@@ -612,18 +646,44 @@ export const Chat: React.FC = () => {
       </div>
 
       {/* 3. Input Area */}
-      <div className="p-4 bg-gray-900/90 backdrop-blur border-t border-gray-800 z-20">
+      <div className="p-4 bg-gray-900/90 backdrop-blur border-t border-gray-800 z-20 relative">
+        {/* Blocked User Overlay */}
+        {(isBlocked || isBlockedByThem) && (
+          <div className="absolute inset-0 bg-gray-900/95 backdrop-blur-sm flex items-center justify-center z-30 border-t border-gray-800">
+            <div className="text-center px-4">
+              <Ban className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+              <p className="text-sm text-gray-400 font-medium">
+                {isBlocked
+                  ? 'You have blocked this user'
+                  : 'This user is unavailable'
+                }
+              </p>
+              {isBlocked && (
+                <button
+                  onClick={() => {
+                    handleBlockUser();
+                  }}
+                  className="mt-3 px-4 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-full transition-colors"
+                >
+                  Unblock to chat
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSend} className="flex items-center gap-2 max-w-4xl mx-auto">
           <input
             type="text"
             value={newMessage}
             onChange={e => setNewMessage(e.target.value)}
             placeholder="Type a message..."
-            className="flex-1 bg-gray-950 border border-gray-800 text-white rounded-full px-5 py-3.5 focus:outline-none focus:border-neon/50 focus:ring-1 focus:ring-neon/20 transition-all placeholder:text-gray-600"
+            disabled={isBlocked || isBlockedByThem}
+            className="flex-1 bg-gray-950 border border-gray-800 text-white rounded-full px-5 py-3.5 focus:outline-none focus:border-neon/50 focus:ring-1 focus:ring-neon/20 transition-all placeholder:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <button
             type="submit"
-            disabled={!newMessage.trim()}
+            disabled={!newMessage.trim() || isBlocked || isBlockedByThem}
             className="p-3.5 bg-neon text-white rounded-full hover:bg-neon/90 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(255,0,127,0.3)]"
           >
             <Send className="w-5 h-5" />

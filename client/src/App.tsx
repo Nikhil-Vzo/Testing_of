@@ -27,7 +27,7 @@ const Confessions = lazy(() => import('./pages/Confessions').then(m => ({ defaul
 // Static pages lazy loaded individually
 const About = lazy(() => import('./pages/StaticPages').then(m => ({ default: m.About })));
 const Careers = lazy(() => import('./pages/StaticPages').then(m => ({ default: m.Careers })));
-const Contact = lazy(() => import('./pages/StaticPages').then(m => ({ default: m.Contact })));
+const Contact = lazy(() => import('./pages/Contact').then(m => ({ default: m.Contact })));
 const Privacy = lazy(() => import('./pages/StaticPages').then(m => ({ default: m.Privacy })));
 const Terms = lazy(() => import('./pages/StaticPages').then(m => ({ default: m.Terms })));
 const Safety = lazy(() => import('./pages/StaticPages').then(m => ({ default: m.Safety })));
