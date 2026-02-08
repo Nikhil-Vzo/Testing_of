@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useCall } from '../context/CallContext';
 import { Ghost, Search, MessageCircle, Bell, CalendarHeart, User, MessageSquarePlus, Sparkles, MoreHorizontal } from 'lucide-react';
-import { VideoCall } from '../components/VideoCall';
 import { StarField } from '../components/StarField';
 import { supabase } from '../lib/supabase'; // Use Supabase directly
 
 export const AppLayout: React.FC = () => {
   const { currentUser } = useAuth();
-  const { isCallActive, appId, channelName, token, partnerName, endCall } = useCall();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -239,16 +236,7 @@ export const AppLayout: React.FC = () => {
         )}
       </main>
 
-      {/* Global Video Call Overlay */}
-      {isCallActive && appId && channelName && token && (
-        <VideoCall
-          appId={appId}
-          channelName={channelName}
-          token={token}
-          onLeave={endCall}
-          partnerName={partnerName}
-        />
-      )}
+
     </div>
   );
 };
