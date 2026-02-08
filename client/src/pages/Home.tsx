@@ -51,22 +51,27 @@ export const Home: React.FC = () => {
                 return;
             }
 
-            // 1. Try to load from cache first (instant load)
+            // Check if this is a fresh signup (no cached data yet)
             const cachedData = sessionStorage.getItem(PROFILES_CACHE_KEY);
-            const cacheExpiry = sessionStorage.getItem(CACHE_EXPIRY_KEY);
+            const isFreshSignup = !cachedData;
 
-            if (cachedData && cacheExpiry && Date.now() < parseInt(cacheExpiry)) {
-                const cached = JSON.parse(cachedData) as MatchProfile[];
-                setQueue(cached);
-                setIsLoading(false);
-                // Preload images for cached data
-                preloadImages(cached.slice(0, 5));
-                // Still fetch fresh data in background
-                fetchFreshData(false);
-                return;
+            // 1. Try to load from cache first (instant load) - but only if not a fresh signup
+            if (!isFreshSignup) {
+                const cacheExpiry = sessionStorage.getItem(CACHE_EXPIRY_KEY);
+
+                if (cachedData && cacheExpiry && Date.now() < parseInt(cacheExpiry)) {
+                    const cached = JSON.parse(cachedData) as MatchProfile[];
+                    setQueue(cached);
+                    setIsLoading(false);
+                    // Preload images for cached data
+                    preloadImages(cached.slice(0, 5));
+                    // Still fetch fresh data in background
+                    fetchFreshData(false);
+                    return;
+                }
             }
 
-            // 2. No valid cache, fetch fresh data
+            // 2. No valid cache OR fresh signup, fetch fresh data
             await fetchFreshData(true);
         };
 

@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 
 interface AuthContextType {
   currentUser: UserProfile | null;
-  login: (user: UserProfile) => void;
+  login: (user: UserProfile) => Promise<void>;
   logout: () => void;
   updateProfile: (updates: Partial<UserProfile>) => void;
   isAuthenticated: boolean;
@@ -63,16 +63,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initializeAuth();
   }, []);
 
-  const login = (user: UserProfile) => {
+  const login = async (user: UserProfile) => {
     setCurrentUser(user);
-    authService.login(user);
+    await authService.login(user);
   };
 
   const logout = () => {
     setCurrentUser(null);
     authService.logout();
     // Removed dataService.reset() as it is deprecated
-    
+
     // Clear all cached data
     sessionStorage.removeItem('otherhalf_discover_cache');
     sessionStorage.removeItem('otherhalf_discover_cache_expiry');

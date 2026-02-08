@@ -82,7 +82,7 @@ export const Onboarding: React.FC = () => {
           };
 
           // Log them in and redirect to home
-          login(appUser);
+          await login(appUser);
           navigate('/home');
           return; // Exit early, no need to show onboarding
         }
@@ -150,12 +150,27 @@ export const Onboarding: React.FC = () => {
     setIsSubmitting(true);
 
     try {
+      // Get the real authenticated user ID from Supabase
+      if (!supabase) {
+        setError("Authentication service not available.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+
+      if (!authUser) {
+        setError("Authentication failed. Please login again.");
+        setIsSubmitting(false);
+        return;
+      }
+
       // Compose DOB from separate fields (YYYY-MM-DD format)
       const monthIndex = MONTHS.indexOf(dobMonth) + 1;
       const formattedDob = `${dobYear}-${monthIndex.toString().padStart(2, '0')}-${dobDay}`;
 
       const newUser: UserProfile = {
-        id: `u${Date.now()}`, // Temporary ID, AuthContext/DB will use real Auth ID
+        id: authUser.id, // Use REAL Supabase Auth UUID
         anonymousId: `User#${Math.floor(Math.random() * 10000).toString(16).toUpperCase()}`,
         realName: tempProfile.realName.trim(),
         gender: tempProfile.gender || 'Male',
@@ -170,7 +185,9 @@ export const Onboarding: React.FC = () => {
         dob: formattedDob
       };
 
-      login(newUser);
+      // CRITICAL: Await login to ensure profile is saved to database before navigation
+      await login(newUser);
+
       setSuccess("Profile created! Redirecting...");
 
       // Small delay for user to see success message
