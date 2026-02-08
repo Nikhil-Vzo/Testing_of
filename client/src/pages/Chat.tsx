@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCall } from '../context/CallContext';
 import { usePresence } from '../context/PresenceContext';
 import { MatchProfile, Message } from '../types';
+import { useToast } from '../context/ToastContext';
 import { ArrowLeft, Send, Phone, Video, MoreVertical, Ghost, Shield, Clock, User, AlertTriangle, Ban } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { VideoCall } from '../components/VideoCall';
@@ -15,6 +16,7 @@ export const Chat: React.FC = () => {
   const { currentUser } = useAuth();
   const { startCall, setOutgoingCall } = useCall();
   const { subscribeToUser, unsubscribeFromUser, isUserOnline, getLastSeen } = usePresence();
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -80,7 +82,7 @@ export const Chat: React.FC = () => {
           (e.key === 's' && e.shiftKey && e.metaKey)
         ) {
           e.preventDefault();
-          alert('Screenshots are disabled to protect privacy');
+          showToast('Screenshots are disabled to protect privacy', 'warning');
         }
       };
 
@@ -314,7 +316,7 @@ export const Chat: React.FC = () => {
       // 3. Partner will also receive it via their subscription
     } catch (err) {
       console.error('Failed to send:', err);
-      alert('Failed to send message');
+      showToast('Failed to send message', 'error');
       // Remove optimistic message on error
       setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
     }
@@ -393,7 +395,7 @@ export const Chat: React.FC = () => {
       const timeoutId = setTimeout(() => {
         setOutgoingCall(null);
         setIsStartingCall(false);
-        alert('No answer. They may be busy or offline.');
+        showToast('No answer. They may be busy or offline.', 'info');
       }, 30000);
 
       // Listen for call acceptance
@@ -427,7 +429,7 @@ export const Chat: React.FC = () => {
               supabase.removeChannel(callChannel);
               setOutgoingCall(null);
               setIsStartingCall(false);
-              alert('Call was declined.');
+              showToast('Call was declined.', 'info');
             }
           }
         )
@@ -435,7 +437,7 @@ export const Chat: React.FC = () => {
 
     } catch (error) {
       console.error('Error starting call:', error);
-      alert('Failed to start call');
+      showToast('Failed to start call', 'error');
       setOutgoingCall(null);
       setIsStartingCall(false);
     }
@@ -481,8 +483,9 @@ export const Chat: React.FC = () => {
           if (success) {
             setIsBlocked(false);
             setShowMenu(false);
+            showToast('User unblocked', 'success');
           } else {
-            alert('Failed to unblock user. Please try again.');
+            showToast('Failed to unblock user. Please try again.', 'error');
           }
         },
         false,
@@ -498,8 +501,9 @@ export const Chat: React.FC = () => {
           if (success) {
             setIsBlocked(true);
             setShowMenu(false);
+            showToast('User blocked', 'success');
           } else {
-            alert('Failed to block user. Please try again.');
+            showToast('Failed to block user. Please try again.', 'error');
           }
         },
         true, // isDestructive
