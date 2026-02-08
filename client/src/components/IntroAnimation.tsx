@@ -12,8 +12,8 @@ export const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) =>
     // Sequence Timeline
     const timers = [
       setTimeout(() => setStep(1), 100),   // Start Sliding (Duration 1000ms)
-      setTimeout(() => setStep(2), 1100),  // Snap Together (Duration 300ms) - Start right after slide finishes
-      setTimeout(() => setStep(3), 1400),  // Shockwave (Waiting 300ms for snap to finish)
+      setTimeout(() => setStep(2), 1000),  // Snap Together (Duration 400ms) - Interrupts slide for continuous motion
+      setTimeout(() => setStep(3), 1400),  // Shockwave (Synced: 1000 + 400 = 1400)
       setTimeout(() => setStep(4), 1800),  // Text Reveal
       setTimeout(() => onComplete(), 4000) // End
     ];
@@ -32,10 +32,10 @@ export const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) =>
         <div className="relative w-40 h-40 mb-8">
           {/* Left Half (White) */}
           <div
-            className={`absolute top-0 left-0 w-1/2 h-full overflow-hidden ease-out
+            className={`absolute top-0 left-0 w-1/2 h-full overflow-hidden
               ${step === 0 ? '-translate-x-[200%] opacity-0' : ''}
-              ${step === 1 ? 'translate-x-[-15%] transition-all duration-[1000ms]' : ''} 
-              ${step >= 2 ? 'translate-x-0 transition-all duration-300' : ''}
+              ${step === 1 ? 'translate-x-[-15%] transition-all duration-[1000ms] ease-in' : ''} 
+              ${step >= 2 ? 'translate-x-0 transition-all duration-[400ms] ease-out' : ''}
             `}
           >
             <Ghost className="w-40 h-40 text-white absolute top-0 left-0" strokeWidth={1.5} />
@@ -43,10 +43,10 @@ export const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) =>
 
           {/* Right Half (Neon) */}
           <div
-            className={`absolute top-0 right-0 w-1/2 h-full overflow-hidden ease-out
+            className={`absolute top-0 right-0 w-1/2 h-full overflow-hidden
               ${step === 0 ? 'translate-x-[200%] opacity-0' : ''}
-              ${step === 1 ? 'translate-x-[15%] transition-all duration-[1000ms]' : ''} 
-              ${step >= 2 ? 'translate-x-0 drop-shadow-[0_0_15px_rgba(255,0,127,0.8)] transition-all duration-300' : ''}
+              ${step === 1 ? 'translate-x-[15%] transition-all duration-[1000ms] ease-in' : ''} 
+              ${step >= 2 ? 'translate-x-0 drop-shadow-[0_0_15px_rgba(255,0,127,0.8)] transition-all duration-[400ms] ease-out' : ''}
             `}
           >
             <Ghost className="w-40 h-40 text-neon absolute top-0 right-0" strokeWidth={1.5} />
