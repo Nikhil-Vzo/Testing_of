@@ -7,26 +7,23 @@ CREATE OR REPLACE FUNCTION get_potential_matches_v2(
 RETURNS SETOF profiles AS $$
 BEGIN
   IF recycle_mode THEN
-    -- RECYCLE MODE: Return profiles that were PASSED, but NOT MATCHED/LIKED
-    -- This brings back people you swiped left on, but excludes people you swiped right on.
+    -- RECYCLE MODE: Return ANYONE NOT LIKED (Includes 'pass', 'skip', etc.)
+    -- This brings back everyone except your matches/likes.
     RETURN QUERY
     SELECT p.*
     FROM profiles p
     WHERE p.id != user_id
     AND p.id NOT IN (
-      -- Exclude people I have LIKED (matches or pending likes)
+      -- Exclude people I have LIKED (swipes)
       SELECT target_id FROM swipes WHERE liker_id = user_id AND action = 'like'
     )
-    AND p.id IN (
-       -- Must be in the "passed" list? 
-       -- Or just "not liked"?
-       -- If I "passed", it is in swipes with action='pass'.
-       -- If I never swiped, it should have been caught by normal mode.
-       -- But Normal Mode might be empty if I swiped on everyone.
-       -- So here we want: Anyone I passed OR anyone I haven't swiped (if any left, though normal mode would catch them).
-       -- Let's just say: Exclude Likes. Include Passes.
-       SELECT target_id FROM swipes WHERE liker_id = user_id AND action = 'pass'
+    AND p.id NOT IN (
+      -- Exclude CONFIRMED MATCHES (people I am already chatting with)
+      SELECT CASE WHEN user_a = user_id THEN user_b ELSE user_a END
+      FROM matches
+      WHERE user_a = user_id OR user_b = user_id
     )
+    -- Broadened: Return ANYONE not liked (Includes passes, skips, etc.)
     -- Randomize to keep it fresh
     ORDER BY random()
     LIMIT query_limit;

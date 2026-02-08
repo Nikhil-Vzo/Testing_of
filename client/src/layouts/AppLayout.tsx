@@ -40,12 +40,12 @@ export const AppLayout: React.FC = () => {
     fetchCounts();
 
     // Optional: Subscribe to changes for live badges (Commented out to keep simple for now)
-    /*
+    // Subscribe to changes for live badges
     const channel = supabase.channel('badges')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, fetchCounts)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` }, fetchCounts)
       .subscribe();
+
     return () => { supabase.removeChannel(channel); };
-    */
   }, [currentUser]);
 
   const isActive = (path: string) => location.pathname === path;
