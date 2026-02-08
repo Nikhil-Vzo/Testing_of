@@ -8,6 +8,7 @@ import { ArrowLeft, Send, Phone, Video, MoreVertical, Ghost, Shield, Clock, User
 import { supabase } from '../lib/supabase';
 import { VideoCall } from '../components/VideoCall';
 import { blockUser, unblockUser, isUserBlocked, isBlockedBy } from '../services/blockService';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 
 export const Chat: React.FC = () => {
   const { id: matchId } = useParams<{ id: string }>(); // This is the MATCH ID from the URL
@@ -26,8 +27,37 @@ export const Chat: React.FC = () => {
   const [isBlocked, setIsBlocked] = useState(false); // Track if we blocked this user
   const [isBlockedByThem, setIsBlockedByThem] = useState(false); // Track if they blocked us
 
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmLabel: 'Confirm',
+    isDestructive: false,
+    onConfirm: () => { }
+  });
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Helper functions for modal
+  const closeConfirmModal = () => {
+    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const showConfirm = (title: string, message: string, onConfirm: () => void, isDestructive = false, confirmLabel = 'Confirm') => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      confirmLabel,
+      isDestructive,
+      onConfirm: () => {
+        onConfirm();
+        closeConfirmModal();
+      }
+    });
+  };
 
   // Screenshot Protection
   useEffect(() => {
@@ -302,10 +332,21 @@ export const Chat: React.FC = () => {
         ? `Last seen ${formatLastSeen(lastSeen)}`
         : 'Currently offline';
 
-      if (!confirm(`${isRevealed ? partner.realName : partner.anonymousId} is ${lastSeenText}. Call anyway? They'll receive a missed call notification.`)) {
-        return;
-      }
+      showConfirm(
+        'User Offline',
+        `${isRevealed ? partner.realName : partner.anonymousId} is ${lastSeenText}. Call anyway? They'll receive a missed call notification.`,
+        () => proceedWithCall(),
+        false,
+        'Call Anyway'
+      );
+      return;
     }
+
+    proceedWithCall();
+  };
+
+  const proceedWithCall = async () => {
+    if (!partner || !matchId) return;
 
     setIsStartingCall(true);
 
@@ -432,26 +473,38 @@ export const Chat: React.FC = () => {
 
     if (isBlocked) {
       // Unblock
-      if (confirm(`Unblock ${isRevealed ? partner.realName : partner.anonymousId}?`)) {
-        const success = await unblockUser(partner.id);
-        if (success) {
-          setIsBlocked(false);
-          setShowMenu(false);
-        } else {
-          alert('Failed to unblock user. Please try again.');
-        }
-      }
+      showConfirm(
+        'Unblock User',
+        `Unblock ${isRevealed ? partner.realName : partner.anonymousId}?`,
+        async () => {
+          const success = await unblockUser(partner.id);
+          if (success) {
+            setIsBlocked(false);
+            setShowMenu(false);
+          } else {
+            alert('Failed to unblock user. Please try again.');
+          }
+        },
+        false,
+        'Unblock'
+      );
     } else {
       // Block
-      if (confirm(`Block ${isRevealed ? partner.realName : partner.anonymousId}? You won't be able to message each other.`)) {
-        const success = await blockUser(partner.id);
-        if (success) {
-          setIsBlocked(true);
-          setShowMenu(false);
-        } else {
-          alert('Failed to block user. Please try again.');
-        }
-      }
+      showConfirm(
+        'Block User',
+        `Block ${isRevealed ? partner.realName : partner.anonymousId}? You won't be able to message each other.`,
+        async () => {
+          const success = await blockUser(partner.id);
+          if (success) {
+            setIsBlocked(true);
+            setShowMenu(false);
+          } else {
+            alert('Failed to block user. Please try again.');
+          }
+        },
+        true, // isDestructive
+        'Block'
+      );
     }
   };
 
@@ -509,6 +562,15 @@ export const Chat: React.FC = () => {
 
   return (
     <div className="h-full w-full bg-transparent flex flex-col relative">
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmLabel={confirmModal.confirmLabel}
+        isDestructive={confirmModal.isDestructive}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={closeConfirmModal}
+      />
 
       {/* 1. Header */}
       <div className="px-4 py-3 bg-black/95 backdrop-blur-md border-b border-gray-800 flex items-center justify-between z-20 sticky top-0">
