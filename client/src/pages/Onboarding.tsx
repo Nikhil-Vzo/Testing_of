@@ -188,6 +188,19 @@ export const Onboarding: React.FC = () => {
       // CRITICAL: Await login to ensure profile is saved to database before navigation
       await login(newUser);
 
+      // Send Welcome Notification
+      try {
+        await supabase.from('notifications').insert({
+          user_id: authUser.id,
+          type: 'system',
+          title: 'Welcome to Other Half! 🖤',
+          message: 'Your profile is live. Start swiping to find your match!',
+          read: false
+        });
+      } catch (notifError) {
+        console.error('Failed to send welcome notification', notifError);
+      }
+
       setSuccess("Profile created! Redirecting...");
 
       // Small delay for user to see success message

@@ -226,6 +226,17 @@ export const Notifications: React.FC = () => {
 
       // 3. Navigate to chat with the MATCH ID
       if (matchData?.id) {
+        // Send Initial "It's a Match!" System Message
+        try {
+          await supabase.from('messages').insert({
+            match_id: matchData.id,
+            sender_id: currentUser.id,
+            text: '[SYSTEM] It\'s a Match! 💖 Start chatting now.'
+          });
+        } catch (sysMsgError) {
+          console.error('Failed to send match intro message', sysMsgError);
+        }
+
         navigate(`/chat/${matchData.id}`);
       }
     } catch (err) {

@@ -167,9 +167,9 @@ export const Chat: React.FC = () => {
           const formatted: Message[] = msgData.map((m: any) => ({
             id: m.id,
             senderId: m.sender_id,
-            text: m.text,
+            text: m.text.replace('[SYSTEM]', '').trim(),
             timestamp: new Date(m.created_at).getTime(),
-            isSystem: false
+            isSystem: m.text.startsWith('[SYSTEM]') || m.text.startsWith('📞')
           }));
           setMessages(formatted);
           console.log('[Chat] Loaded', formatted.length, 'messages');
@@ -211,9 +211,9 @@ export const Chat: React.FC = () => {
           const incoming: Message = {
             id: newMsg.id,
             senderId: newMsg.sender_id,
-            text: newMsg.text,
+            text: newMsg.text.replace('[SYSTEM]', '').trim(),
             timestamp: new Date(newMsg.created_at).getTime(),
-            isSystem: false
+            isSystem: newMsg.text.startsWith('[SYSTEM]') || newMsg.text.startsWith('📞')
           };
 
           setMessages(prev => {
@@ -456,7 +456,7 @@ export const Chat: React.FC = () => {
       await supabase.from('messages').insert({
         match_id: matchId,
         sender_id: currentUser.id,
-        text: text
+        text: text.startsWith('📞') ? text : `[SYSTEM] ${text}`
       });
     } catch (err) {
       console.error('Failed to log system message:', err);
@@ -724,6 +724,18 @@ export const Chat: React.FC = () => {
         {messages.map((msg, i) => {
           const isMe = msg.senderId === currentUser?.id;
           const showAvatar = !isMe && (i === 0 || messages[i - 1].senderId !== msg.senderId);
+
+          if (msg.isSystem) {
+            return (
+              <div key={msg.id} className="flex justify-center w-full my-4">
+                <span className="text-[10px] uppercase tracking-wider text-gray-500 bg-gray-900/50 px-4 py-1.5 rounded-full border border-gray-800/50 flex items-center gap-2">
+                  {msg.text.includes('Match') && '💖'}
+                  {msg.text.includes('Missed') && '📞'}
+                  {msg.text.replace('📞', '').trim()}
+                </span>
+              </div>
+            );
+          }
 
           return (
             <div key={msg.id} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
