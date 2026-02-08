@@ -5,6 +5,7 @@ import AgoraRTC, {
   IMicrophoneAudioTrack
 } from 'agora-rtc-sdk-ng';
 import { X, Mic, MicOff, Video as VideoIcon, VideoOff, PhoneOff, ShieldCheck } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 interface VideoCallProps {
   appId: string;
@@ -12,16 +13,18 @@ interface VideoCallProps {
   token: string;
   onLeave: () => void;
   partnerName: string;
+  callType: 'audio' | 'video';
 }
 
-export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token, onLeave, partnerName }) => {
+export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token, onLeave, partnerName, callType }) => {
   const [localVideoTrack, setLocalVideoTrack] = useState<ICameraVideoTrack | null>(null);
   const [localAudioTrack, setLocalAudioTrack] = useState<IMicrophoneAudioTrack | null>(null);
   const [remoteUsers, setRemoteUsers] = useState<IAgoraRTCRemoteUser[]>([]);
   const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(false);
+  const [isVideoOff, setIsVideoOff] = useState(callType === 'audio');
   const [isJoined, setIsJoined] = useState(false);
   const [client] = useState(() => AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' }));
+  const { showToast } = useToast();
 
   useEffect(() => {
     const init = async () => {
@@ -60,21 +63,47 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
         await client.join(appId, channelName, token, null);
         console.log('Joined channel successfully');
 
-        // Create and publish local tracks
-        const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
-        setLocalAudioTrack(audioTrack);
-        setLocalVideoTrack(videoTrack);
+        // Create and publish local tracks based on call type
+        let audioTrack: IMicrophoneAudioTrack;
+        let videoTrack: ICameraVideoTrack | null = null;
 
-        await client.publish([audioTrack, videoTrack]);
+        try {
+          if (callType === 'audio') {
+            // Audio-only: Only request microphone
+            audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+          } else {
+            // Video call: Request both
+            [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
+          }
+        } catch (mediaError: any) {
+          console.error('Media permission error:', mediaError);
+          if (mediaError.code === 'PERMISSION_DENIED' || mediaError.name === 'NotAllowedError') {
+            showToast('Microphone/Camera permission denied. Please enable them in browser settings.', 'error');
+          } else {
+            showToast('Failed to access media devices: ' + mediaError.message, 'error');
+          }
+          // Don't leave immediately, user might fix permissions? No, we need fresh tracks.
+          // Better to leave and let them try again.
+          onLeave();
+          return;
+        }
+
+        setLocalAudioTrack(audioTrack);
+        if (videoTrack) {
+          setLocalVideoTrack(videoTrack);
+          await client.publish([audioTrack, videoTrack]);
+          videoTrack.play('local-video');
+        } else {
+          await client.publish([audioTrack]);
+        }
+
         console.log('Published local tracks');
 
         setIsJoined(true);
 
-        // Play local video
-        videoTrack.play('local-video');
       } catch (error) {
         console.error('Failed to join channel:', error);
-        alert('Failed to join call: ' + (error as Error).message);
+        showToast('Failed to join call: ' + (error as Error).message, 'error');
         onLeave();
       }
     };
@@ -88,7 +117,7 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
       client.leave();
       client.removeAllListeners();
     };
-  }, [appId, channelName, token, onLeave]);
+  }, [appId, channelName, token, onLeave, callType]);
 
   // Play remote video when users join
   useEffect(() => {
@@ -106,9 +135,49 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
     }
   };
 
-  const toggleVideo = () => {
+  const toggleVideo = async () => {
+    if (callType === 'audio' && !localVideoTrack) {
+      // If upgrading audio to video, we need to create video track
+      // But for now, let's keep it simple: Audio calls stay audio-only (no video button?)
+      // Or we can allow enabling video if they grant permission?
+      // Implementing full upgrade logic is complex. 
+      // For now, if callType is audio, the video button should behave as "turn on video"?
+      // But we didn't request camera permission initially.
+      // We would need to request it now.
+      // Let's implement basic toggle for now, assuming video track exists if callType is video.
+      // If callType is audio, we disable video toggle or handle it properly.
+
+      if (!localVideoTrack) {
+        try {
+          const track = await AgoraRTC.createCameraVideoTrack();
+          setLocalVideoTrack(track);
+          await client.publish([track]);
+          track.play('local-video');
+          setIsVideoOff(false);
+        } catch (err) {
+          showToast('Failed to enable camera', 'error');
+        }
+        return;
+      }
+    }
+
     if (localVideoTrack) {
-      localVideoTrack.setEnabled(isVideoOff);
+      // Just toggle enabled state
+      const newState = !isVideoOff;
+      // Note: isVideoOff state is inverted logic (true = OFF)
+      // setEnabled(true) -> ON. setEnabled(false) -> OFF.
+      // If currently OFF (isVideoOff=true), we want to turn ON (newState=false).
+      // So setEnabled(!newState).
+      // Wait, isVideoOff describes CURRENT state.
+      // If I click button:
+      // Current: OFF. Expect: ON.
+      // setEnabled(true). setIsVideoOff(false).
+
+      // Current: ON. Expect: OFF.
+      // setEnabled(false). setIsVideoOff(true).
+
+      const shouldEnable = isVideoOff; // If currently off, we enable
+      await localVideoTrack.setEnabled(shouldEnable);
       setIsVideoOff(!isVideoOff);
     }
   };
@@ -128,7 +197,9 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
           <ShieldCheck className="w-5 h-5 text-neon" />
           <div>
             <h3 className="text-white font-bold">{partnerName}</h3>
-            <p className="text-xs text-gray-400">{isJoined ? 'Connected • Encrypted' : 'Connecting...'}</p>
+            <p className="text-xs text-gray-400">
+              {isJoined ? (callType === 'audio' ? 'Audio Call • Encrypted' : 'Video Call • Encrypted') : 'Connecting...'}
+            </p>
           </div>
         </div>
         <button
@@ -142,7 +213,7 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
       {/* Video Container */}
       <div className="flex-1 relative bg-gray-900">
         {/* Remote Video (full screen) */}
-        {remoteUsers.length > 0 ? (
+        {remoteUsers.length > 0 && remoteUsers[0].videoTrack ? (
           <div className="absolute inset-0">
             <div
               id={`remote-video-${remoteUsers[0].uid}`}
@@ -153,27 +224,32 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">
-              <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl">👻</span>
+              <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                {callType === 'audio' ? (
+                  <span className="text-3xl">📞</span>
+                ) : (
+                  <span className="text-3xl">👻</span>
+                )}
               </div>
-              <p className="text-gray-400">Waiting for {partnerName} to join...</p>
+              <p className="text-gray-400">
+                {remoteUsers.length > 0 ? 'Connected' : `Waiting for ${partnerName}...`}
+              </p>
             </div>
           </div>
         )}
 
         {/* Local Video (picture-in-picture) */}
-        <div className="absolute top-20 right-4 w-32 h-44 md:w-40 md:h-56 bg-gray-800 rounded-2xl overflow-hidden border-2 border-gray-700 shadow-2xl">
+        {/* Only show if we have a video track */}
+        <div className={`absolute top-20 right-4 w-32 h-44 md:w-40 md:h-56 bg-gray-800 rounded-2xl overflow-hidden border-2 border-gray-700 shadow-2xl transition-all duration-300 ${(!localVideoTrack || isVideoOff) ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
           <div
             id="local-video"
             className="w-full h-full"
             style={{ objectFit: 'cover', transform: 'scaleX(-1)' }}
           />
-          {isVideoOff && (
-            <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
-              <VideoOff className="w-8 h-8 text-gray-500" />
-            </div>
-          )}
         </div>
+
+        {/* If video is valid but off, show icon? No, just hide self view for cleaner look or show icon? */}
+        {/* Existing code showed "VideoOff" icon overlay. */}
       </div>
 
       {/* Call Controls */}
@@ -188,7 +264,7 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
 
         <button
           onClick={handleEndCall}
-          className="p-5 rounded-full bg-red-600 hover:bg-red-700 transition-all shadow-lg"
+          className="p-5 rounded-full bg-red-600 hover:bg-red-700 transition-all shadow-lg hover:scale-110"
         >
           <PhoneOff className="w-8 h-8 text-white" />
         </button>

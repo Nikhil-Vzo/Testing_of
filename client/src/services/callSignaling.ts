@@ -8,6 +8,7 @@ export interface CallSession {
     channel_name: string;
     token: string;
     app_id: string;
+    call_type: 'audio' | 'video';
     status: 'ringing' | 'active' | 'ended' | 'rejected' | 'missed';
     created_at: string;
     answered_at?: string;

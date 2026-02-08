@@ -322,7 +322,7 @@ export const Chat: React.FC = () => {
     }
   };
 
-  const startVideoCall = async () => {
+  const startVideoCall = async (type: 'audio' | 'video' = 'video') => {
     if (!partner || isStartingCall || !matchId) return;
 
     // Check if partner is online
@@ -337,17 +337,17 @@ export const Chat: React.FC = () => {
       showConfirm(
         'User Offline',
         `${isRevealed ? partner.realName : partner.anonymousId} is ${lastSeenText}. Call anyway? They'll receive a missed call notification.`,
-        () => proceedWithCall(),
+        () => proceedWithCall(type),
         false,
         'Call Anyway'
       );
       return;
     }
 
-    proceedWithCall();
+    proceedWithCall(type);
   };
 
-  const proceedWithCall = async () => {
+  const proceedWithCall = async (callType: 'audio' | 'video') => {
     if (!partner || !matchId) return;
 
     setIsStartingCall(true);
@@ -383,14 +383,14 @@ export const Chat: React.FC = () => {
           channel_name: tokenData.channelName,
           token: tokenData.token,
           app_id: tokenData.appId,
-          status: 'ringing'
+          status: 'ringing',
+          call_type: callType
         })
         .select()
         .single();
 
       if (sessionError) throw sessionError;
 
-      // Wait for receiver to accept (handled by real-time subscription in CallContext)
       // Wait for receiver to accept (handled by real-time subscription in CallContext)
       // Or timeout after 30 seconds
       const timeoutId = setTimeout(async () => {
@@ -425,7 +425,8 @@ export const Chat: React.FC = () => {
                 isRevealed ? partner.realName : partner.anonymousId,
                 tokenData.appId,
                 tokenData.channelName,
-                tokenData.token
+                tokenData.token,
+                callType
               );
               setIsStartingCall(false);
             } else if (updatedSession.status === 'rejected') {
@@ -629,7 +630,7 @@ export const Chat: React.FC = () => {
 
         <div className="flex items-center gap-1">
           <button
-            onClick={startVideoCall}
+            onClick={() => startVideoCall('video')}
             disabled={isStartingCall}
             className="p-2.5 text-gray-400 hover:text-neon hover:bg-gray-800 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
