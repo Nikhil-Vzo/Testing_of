@@ -61,7 +61,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 export default function App() {
   const [showIntro, setShowIntro] = useState(true);
-  const { isCallActive, appId, channelName, token, partnerName, endCall, incomingCall, outgoingCall, acceptCall, rejectCall, setOutgoingCall } = useCall();
+  const { isCallActive, appId, channelName, token, partnerName, endCall, incomingCall, outgoingCall, acceptCall, rejectCall, setOutgoingCall, callType } = useCall();
 
   useEffect(() => {
     // Check if we've already shown intro this session (optional, here we show it every refresh for effect as requested)
@@ -88,6 +88,7 @@ export default function App() {
           token={token}
           onLeave={endCall}
           partnerName={partnerName}
+          callType={callType}
         />
       )}
 
@@ -98,7 +99,7 @@ export default function App() {
           callerAvatar={incomingCall.callerAvatar}
           onAccept={acceptCall}
           onReject={rejectCall}
-          isVideoCall={true}
+          isVideoCall={incomingCall.callType === 'video'}
         />
       )}
 

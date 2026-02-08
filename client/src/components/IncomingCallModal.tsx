@@ -25,18 +25,75 @@ export const IncomingCallModal: React.FC<IncomingCallModalProps> = ({
             setPulseAnimation(prev => (prev + 1) % 3);
         }, 1000);
 
-        // Play ringtone
-        const audio = new Audio('/sounds/ringtone.mp3');
-        audio.loop = true;
-        audio.play().catch(err => console.log('Audio autoplay blocked:', err));
-        audioRef.current = audio;
+        // Synthetic Ringtone (Web Audio API)
+        let audioCtx: AudioContext | null = null;
+        let osc1: OscillatorNode | null = null;
+        let osc2: OscillatorNode | null = null;
+        let gainNode: GainNode | null = null;
+        let loopInterval: NodeJS.Timeout | null = null;
+
+        const startRingtone = () => {
+            try {
+                // Prevent duplicate context
+                if (audioCtx) return;
+
+                const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+                audioCtx = new AudioContextClass();
+
+                // Create nodes
+                osc1 = audioCtx.createOscillator();
+                osc2 = audioCtx.createOscillator();
+                gainNode = audioCtx.createGain();
+
+                // Standard US Ringtone frequencies
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(440, audioCtx.currentTime); // A4
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(480, audioCtx.currentTime);
+
+                // Connect graph
+                osc1.connect(gainNode);
+                osc2.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                // Start oscillators
+                osc1.start();
+                osc2.start();
+
+                // Ring pattern: 2s ON, 4s OFF
+                const playRing = () => {
+                    if (!gainNode || !audioCtx) return;
+                    const now = audioCtx.currentTime;
+
+                    // Ramp up
+                    gainNode.gain.setValueAtTime(0, now);
+                    gainNode.gain.linearRampToValueAtTime(0.1, now + 0.1); // Low volume to be non-intrusive
+
+                    // Sustain
+                    gainNode.gain.setValueAtTime(0.1, now + 2);
+
+                    // Ramp down
+                    gainNode.gain.linearRampToValueAtTime(0, now + 2.1);
+                };
+
+                // Play immediate then loop
+                playRing();
+                loopInterval = setInterval(playRing, 6000);
+
+            } catch (err) {
+                console.error('Failed to start ringtone:', err);
+            }
+        };
+
+        // Attempt playback
+        startRingtone();
 
         return () => {
             clearInterval(interval);
-            if (audioRef.current) {
-                audioRef.current.pause();
-                audioRef.current = null;
-            }
+            if (loopInterval) clearInterval(loopInterval);
+            if (osc1) { try { osc1.stop(); } catch (e) { } }
+            if (osc2) { try { osc2.stop(); } catch (e) { } }
+            if (audioCtx) { try { audioCtx.close(); } catch (e) { } }
         };
     }, []);
 
