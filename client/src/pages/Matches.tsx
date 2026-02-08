@@ -116,11 +116,19 @@ export const Matches: React.FC = () => {
       // Sort by latest activity
       loadedSessions.sort((a, b) => b.session.lastUpdated - a.session.lastUpdated);
 
+      // Deduplicate by partner ID (keep the most active one)
+      const seenPartners = new Set<string>();
+      const uniqueSessions = loadedSessions.filter(item => {
+        if (seenPartners.has(item.match.id)) return false;
+        seenPartners.add(item.match.id);
+        return true;
+      });
+
       // Cache the results
-      sessionStorage.setItem(MATCHES_CACHE_KEY, JSON.stringify(loadedSessions));
+      sessionStorage.setItem(MATCHES_CACHE_KEY, JSON.stringify(uniqueSessions));
       sessionStorage.setItem(MATCHES_CACHE_EXPIRY_KEY, (Date.now() + CACHE_DURATION).toString());
 
-      setSessions(loadedSessions);
+      setSessions(uniqueSessions);
     } catch (err) {
       console.error('Error loading matches:', err);
     } finally {
@@ -247,8 +255,8 @@ export const Matches: React.FC = () => {
                   {/* Real-time Online/Offline Indicator */}
                   <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-black rounded-full flex items-center justify-center">
                     <div className={`w-2.5 h-2.5 rounded-full ${isUserOnline(match.id)
-                        ? 'bg-green-500 animate-pulse'
-                        : 'bg-gray-600'
+                      ? 'bg-green-500 animate-pulse'
+                      : 'bg-gray-600'
                       }`}></div>
                   </div>
                 </div>

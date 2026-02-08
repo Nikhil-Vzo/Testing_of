@@ -391,11 +391,15 @@ export const Chat: React.FC = () => {
       if (sessionError) throw sessionError;
 
       // Wait for receiver to accept (handled by real-time subscription in CallContext)
+      // Wait for receiver to accept (handled by real-time subscription in CallContext)
       // Or timeout after 30 seconds
-      const timeoutId = setTimeout(() => {
+      const timeoutId = setTimeout(async () => {
         setOutgoingCall(null);
         setIsStartingCall(false);
         showToast('No answer. They may be busy or offline.', 'info');
+
+        // Log missed call
+        await insertSystemMessage('📞 Missed Call');
       }, 30000);
 
       // Listen for call acceptance
@@ -409,7 +413,7 @@ export const Chat: React.FC = () => {
             table: 'call_sessions',
             filter: `id=eq.${callSession.id}`
           },
-          (payload) => {
+          async (payload) => {
             const updatedSession = payload.new as any;
 
             if (updatedSession.status === 'active') {
@@ -430,6 +434,9 @@ export const Chat: React.FC = () => {
               setOutgoingCall(null);
               setIsStartingCall(false);
               showToast('Call was declined.', 'info');
+
+              // Log declined call
+              await insertSystemMessage('📞 Call Declined');
             }
           }
         )
@@ -440,6 +447,19 @@ export const Chat: React.FC = () => {
       showToast('Failed to start call', 'error');
       setOutgoingCall(null);
       setIsStartingCall(false);
+    }
+  };
+
+  const insertSystemMessage = async (text: string) => {
+    if (!currentUser || !matchId) return;
+    try {
+      await supabase.from('messages').insert({
+        match_id: matchId,
+        sender_id: currentUser.id,
+        text: text
+      });
+    } catch (err) {
+      console.error('Failed to log system message:', err);
     }
   };
 

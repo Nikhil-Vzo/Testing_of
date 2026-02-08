@@ -152,6 +152,37 @@ export const Notifications: React.FC = () => {
     };
   }, [currentUser, fetchNotifications]);
 
+  const handleMessageClick = async (notif: NotificationItem) => {
+    if (!currentUser || !supabase || !notif.fromUserId) return;
+
+    // 1. Mark as read
+    await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('id', notif.id);
+
+    setNotifications(prev =>
+      prev.map(n => n.id === notif.id ? { ...n, read: true } : n)
+    );
+
+    // 2. Find Match ID and Navigate
+    try {
+      const { data: match } = await supabase
+        .from('matches')
+        .select('id')
+        .or(`and(user_a.eq.${notif.fromUserId},user_b.eq.${currentUser.id}),and(user_a.eq.${currentUser.id},user_b.eq.${notif.fromUserId})`)
+        .maybeSingle();
+
+      if (match) {
+        navigate(`/chat/${match.id}`);
+      } else {
+        console.error('Match not found for message notification');
+      }
+    } catch (err) {
+      console.error('Error finding match:', err);
+    }
+  };
+
   const handleAccept = async (notif: NotificationItem) => {
     if (!currentUser || !supabase || !notif.fromUserId) return;
 
@@ -163,6 +194,20 @@ export const Notifications: React.FC = () => {
     setNotifications(prev => prev.filter(n => n.id !== notif.id));
 
     try {
+      // 0. CHECK EXISTING MATCH FIRST (Bidirectional)
+      const { data: existingMatch } = await supabase
+        .from('matches')
+        .select('id')
+        .or(`and(user_a.eq.${notif.fromUserId},user_b.eq.${currentUser.id}),and(user_a.eq.${currentUser.id},user_b.eq.${notif.fromUserId})`)
+        .maybeSingle();
+
+      if (existingMatch) {
+        // Match exists, just delete notification and navigate
+        await supabase.from('notifications').delete().eq('id', notif.id);
+        navigate(`/chat/${existingMatch.id}`);
+        return;
+      }
+
       // 1. Insert Match (Triggers 'handle_new_match' DB function for the other user)
       const { data: matchData, error: matchError } = await supabase
         .from('matches')
@@ -174,24 +219,7 @@ export const Notifications: React.FC = () => {
         .select()
         .single();
 
-      if (matchError) {
-        // If duplicate key error, fetch existing match
-        if (matchError.code === '23505') {
-          const { data: existingMatch } = await supabase
-            .from('matches')
-            .select('id')
-            .or(`and(user_a.eq.${notif.fromUserId},user_b.eq.${currentUser.id}),and(user_a.eq.${currentUser.id},user_b.eq.${notif.fromUserId})`)
-            .single();
-
-          if (existingMatch) {
-            // Delete notification and navigate to existing match
-            await supabase.from('notifications').delete().eq('id', notif.id);
-            navigate(`/chat/${existingMatch.id}`);
-            return;
-          }
-        }
-        throw matchError;
-      }
+      if (matchError) throw matchError;
 
       // 2. Delete the Notification (Cleanup)
       await supabase.from('notifications').delete().eq('id', notif.id);
@@ -199,24 +227,9 @@ export const Notifications: React.FC = () => {
       // 3. Navigate to chat with the MATCH ID
       if (matchData?.id) {
         navigate(`/chat/${matchData.id}`);
-      } else {
-        // Fallback: query for the match if ID not returned
-        const { data: match } = await supabase
-          .from('matches')
-          .select('id')
-          .or(`and(user_a.eq.${notif.fromUserId},user_b.eq.${currentUser.id}),and(user_a.eq.${currentUser.id},user_b.eq.${notif.fromUserId})`)
-          .single();
-
-        if (match) {
-          navigate(`/chat/${match.id}`);
-        } else {
-          throw new Error('Failed to create or find match');
-        }
       }
-
     } catch (err) {
       console.error('Accept error:', err);
-      alert('Something went wrong. Please try again.');
       // Restore notification on error
       await fetchNotifications(false);
     } finally {
@@ -413,7 +426,8 @@ export const Notifications: React.FC = () => {
           notifications.map(notif => (
             <div
               key={notif.id}
-              className={`p-5 rounded-2xl border transition-all ${notif.read ? 'bg-gray-900/30 border-gray-800/50' : 'bg-gray-900 border-neon/50 shadow-[0_0_15px_rgba(255,0,127,0.05)]'
+              onClick={() => notif.type === 'message' && handleMessageClick(notif)}
+              className={`p-5 rounded-2xl border transition-all cursor-pointer hover:scale-[1.01] ${notif.read ? 'bg-gray-900/30 border-gray-800/50' : 'bg-gray-900 border-neon/50 shadow-[0_0_15px_rgba(255,0,127,0.05)]'
                 }`}
             >
               <div className="flex items-start gap-4">
