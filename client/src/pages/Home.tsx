@@ -79,9 +79,23 @@ export const Home: React.FC = () => {
             if (showLoading) setIsLoading(true);
 
             try {
-                const { data, error } = await supabase!.rpc('get_potential_matches', {
+                // Try fetching new (unswiped) profiles first using the ORIGINAL algorithm (Jacuzzi?)
+                let { data, error } = await supabase!.rpc('get_potential_matches', {
                     user_id: currentUser!.id
                 });
+
+                // If no new profiles, try recycling passed profiles (Infinite Loop) using v2
+                if (!error && (!data || data.length === 0)) {
+                    const { data: recycledData, error: recycledError } = await supabase!.rpc('get_potential_matches_v2', {
+                        user_id: currentUser!.id,
+                        recycle_mode: true,
+                        query_limit: 20
+                    });
+
+                    if (!recycledError && recycledData) {
+                        data = recycledData;
+                    }
+                }
 
                 if (error) {
                     console.error('Error fetching matches:', error);
@@ -240,19 +254,18 @@ export const Home: React.FC = () => {
             setCurrentIndex(prev => prev + 1);
 
             try {
-                // CLEANED UP: Only insert swipe. The DB Trigger handles notification creation.
+                // Use UPSERT to handle recycling (re-swiping on previously passed users)
                 const { error: swipeError } = await supabase
                     .from('swipes')
-                    .insert({
+                    .upsert({
                         liker_id: currentUser.id,
                         target_id: targetId,
                         action: action
-                    });
+                    }, { onConflict: 'liker_id, target_id' });
 
                 if (swipeError) console.error('Swipe error:', swipeError);
 
-                // Note: Notification logic removed here. Handled by DB Trigger 'on_new_like'.
-
+                // Note: Notification logic handled by DB Trigger
             } catch (err) {
                 console.error('Swipe logic error:', err);
             }
