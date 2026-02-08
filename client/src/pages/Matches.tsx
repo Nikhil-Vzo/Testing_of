@@ -15,7 +15,7 @@ export const Matches: React.FC = () => {
   const { currentUser } = useAuth();
   const { subscribeToUser, unsubscribeFromUser, isUserOnline } = usePresence();
   const navigate = useNavigate();
-  const [sessions, setSessions] = useState<{ match: MatchProfile; session: ChatSession }[]>([]);
+  const [sessions, setSessions] = useState<{ match: MatchProfile; session: ChatSession; hasUnread: boolean }[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -58,6 +58,15 @@ export const Matches: React.FC = () => {
         .select('*')
         .in('match_id', matchIds)
         .order('created_at', { ascending: false });
+
+      // 4b. Fetch unread notifications to determine unread status
+      const { data: unreadNotifs } = await supabase
+        .from('notifications')
+        .select('from_user_id')
+        .eq('user_id', currentUser.id)
+        .eq('type', 'message');
+
+      const unreadMap = new Set(unreadNotifs?.map(n => n.from_user_id));
 
       // Create lookup maps for O(1) access
       const profileMap = new Map(profilesData?.map(p => [p.id, p]) || []);
@@ -110,8 +119,15 @@ export const Matches: React.FC = () => {
           }] : []
         };
 
-        return { match: matchProfile, session };
-      }).filter(Boolean) as { match: MatchProfile; session: ChatSession }[];
+        // Attach unread status to the session object or handle it in map below?
+        // We can just use the Set in the render, but we need to trigger re-render if it changes.
+        // It's cleaner to return it here if we want to sort by unread?
+        // But `ChatSession` type doesn't have isUnread.
+        // The `isUnread` logic is currently in the render map:
+        // const isUnread = lastMsg && lastMsg.senderId !== currentUser?.id && false;
+
+        return { match: matchProfile, session, hasUnread: unreadMap.has(partnerId) };
+      }).filter(Boolean) as { match: MatchProfile; session: ChatSession; hasUnread: boolean }[];
 
       // Sort by latest activity
       loadedSessions.sort((a, b) => b.session.lastUpdated - a.session.lastUpdated);
@@ -236,9 +252,9 @@ export const Matches: React.FC = () => {
             <p className="text-gray-500 text-sm">No matches found.<br />Start swiping to connect!</p>
           </div>
         ) : (
-          filtered.map(({ match, session }) => {
+          filtered.map(({ match, session, hasUnread }) => {
             const lastMsg = session.messages[0]; // We only fetched one
-            const isUnread = lastMsg && lastMsg.senderId !== currentUser?.id && false; // Future: Add read status check
+            const isUnread = hasUnread;
 
             return (
               <div

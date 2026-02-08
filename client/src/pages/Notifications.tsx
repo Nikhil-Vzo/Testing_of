@@ -155,14 +155,14 @@ export const Notifications: React.FC = () => {
   const handleMessageClick = async (notif: NotificationItem) => {
     if (!currentUser || !supabase || !notif.fromUserId) return;
 
-    // 1. Mark as read
+    // 1. Delete the notification (User has seen it)
     await supabase
       .from('notifications')
-      .update({ read: true })
+      .delete()
       .eq('id', notif.id);
 
     setNotifications(prev =>
-      prev.map(n => n.id === notif.id ? { ...n, read: true } : n)
+      prev.filter(n => n.id !== notif.id)
     );
 
     // 2. Find Match ID and Navigate
