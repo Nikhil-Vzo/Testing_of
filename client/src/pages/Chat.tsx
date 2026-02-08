@@ -63,12 +63,14 @@ export const Chat: React.FC = () => {
     }
   }, []);
 
-  // 1. Fetch Match Details & Messages
+  // 1. Fetch Match Details & Messages (Initial Load)
   useEffect(() => {
     if (!currentUser || !matchId || !supabase) return;
 
     const fetchChatData = async () => {
       try {
+        console.log('[Chat] Loading chat data for match:', matchId);
+
         // A. Get Match Info (to find who the partner is)
         const { data: matchData, error: matchError } = await supabase
           .from('matches')
@@ -94,7 +96,7 @@ export const Chat: React.FC = () => {
           .single();
 
         if (profileData) {
-          setPartner({
+          const partnerProfile: MatchProfile = {
             id: profileData.id,
             anonymousId: profileData.anonymous_id,
             realName: profileData.real_name,
@@ -109,7 +111,17 @@ export const Chat: React.FC = () => {
             avatar: profileData.avatar,
             matchPercentage: 0,
             distance: 'Connected'
-          });
+          };
+          setPartner(partnerProfile);
+
+          // Subscribe to partner's presence
+          subscribeToUser(partnerId);
+
+          // Check block status
+          const blocked = await isUserBlocked(partnerId);
+          const blockedBy = await isBlockedBy(partnerId);
+          setIsBlocked(blocked);
+          setIsBlockedByThem(blockedBy);
         }
 
         // D. Get Message History
@@ -128,6 +140,7 @@ export const Chat: React.FC = () => {
             isSystem: false
           }));
           setMessages(formatted);
+          console.log('[Chat] Loaded', formatted.length, 'messages');
         }
 
       } catch (err) {
@@ -139,28 +152,29 @@ export const Chat: React.FC = () => {
 
     fetchChatData();
 
-    // Subscribe to partner's presence
-    if (partner) {
-      subscribeToUser(partner.id);
+    return () => {
+      if (partner) {
+        unsubscribeFromUser(partner.id);
+      }
+    };
+  }, [matchId, currentUser]);
 
-      // Check block status
-      checkBlockStatus();
-    }
+  // 2. REALTIME SUBSCRIPTION - Separate effect for better lifecycle management
+  useEffect(() => {
+    if (!matchId || !supabase) return;
 
-    async function checkBlockStatus() {
-      if (!partner) return;
-      const blocked = await isUserBlocked(partner.id);
-      const blockedBy = await isBlockedBy(partner.id);
-      setIsBlocked(blocked);
-      setIsBlockedByThem(blockedBy);
-    }
+    console.log('[Chat] Setting up realtime subscription for match:', matchId);
 
-    // 2. REALTIME SUBSCRIPTION - Listen for new messages from database
     const channel = supabase
-      .channel(`chat:${matchId}`)
+      .channel(`chat:${matchId}`, {
+        config: {
+          broadcast: { self: false }, // Don't receive our own broadcasts
+        }
+      })
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `match_id=eq.${matchId}` },
         (payload) => {
+          console.log('[Chat] ✅ Received message via realtime:', payload);
           const newMsg = payload.new;
           const incoming: Message = {
             id: newMsg.id,
@@ -173,7 +187,10 @@ export const Chat: React.FC = () => {
           setMessages(prev => {
             // Check if message already exists (by ID or by temporary optimistic ID)
             const exists = prev.some(m => m.id === incoming.id);
-            if (exists) return prev;
+            if (exists) {
+              console.log('[Chat] Message already exists, skipping');
+              return prev;
+            }
 
             // Replace optimistic message with real one if it matches
             const hasOptimistic = prev.some(m =>
@@ -183,6 +200,7 @@ export const Chat: React.FC = () => {
             );
 
             if (hasOptimistic) {
+              console.log('[Chat] Replacing optimistic message with real one');
               // Replace the optimistic message with the real one
               return prev.map(m =>
                 m.id.toString().startsWith('temp-') &&
@@ -194,20 +212,28 @@ export const Chat: React.FC = () => {
             }
 
             // New message from partner - add it
+            console.log('[Chat] Adding new message to chat');
             return [...prev, incoming];
           });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[Chat] Subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('[Chat] ✅ Real-time subscription active');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('[Chat] ❌ Real-time subscription error');
+        } else if (status === 'TIMED_OUT') {
+          console.error('[Chat] ❌ Real-time subscription timed out');
+        }
+      });
 
     return () => {
+      console.log('[Chat] Cleaning up realtime subscription');
       supabase.removeChannel(channel);
-      if (partner) {
-        unsubscribeFromUser(partner.id);
-      }
     };
+  }, [matchId]); // Only depend on matchId for subscription lifecycle
 
-  }, [matchId, currentUser]);
 
   // Reset call starting state when user returns from a call
   useEffect(() => {
