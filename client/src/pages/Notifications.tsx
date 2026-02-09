@@ -1,14 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import { Bell, Heart, MessageCircle, Zap, Check, X, Ghost, Loader2, Eye } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { ProfilePreviewModal } from '../components/ProfilePreviewModal';
 
-// Cache keys
-const NOTIF_CACHE_KEY = 'otherhalf_notifications_cache';
-const NOTIF_CACHE_EXPIRY_KEY = 'otherhalf_notifications_cache_expiry';
-const CACHE_DURATION = 1 * 60 * 1000; // 1 minute (Reduced for faster updates)
+// Cache keys (Removed as Context handles caching/state)
 
 interface NotificationItem {
   id: string;
@@ -28,9 +26,10 @@ interface NotificationItem {
 
 export const Notifications: React.FC = () => {
   const { currentUser } = useAuth();
+  const { notifications, loading, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  // const [notifications, setNotifications] = useState<NotificationItem[]>([]); // From Context
+  // const [loading, setLoading] = useState(true); // From Context
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [selectedProfile, setSelectedProfile] = useState<any | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -42,128 +41,14 @@ export const Notifications: React.FC = () => {
     }
   }, []);
 
-  const fetchNotifications = useCallback(async (showLoading: boolean) => {
-    if (!currentUser || !supabase) return;
-    if (showLoading) setLoading(true);
+  // Fetching logic moved to Context
 
-    try {
-      // 1. Get notifications
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', currentUser.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      if (!data || data.length === 0) {
-        setNotifications([]);
-        setLoading(false);
-        return;
-      }
-
-      // 2. Extract sender IDs for 'like' types
-      const senderIds = [...new Set(
-        data
-          .filter((n: any) => n.type === 'like' && n.from_user_id)
-          .map((n: any) => n.from_user_id)
-      )];
-
-      // 3. Fetch Profiles
-      let profileMap = new Map<string, any>();
-      if (senderIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, anonymous_id, avatar, university')
-          .in('id', senderIds);
-
-        if (profiles) {
-          profileMap = new Map(profiles.map(p => [p.id, p]));
-        }
-      }
-
-      // 4. Enrich Data
-      const enriched: NotificationItem[] = data.map((n: any) => {
-        let fromUser = undefined;
-        if (n.type === 'like' && n.from_user_id) {
-          const p = profileMap.get(n.from_user_id);
-          if (p) {
-            fromUser = {
-              id: p.id,
-              anonymousId: p.anonymous_id,
-              avatar: p.avatar,
-              university: p.university
-            };
-          }
-        }
-        return {
-          id: n.id,
-          title: n.title,
-          message: n.message,
-          timestamp: new Date(n.created_at).getTime(),
-          read: n.read,
-          type: n.type,
-          fromUserId: n.from_user_id,
-          fromUser
-        };
-      });
-
-      setNotifications(enriched);
-
-      // Update Cache
-      sessionStorage.setItem(NOTIF_CACHE_KEY, JSON.stringify(enriched));
-      sessionStorage.setItem(NOTIF_CACHE_EXPIRY_KEY, (Date.now() + CACHE_DURATION).toString());
-
-    } catch (err) {
-      console.error('Fetch error:', err);
-    } finally {
-      if (showLoading) setLoading(false);
-    }
-  }, [currentUser]);
-
-  // Initial Load & Realtime
-  useEffect(() => {
-    if (!currentUser) return;
-
-    // Cache check
-    const cached = sessionStorage.getItem(NOTIF_CACHE_KEY);
-    const expiry = sessionStorage.getItem(NOTIF_CACHE_EXPIRY_KEY);
-    if (cached && expiry && Date.now() < parseInt(expiry)) {
-      setNotifications(JSON.parse(cached));
-      setLoading(false);
-      fetchNotifications(false); // Background refresh
-    } else {
-      fetchNotifications(true);
-    }
-
-    // Realtime Listener
-    const channel = supabase!.channel('public:notifications')
-      .on('postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
-        () => {
-          fetchNotifications(false); // Refetch on new notification
-          // Optional: Trigger sound or toast here
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase?.removeChannel(channel);
-    };
-  }, [currentUser, fetchNotifications]);
 
   const handleMessageClick = async (notif: NotificationItem) => {
     if (!currentUser || !supabase || !notif.fromUserId) return;
 
     // 1. Delete the notification (User has seen it)
-    await supabase
-      .from('notifications')
-      .delete()
-      .eq('id', notif.id);
-
-    setNotifications(prev =>
-      prev.filter(n => n.id !== notif.id)
-    );
+    await deleteNotification(notif.id);
 
     // 2. Find Match ID and Navigate
     try {
@@ -191,7 +76,8 @@ export const Notifications: React.FC = () => {
     setProcessingId(notif.id);
 
     // Optimistic UI update - remove notification immediately
-    setNotifications(prev => prev.filter(n => n.id !== notif.id));
+    // handled by deleteNotification
+    // setNotifications(prev => prev.filter(n => n.id !== notif.id));
 
     try {
       // 0. CHECK EXISTING MATCH FIRST (Bidirectional)
@@ -203,7 +89,7 @@ export const Notifications: React.FC = () => {
 
       if (existingMatch) {
         // Match exists, just delete notification and navigate
-        await supabase.from('notifications').delete().eq('id', notif.id);
+        await deleteNotification(notif.id);
         navigate(`/chat/${existingMatch.id}`);
         return;
       }
@@ -222,7 +108,7 @@ export const Notifications: React.FC = () => {
       if (matchError) throw matchError;
 
       // 2. Delete the Notification (Cleanup)
-      await supabase.from('notifications').delete().eq('id', notif.id);
+      await deleteNotification(notif.id);
 
       // 3. Navigate to chat with the MATCH ID
       if (matchData?.id) {
@@ -241,8 +127,8 @@ export const Notifications: React.FC = () => {
       }
     } catch (err) {
       console.error('Accept error:', err);
-      // Restore notification on error
-      await fetchNotifications(false);
+      // Restore notification on error (Not easily possible with context yet, but rare)
+      // await fetchNotifications(false);
     } finally {
       setProcessingId(null);
     }
@@ -252,8 +138,7 @@ export const Notifications: React.FC = () => {
     if (!supabase) return;
     setProcessingId(notif.id);
     try {
-      await supabase.from('notifications').delete().eq('id', notif.id);
-      setNotifications(prev => prev.filter(n => n.id !== notif.id));
+      await deleteNotification(notif.id);
     } catch (err) {
       console.error('Ignore error:', err);
     } finally {
@@ -261,10 +146,8 @@ export const Notifications: React.FC = () => {
     }
   };
 
-  const markAllRead = async () => {
-    if (!currentUser || !supabase) return;
-    await supabase.from('notifications').update({ read: true }).eq('user_id', currentUser.id);
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  const markAllReadClick = async () => { // Renamed to avoid name clash if needed, but using context method directly in render is fine too
+    await markAllAsRead();
   };
 
   // View Profile Handler
@@ -272,15 +155,7 @@ export const Notifications: React.FC = () => {
     if (!notif.fromUserId || !supabase) return;
 
     // Mark notification as read when viewing
-    await supabase
-      .from('notifications')
-      .update({ read: true })
-      .eq('id', notif.id);
-
-    // Update local state
-    setNotifications(prev =>
-      prev.map(n => n.id === notif.id ? { ...n, read: true } : n)
-    );
+    await markAsRead(notif.id);
 
     // Fetch full profile data
     const { data, error } = await supabase
@@ -319,7 +194,7 @@ export const Notifications: React.FC = () => {
     setProcessingId(notificationId);
 
     // Optimistic UI update
-    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    // setNotifications(prev => prev.filter(n => n.id !== notificationId)); // Context handles this
     setShowProfileModal(false);
     setSelectedProfile(null);
 
@@ -345,7 +220,7 @@ export const Notifications: React.FC = () => {
             .single();
 
           if (existingMatch) {
-            await supabase.from('notifications').delete().eq('id', notificationId);
+            await deleteNotification(notificationId);
             navigate(`/chat/${existingMatch.id}`);
             return;
           }
@@ -354,7 +229,7 @@ export const Notifications: React.FC = () => {
       }
 
       // Remove notification
-      await supabase.from('notifications').delete().eq('id', notificationId);
+      await deleteNotification(notificationId);
 
       // Navigate to chat with MATCH ID
       if (matchData?.id) {
@@ -377,7 +252,7 @@ export const Notifications: React.FC = () => {
       console.error('Like back error:', err);
       alert('Something went wrong. Please try again.');
       // Restore UI on error
-      await fetchNotifications(false);
+      // await fetchNotifications(false);
       setShowProfileModal(true);
     } finally {
       setProcessingId(null);
@@ -390,8 +265,7 @@ export const Notifications: React.FC = () => {
     setProcessingId(notificationId);
 
     try {
-      await supabase.from('notifications').delete().eq('id', notificationId);
-      setNotifications(prev => prev.filter(n => n.id !== notificationId));
+      await deleteNotification(notificationId);
       setShowProfileModal(false);
       setSelectedProfile(null);
     } catch (err) {
@@ -416,7 +290,7 @@ export const Notifications: React.FC = () => {
         </h2>
         {notifications.length > 0 && (
           <button
-            onClick={markAllRead}
+            onClick={() => markAllAsRead()}
             className="text-xs text-neon hover:text-white transition-colors uppercase font-bold tracking-wider border border-neon/30 hover:bg-neon hover:border-neon px-3 py-1 rounded-full"
           >
             Mark all read

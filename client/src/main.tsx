@@ -6,6 +6,7 @@ import { AuthProvider } from './context/AuthContext';
 import { PresenceProvider } from './context/PresenceContext';
 import { CallProvider } from './context/CallContext';
 import { ToastProvider } from './context/ToastContext';
+import { NotificationProvider } from './context/NotificationContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import './index.css';
 
@@ -23,7 +24,9 @@ root.render(
           <PresenceProvider>
             <CallProvider>
               <ToastProvider>
-                <App />
+                <NotificationProvider>
+                  <App />
+                </NotificationProvider>
               </ToastProvider>
             </CallProvider>
           </PresenceProvider>

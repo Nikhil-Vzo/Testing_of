@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import { Ghost, Search, MessageCircle, Bell, CalendarHeart, User, MessageSquarePlus, Sparkles, MoreHorizontal } from 'lucide-react';
 import { StarField } from '../components/StarField';
 import { supabase } from '../lib/supabase'; // Use Supabase directly
 
 export const AppLayout: React.FC = () => {
   const { currentUser } = useAuth();
+  const { unreadCount } = useNotifications();
   const location = useLocation();
   const navigate = useNavigate();
 
   // State for Badges
-  const [unreadCount, setUnreadCount] = useState(0);
+  // const [unreadCount, setUnreadCount] = useState(0); // Moved to Context
   const [matchCount, setMatchCount] = useState(0);
 
   // Fetch Badge Counts from Supabase
@@ -19,7 +21,8 @@ export const AppLayout: React.FC = () => {
     if (!currentUser || !supabase) return;
 
     const fetchCounts = async () => {
-      // 1. Count Unread Notifications
+      // 1. Count Unread Notifications - Handled by Context now
+      /*
       const { count: notifCount } = await supabase
         .from('notifications')
         .select('*', { count: 'exact', head: true })
@@ -27,6 +30,7 @@ export const AppLayout: React.FC = () => {
         .eq('read', false);
 
       setUnreadCount(notifCount || 0);
+      */
 
       // 2. Count Matches
       const { count: matchesCount } = await supabase
@@ -41,11 +45,13 @@ export const AppLayout: React.FC = () => {
 
     // Optional: Subscribe to changes for live badges (Commented out to keep simple for now)
     // Subscribe to changes for live badges
+    /*
     const channel = supabase.channel('badges')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` }, fetchCounts)
       .subscribe();
+    */
 
-    return () => { supabase.removeChannel(channel); };
+    // return () => { supabase.removeChannel(channel); };
   }, [currentUser]);
 
   const isActive = (path: string) => location.pathname === path;
