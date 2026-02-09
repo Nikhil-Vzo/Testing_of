@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import { MatchProfile } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { Heart, X, MapPin, GraduationCap, Ghost, Sparkles, School, Globe, Bell } from 'lucide-react';
@@ -17,7 +18,7 @@ export const Home: React.FC = () => {
     const [filterMode, setFilterMode] = useState<'campus' | 'global'>('campus');
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(true);
-    const [unreadNotifs, setUnreadNotifs] = useState(0);
+    const { unreadCount } = useNotifications();
     const preloadedImages = useRef<Set<string>>(new Set());
 
     // Enhanced drag state
@@ -140,33 +141,8 @@ export const Home: React.FC = () => {
         fetchPotentialMatches();
     }, [currentUser, preloadImages]);
 
-    // Fetch and subscribe to notifications
-    useEffect(() => {
-        if (!currentUser || !supabase) return;
-
-        const fetchUnread = async () => {
-            const { count } = await supabase
-                .from('notifications')
-                .select('*', { count: 'exact', head: true })
-                .eq('user_id', currentUser.id)
-                .eq('read', false);
-            setUnreadNotifs(count || 0);
-        };
-
-        fetchUnread();
-
-        const channel = supabase
-            .channel('home_notifications')
-            .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
-                () => fetchUnread()
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [currentUser]);
+    // Fetch and subscribe to notifications - Handled by Context now
+    // useEffect(() => { ... }, [currentUser]);
 
     // Filter locally instead of refetching
     const filteredQueue = queue.filter(p => {
@@ -370,9 +346,9 @@ export const Home: React.FC = () => {
                         className="relative p-2.5 bg-black/60 backdrop-blur-2xl rounded-full border border-white/10 text-gray-400 hover:text-neon transition-all hover:border-neon/30 hover:scale-105 active:scale-95"
                     >
                         <Bell className="w-5 h-5" />
-                        {unreadNotifs > 0 && (
+                        {unreadCount > 0 && (
                             <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-neon text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-black animate-pulse">
-                                {unreadNotifs > 9 ? '9+' : unreadNotifs}
+                                {unreadCount > 9 ? '9+' : unreadCount}
                             </span>
                         )}
                     </button>

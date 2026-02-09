@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { usePresence } from '../context/PresenceContext';
+import { useNotifications } from '../context/NotificationContext';
 import { MatchProfile, ChatSession } from '../types';
 import { Ghost, Search, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -14,6 +15,7 @@ const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes (shorter since matches update
 export const Matches: React.FC = () => {
   const { currentUser } = useAuth();
   const { subscribeToUser, unsubscribeFromUser, isUserOnline } = usePresence();
+  const { notifications } = useNotifications();
   const navigate = useNavigate();
   const [sessions, setSessions] = useState<{ match: MatchProfile; session: ChatSession; hasUnread: boolean }[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -59,14 +61,13 @@ export const Matches: React.FC = () => {
         .in('match_id', matchIds)
         .order('created_at', { ascending: false });
 
-      // 4b. Fetch unread notifications to determine unread status
-      const { data: unreadNotifs } = await supabase
-        .from('notifications')
-        .select('from_user_id')
-        .eq('user_id', currentUser.id)
-        .eq('type', 'message');
-
-      const unreadMap = new Set(unreadNotifs?.map(n => n.from_user_id));
+      // 4b. Use NotificationContext for unread status (Real-time & Optimistic)
+      // Filter for unread message notifications
+      const unreadMap = new Set(
+        notifications
+          .filter(n => n.type === 'message' && !n.read && n.fromUserId)
+          .map(n => n.fromUserId)
+      );
 
       // Create lookup maps for O(1) access
       const profileMap = new Map(profilesData?.map(p => [p.id, p]) || []);
@@ -150,7 +151,7 @@ export const Matches: React.FC = () => {
     } finally {
       if (showLoading) setLoading(false);
     }
-  }, [currentUser]);
+  }, [currentUser, notifications]); // Re-run when notifications change (e.g. mark as read)
 
   useEffect(() => {
     if (!currentUser || !supabase) return;

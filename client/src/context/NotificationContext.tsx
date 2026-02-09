@@ -73,6 +73,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 } : undefined
             }));
 
+            console.log('Fetched notifications:', mapped.length, 'Unread:', mapped.filter(n => !n.read).length);
             setNotifications(mapped);
             setUnreadCount(mapped.filter(n => !n.read).length);
         } catch (err) {
@@ -95,7 +96,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         const channel = supabase.channel('public:notifications')
             .on('postgres_changes',
                 { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
-                () => {
+                (payload) => {
+                    console.log('Notification verification update:', payload);
                     fetchNotifications(true);
                 }
             )
@@ -116,12 +118,27 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     };
 
     const markAllAsRead = async () => {
+        console.log('Marking all as read...');
+        if (!currentUser || !supabase) return;
+
         // Optimistic Update
-        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        const updated = notifications.map(n => ({ ...n, read: true }));
+        setNotifications(updated);
         setUnreadCount(0);
 
-        if (!currentUser || !supabase) return;
-        await supabase.from('notifications').update({ read: true }).eq('user_id', currentUser.id);
+        try {
+            const { error } = await supabase.from('notifications').update({ read: true }).eq('user_id', currentUser.id);
+            if (error) {
+                console.error('Error marking all as read:', error);
+                // Revert on error
+                fetchNotifications(true);
+            } else {
+                console.log('Successfully marked all as read in DB');
+            }
+        } catch (err) {
+            console.error('Exception marking all as read:', err);
+            fetchNotifications(true);
+        }
     };
 
     const deleteNotification = async (id: string) => {
