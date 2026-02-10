@@ -173,30 +173,7 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
       return;
     }
 
-    if (callType === 'audio' && !localVideoTrack) {
-      // If upgrading audio to video, we need to create video track
-      // But for now, let's keep it simple: Audio calls stay audio-only (no video button?)
-      // Or we can allow enabling video if they grant permission?
-      // Implementing full upgrade logic is complex. 
-      // For now, if callType is audio, the video button should behave as "turn on video"?
-      // But we didn't request camera permission initially.
-      // We would need to request it now.
-      // Let's implement basic toggle for now, assuming video track exists if callType is video.
-      // If callType is audio, we disable video toggle or handle it properly.
 
-      if (!localVideoTrack) {
-        try {
-          const track = await AgoraRTC.createCameraVideoTrack();
-          setLocalVideoTrack(track);
-          await client.publish([track]);
-          track.play('local-video');
-          setIsVideoOff(false);
-        } catch (err) {
-          showToast('Failed to enable camera', 'error');
-        }
-        return;
-      }
-    }
 
     if (localVideoTrack) {
       // Just toggle enabled state
@@ -312,18 +289,19 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
           <PhoneOff className="w-8 h-8 text-white" />
         </button>
 
-      </button>
 
-      {callType === 'video' && (
-        <button
-          onClick={toggleVideo}
-          className={`p-4 rounded-full transition-all ${isVideoOff ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-700 hover:bg-gray-600'
-            }`}
-        >
-          {isVideoOff ? <VideoOff className="w-6 h-6 text-white" /> : <VideoIcon className="w-6 h-6 text-white" />}
-        </button>
-      )}
+
+        {callType === 'video' && (
+          <button
+            onClick={toggleVideo}
+            className={`p-4 rounded-full transition-all ${isVideoOff ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-700 hover:bg-gray-600'
+              }`}
+          >
+            {isVideoOff ? <VideoOff className="w-6 h-6 text-white" /> : <VideoIcon className="w-6 h-6 text-white" />}
+          </button>
+        )}
+      </div>
+
     </div>
-    </div >
   );
 };

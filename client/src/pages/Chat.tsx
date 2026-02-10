@@ -11,6 +11,7 @@ import { VideoCall } from '../components/VideoCall';
 import { PermissionModal } from '../components/PermissionModal';
 import { blockUser, unblockUser, isUserBlocked, isBlockedBy } from '../services/blockService';
 import { ConfirmationModal } from '../components/ConfirmationModal';
+import { initiateCall } from '../services/callSignaling';
 
 export const Chat: React.FC = () => {
   const { id: matchId } = useParams<{ id: string }>(); // This is the MATCH ID from the URL
@@ -367,7 +368,7 @@ export const Chat: React.FC = () => {
   };
 
   const proceedWithCall = async (callType: 'audio' | 'video') => {
-    if (!partner || !matchId) return;
+    if (!partner || !matchId || !currentUser) return;
 
     setIsStartingCall(true);
 
@@ -379,37 +380,21 @@ export const Chat: React.FC = () => {
     });
 
     try {
-      // Get Agora token and create call session
-      const apiUrl = import.meta.env.VITE_API_URL || '';
-      const tokenResponse = await fetch(`${apiUrl}/api/initiate-call`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ receiverId: partner.id, matchId })
-      });
+      // Get Agora token and create call session via helper (includes Broadcast for speed)
+      const callSession = await initiateCall(
+        partner.id,
+        matchId,
+        {
+          id: currentUser.id,
+          name: currentUser.realName || currentUser.anonymousId || 'Anonymous',
+          avatar: currentUser.avatar || 'https://via.placeholder.com/150',
+          callType: callType
+        }
+      );
 
-      const tokenData = await tokenResponse.json();
-
-      if (!tokenData.channelName || !tokenData.token || !tokenData.appId) {
+      if (!callSession) {
         throw new Error('Failed to create call session');
       }
-
-      // Create call session in database
-      const { data: callSession, error: sessionError } = await supabase
-        .from('call_sessions')
-        .insert({
-          caller_id: currentUser!.id,
-          receiver_id: partner.id,
-          match_id: matchId,
-          channel_name: tokenData.channelName,
-          token: tokenData.token,
-          app_id: tokenData.appId,
-          status: 'ringing',
-          call_type: callType
-        })
-        .select()
-        .single();
-
-      if (sessionError) throw sessionError;
 
       // Wait for receiver to accept (handled by real-time subscription in CallContext)
       // Or timeout after 30 seconds
@@ -443,9 +428,9 @@ export const Chat: React.FC = () => {
               // Start the call
               startCall(
                 isRevealed ? partner.realName : partner.anonymousId,
-                tokenData.appId,
-                tokenData.channelName,
-                tokenData.token,
+                callSession.app_id,
+                callSession.channel_name,
+                callSession.token,
                 callType,
                 callSession.id
               );

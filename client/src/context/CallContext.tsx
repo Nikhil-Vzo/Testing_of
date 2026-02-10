@@ -50,8 +50,31 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (!currentUser) return;
 
-    const unsubscribe = subscribeToIncomingCalls(currentUser.id, async (callSession: CallSession) => {
-      // Fetch caller profile
+    const unsubscribe = subscribeToIncomingCalls(currentUser.id, async (payload: any) => {
+      // Handle Broadcast (Optimistic)
+      if (payload.isBroadcast) {
+        console.log('[CallContext] Received broadcast signal:', payload);
+        setIncomingCall({
+          callSessionId: '', // Placeholder, will be updated by DB
+          callerId: payload.id,
+          callerName: payload.name,
+          callerAvatar: payload.avatar,
+          channelName: '', // Not ready yet
+          token: '', // Not ready yet
+          appId: '', // Not ready yet
+          callType: payload.callType || 'video'
+        });
+        return;
+      }
+
+      // Handle DB Insert (Official)
+      const callSession = payload as CallSession;
+
+      // If we already have the broadcast state, update it with real data
+      // Fetch caller profile (only if we don't trust broadcast or need more data)
+      // Actually, we can just use the DB data to hydrate the session ID and Token
+
+      // Fetch caller profile to be safe/consistent
       const { supabase } = await import('../lib/supabase');
       const { data: callerProfile } = await supabase
         .from('profiles')
@@ -60,7 +83,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (callerProfile) {
-        setIncomingCall({
+        setIncomingCall(prev => ({
           callSessionId: callSession.id,
           callerId: callSession.caller_id,
           callerName: callerProfile.real_name || callerProfile.anonymous_id,
@@ -69,7 +92,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
           token: callSession.token,
           appId: callSession.app_id,
           callType: callSession.call_type || 'video'
-        });
+        }));
 
         // Auto-reject after 30 seconds
         callTimeoutRef.current = setTimeout(() => {

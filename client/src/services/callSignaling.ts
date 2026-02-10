@@ -28,14 +28,22 @@ export interface IncomingCall {
  */
 export const initiateCall = async (
     receiverId: string,
-    matchId: string
+    matchId: string,
+    callerInfo: { id: string; name: string; avatar: string; callType: 'audio' | 'video' }
 ): Promise<CallSession | null> => {
     try {
+        // 1. Send immediate broadcast signal (Optimistic UI)
+        await sendCallSignal(receiverId, {
+            ...callerInfo,
+            matchId
+        });
+        console.log(`[CallSignaling] Broadcast signal sent to ${receiverId}`);
+
         const apiUrl = import.meta.env.VITE_API_URL || '';
         const response = await fetch(`${apiUrl}/api/initiate-call`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ receiverId, matchId })
+            body: JSON.stringify({ receiverId, matchId, callType: callerInfo.callType })
         });
 
         console.log(`[CallSignaling] Initiate call response status: ${response.status} at ${new Date().toISOString()}`);
@@ -145,14 +153,52 @@ export const getCallSession = async (callSessionId: string): Promise<CallSession
 /**
  * Subscribe to incoming calls for the current user
  */
+/**
+ * Send a broadcast signal for immediate feedback (optimistic UI)
+ */
+export const sendCallSignal = async (receiverId: string, payload: any) => {
+    if (!supabase) return;
+
+    // We broadcast to the receiver's channel
+    const channel = supabase.channel(`incoming_calls:${receiverId}`);
+
+    channel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+            await channel.send({
+                type: 'broadcast',
+                event: 'incoming_call_signal',
+                payload: payload
+            });
+            // Cleanup after sending
+            supabase.removeChannel(channel);
+        }
+    });
+};
+
+/**
+ * Subscribe to incoming calls for the current user
+ */
 export const subscribeToIncomingCalls = (
     userId: string,
-    onIncomingCall: (call: CallSession) => void
+    onIncomingCall: (call: CallSession | any) => void
 ) => {
     if (!supabase) return () => { };
 
     const channel = supabase
         .channel(`incoming_calls:${userId}`)
+        .on(
+            'broadcast',
+            { event: 'incoming_call_signal' },
+            (payload) => {
+                console.log(`[CallSignaling] Broadcast received at ${new Date().toISOString()}`, payload);
+                // Pass broadcast payload immediately
+                // We construct a partial session-like object for the UI
+                onIncomingCall({
+                    isBroadcast: true,
+                    ...payload.payload
+                });
+            }
+        )
         .on(
             'postgres_changes',
             {
@@ -164,23 +210,9 @@ export const subscribeToIncomingCalls = (
             (payload) => {
                 const callSession = payload.new as CallSession;
                 if (callSession.status === 'ringing') {
-                    console.log(`[CallSignaling] Incoming call received at ${new Date().toISOString()} for session ${callSession.id}`);
+                    console.log(`[CallSignaling] DB Insert received at ${new Date().toISOString()} for session ${callSession.id}`);
                     onIncomingCall(callSession);
                 }
-            }
-        )
-        .on(
-            'postgres_changes',
-            {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'call_sessions',
-                filter: `caller_id=eq.${userId}`
-            },
-            (payload) => {
-                // Handle call status updates (accepted, rejected, etc.)
-                const callSession = payload.new as CallSession;
-                // This will be handled by CallContext
             }
         )
         .subscribe();
