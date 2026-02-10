@@ -38,6 +38,8 @@ export const initiateCall = async (
             body: JSON.stringify({ receiverId, matchId })
         });
 
+        console.log(`[CallSignaling] Initiate call response status: ${response.status} at ${new Date().toISOString()}`);
+
         if (!response.ok) {
             throw new Error('Failed to initiate call');
         }
@@ -162,6 +164,7 @@ export const subscribeToIncomingCalls = (
             (payload) => {
                 const callSession = payload.new as CallSession;
                 if (callSession.status === 'ringing') {
+                    console.log(`[CallSignaling] Incoming call received at ${new Date().toISOString()} for session ${callSession.id}`);
                     onIncomingCall(callSession);
                 }
             }

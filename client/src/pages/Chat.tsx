@@ -8,6 +8,7 @@ import { useToast } from '../context/ToastContext';
 import { ArrowLeft, Send, Phone, Video, MoreVertical, Ghost, Shield, Clock, User, AlertTriangle, Ban } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { VideoCall } from '../components/VideoCall';
+import { PermissionModal } from '../components/PermissionModal';
 import { blockUser, unblockUser, isUserBlocked, isBlockedBy } from '../services/blockService';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 
@@ -37,6 +38,12 @@ export const Chat: React.FC = () => {
     confirmLabel: 'Confirm',
     isDestructive: false,
     onConfirm: () => { }
+  });
+
+  const [permissionModal, setPermissionModal] = useState({
+    isOpen: false,
+    type: 'video' as 'audio' | 'video',
+    onGranted: () => { }
   });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -337,14 +344,26 @@ export const Chat: React.FC = () => {
       showConfirm(
         'User Offline',
         `${isRevealed ? partner.realName : partner.anonymousId} is ${lastSeenText}. Call anyway? They'll receive a missed call notification.`,
-        () => proceedWithCall(type),
+        () => proceedWithCallCheck(type),
         false,
         'Call Anyway'
       );
       return;
     }
 
-    proceedWithCall(type);
+    proceedWithCallCheck(type);
+  };
+
+  const proceedWithCallCheck = (type: 'audio' | 'video') => {
+    // Show permission modal first
+    setPermissionModal({
+      isOpen: true,
+      type,
+      onGranted: () => {
+        setPermissionModal(prev => ({ ...prev, isOpen: false }));
+        proceedWithCall(type);
+      }
+    });
   };
 
   const proceedWithCall = async (callType: 'audio' | 'video') => {
@@ -595,6 +614,13 @@ export const Chat: React.FC = () => {
         isDestructive={confirmModal.isDestructive}
         onConfirm={confirmModal.onConfirm}
         onCancel={closeConfirmModal}
+      />
+
+      <PermissionModal
+        isOpen={permissionModal.isOpen}
+        onPermissionsGranted={permissionModal.onGranted}
+        onCancel={() => setPermissionModal(prev => ({ ...prev, isOpen: false }))}
+        requiredPermissions={permissionModal.type === 'video' ? ['camera', 'microphone'] : ['microphone']}
       />
 
       {/* 1. Header */}
