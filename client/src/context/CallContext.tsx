@@ -133,6 +133,13 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const acceptCall = async () => {
     if (!incomingCall) return;
 
+    // If we only have broadcast signal but no DB session yet, we can't accept
+    // because we need the token and channel name from the DB session.
+    if (!incomingCall.callSessionId) {
+      console.log('[CallContext] Cannot accept yet, waiting for session ID...');
+      return;
+    }
+
     // Clear timeout
     if (callTimeoutRef.current) {
       clearTimeout(callTimeoutRef.current);
@@ -156,6 +163,12 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const handleRejectCall = async (callSessionId: string) => {
+    // If we only have broadcast signal but no DB session yet
+    if (!callSessionId) {
+      setIncomingCall(null);
+      return;
+    }
+
     // Clear timeout
     if (callTimeoutRef.current) {
       clearTimeout(callTimeoutRef.current);

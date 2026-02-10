@@ -39,6 +39,7 @@ export const initiateCall = async (
         });
         console.log(`[CallSignaling] Broadcast signal sent to ${receiverId}`);
 
+        // 2. Get Agora Token from API
         const apiUrl = import.meta.env.VITE_API_URL || '';
         const response = await fetch(`${apiUrl}/api/initiate-call`, {
             method: 'POST',
@@ -46,14 +47,33 @@ export const initiateCall = async (
             body: JSON.stringify({ receiverId, matchId, callType: callerInfo.callType })
         });
 
-        console.log(`[CallSignaling] Initiate call response status: ${response.status} at ${new Date().toISOString()}`);
-
         if (!response.ok) {
-            throw new Error('Failed to initiate call');
+            throw new Error('Failed to initiate call API');
         }
 
-        const data = await response.json();
-        return data.callSession;
+        const { token, channelName, appId } = await response.json();
+
+        // 3. Create Call Session in Supabase
+        const { data: session, error } = await supabase
+            .from('call_sessions')
+            .insert({
+                caller_id: callerInfo.id,
+                receiver_id: receiverId,
+                match_id: matchId,
+                channel_name: channelName,
+                token: token,
+                app_id: appId,
+                call_type: callerInfo.callType,
+                status: 'ringing'
+            })
+            .select() // Select to get the created record with ID
+            .single();
+
+        if (error) throw error;
+
+        console.log(`[CallSignaling] Call session created: ${session.id}`);
+        return session as CallSession;
+
     } catch (error) {
         console.error('Error initiating call:', error);
         return null;
