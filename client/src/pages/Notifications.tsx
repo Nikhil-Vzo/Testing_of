@@ -94,36 +94,35 @@ export const Notifications: React.FC = () => {
         return;
       }
 
-      // 1. Insert Match (Triggers 'handle_new_match' DB function for the other user)
-      const { data: matchData, error: matchError } = await supabase
-        .from('matches')
-        .insert({
-          user_a: notif.fromUserId, // The original liker
-          user_b: currentUser.id,   // Me (The acceptor)
-          is_revealed: true          // Show real names after matching
-        })
-        .select()
-        .single();
+      // 1. Insert 'like' swipe (Trigger will handle match creation & notifications)
+      const { error: swipeError } = await supabase.from('swipes').upsert({
+        liker_id: currentUser.id,
+        target_id: notif.fromUserId,
+        action: 'like'
+      });
 
-      if (matchError) throw matchError;
+      if (swipeError) throw swipeError;
 
-      // 2. Delete the Notification (Cleanup)
+      // 2. Wait a moment for trigger to create match
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // 3. Delete the Notification (Cleanup)
       await deleteNotification(notif.id);
 
-      // 3. Navigate to chat with the MATCH ID
-      if (matchData?.id) {
-        // Send Initial "It's a Match!" System Message
-        try {
-          await supabase.from('messages').insert({
-            match_id: matchData.id,
-            sender_id: currentUser.id,
-            text: '[SYSTEM] It\'s a Match! 💖 Start chatting now.'
-          });
-        } catch (sysMsgError) {
-          console.error('Failed to send match intro message', sysMsgError);
-        }
+      // 4. Find the match created by the trigger
+      const { data: matchData } = await supabase
+        .from('matches')
+        .select('id')
+        .or(`and(user_a.eq.${notif.fromUserId},user_b.eq.${currentUser.id}),and(user_a.eq.${currentUser.id},user_b.eq.${notif.fromUserId})`)
+        .single();
 
+      // 5. Navigate to chat
+      if (matchData?.id) {
         navigate(`/chat/${matchData.id}`);
+      } else {
+        // Fallback if trigger was slow or failed (should be rare)
+        console.warn("Match not found immediately after swipe");
+        // alert("Match created! Check your matches tab.");
       }
     } catch (err) {
       console.error('Accept error:', err);
@@ -199,54 +198,34 @@ export const Notifications: React.FC = () => {
     setSelectedProfile(null);
 
     try {
-      // Create match
-      const { data: matchData, error: matchError } = await supabase
-        .from('matches')
-        .insert({
-          user_a: userId,
-          user_b: currentUser.id,
-          is_revealed: true  // Show real names after matching
-        })
-        .select()
-        .single();
+      // 1. Insert 'like' swipe (Trigger will handle match creation & notifications)
+      const { error: swipeError } = await supabase.from('swipes').upsert({
+        liker_id: currentUser.id,
+        target_id: userId,
+        action: 'like'
+      });
 
-      if (matchError) {
-        // If duplicate key error, fetch existing match
-        if (matchError.code === '23505') {
-          const { data: existingMatch } = await supabase
-            .from('matches')
-            .select('id')
-            .or(`and(user_a.eq.${userId},user_b.eq.${currentUser.id}),and(user_a.eq.${currentUser.id},user_b.eq.${userId})`)
-            .single();
+      if (swipeError) throw swipeError;
 
-          if (existingMatch) {
-            await deleteNotification(notificationId);
-            navigate(`/chat/${existingMatch.id}`);
-            return;
-          }
-        }
-        throw matchError;
-      }
+      // 2. Wait a moment for trigger to create match
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Remove notification
+      // 3. Remove notification
       await deleteNotification(notificationId);
 
-      // Navigate to chat with MATCH ID
+      // 4. Find the match created by the trigger
+      const { data: matchData } = await supabase
+        .from('matches')
+        .select('id')
+        .or(`and(user_a.eq.${userId},user_b.eq.${currentUser.id}),and(user_a.eq.${currentUser.id},user_b.eq.${userId})`)
+        .single();
+
+      // 5. Navigate to chat
       if (matchData?.id) {
         navigate(`/chat/${matchData.id}`);
       } else {
-        // Fallback: query for the match
-        const { data: match } = await supabase
-          .from('matches')
-          .select('id')
-          .or(`and(user_a.eq.${userId},user_b.eq.${currentUser.id}),and(user_a.eq.${currentUser.id},user_b.eq.${userId})`)
-          .single();
-
-        if (match) {
-          navigate(`/chat/${match.id}`);
-        } else {
-          throw new Error('Failed to create or find match');
-        }
+        // Fallback
+        // alert("Match created! Check your matches tab.");
       }
     } catch (err) {
       console.error('Like back error:', err);
