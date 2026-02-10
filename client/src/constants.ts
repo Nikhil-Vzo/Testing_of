@@ -6,14 +6,14 @@ export const MOCK_INTERESTS = [
 ];
 
 export const AVATAR_PRESETS = [
-  "https://api.dicebear.com/9.x/avataaars/svg?seed=Felix",
-  "https://api.dicebear.com/9.x/avataaars/svg?seed=Aneka",
-  "https://api.dicebear.com/9.x/avataaars/svg?seed=Willow",
-  "https://api.dicebear.com/9.x/avataaars/svg?seed=Midnight",
-  "https://api.dicebear.com/9.x/avataaars/svg?seed=Leo",
-  "https://api.dicebear.com/9.x/avataaars/svg?seed=Cyber",
-  "https://api.dicebear.com/9.x/avataaars/svg?seed=Ghost",
-  "https://api.dicebear.com/9.x/avataaars/svg?seed=Neon"
+  "https://api.dicebear.com/9.x/thumbs/svg?seed=Felix",
+  "https://api.dicebear.com/9.x/thumbs/svg?seed=Aneka",
+  "https://api.dicebear.com/9.x/thumbs/svg?seed=Willow",
+  "https://api.dicebear.com/9.x/thumbs/svg?seed=Midnight",
+  "https://api.dicebear.com/9.x/thumbs/svg?seed=Leo",
+  "https://api.dicebear.com/9.x/thumbs/svg?seed=Cyber",
+  "https://api.dicebear.com/9.x/thumbs/svg?seed=Ghost",
+  "https://api.dicebear.com/9.x/thumbs/svg?seed=Neon"
 ];
 
 export const CHHATTISGARH_COLLEGES = [
