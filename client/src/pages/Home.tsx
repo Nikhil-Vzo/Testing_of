@@ -227,6 +227,30 @@ export const Home: React.FC = () => {
             setDragX(0);
             setDragY(0);
             setSwipeDirection(null);
+
+            // Remove from queue and update cache immediately to prevent reappearance on refresh
+            const nextQueue = queue.filter(p => p.id !== targetId);
+            setQueue(nextQueue);
+            sessionStorage.setItem(PROFILES_CACHE_KEY, JSON.stringify(nextQueue));
+
+            // setCurrentIndex is no longer needed as we are removing from queue, 
+            // but if we keep the queue structure we should just ensure we don't go out of bounds.
+            // Actually, better approach for React state is to remove from queue:
+            // But if we want to keep the 'stack' effect, we might just want to persist the *original* list minus this one.
+
+            // Let's stick to the current index approach but update the cache by filtering out the swiped ID.
+            // We need to read the *current* cache to ensure we don't overwrite with old state if something changed,
+            // though here we are the only writer.
+
+            // Re-read current cache to be safe or just use current queue state if we trust it.
+            // We'll update the cache to exclude the swiped user.
+            const currentCache = sessionStorage.getItem(PROFILES_CACHE_KEY);
+            if (currentCache) {
+                const parsed = JSON.parse(currentCache) as MatchProfile[];
+                const updated = parsed.filter(p => p.id !== targetId);
+                sessionStorage.setItem(PROFILES_CACHE_KEY, JSON.stringify(updated));
+            }
+
             setCurrentIndex(prev => prev + 1);
 
             try {
