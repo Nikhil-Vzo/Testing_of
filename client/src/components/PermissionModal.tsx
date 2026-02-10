@@ -121,10 +121,10 @@ export const PermissionModal: React.FC<PermissionModalProps> = ({
                         <div className="space-y-3">
                             {requiredPermissions.includes('camera') && (
                                 <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${cameraStatus === 'granted'
-                                        ? 'bg-green-500/10 border-green-500/30'
-                                        : cameraStatus === 'denied'
-                                            ? 'bg-red-500/10 border-red-500/30'
-                                            : 'bg-gray-800/50 border-gray-700'
+                                    ? 'bg-green-500/10 border-green-500/30'
+                                    : cameraStatus === 'denied'
+                                        ? 'bg-red-500/10 border-red-500/30'
+                                        : 'bg-gray-800/50 border-gray-700'
                                     }`}>
                                     <div className="flex items-center gap-3">
                                         <div className={`p-2 rounded-xl ${cameraStatus === 'granted' ? 'bg-green-500/20' : 'bg-gray-700'
@@ -148,10 +148,10 @@ export const PermissionModal: React.FC<PermissionModalProps> = ({
                             )}
 
                             <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${micStatus === 'granted'
-                                    ? 'bg-green-500/10 border-green-500/30'
-                                    : micStatus === 'denied'
-                                        ? 'bg-red-500/10 border-red-500/30'
-                                        : 'bg-gray-800/50 border-gray-700'
+                                ? 'bg-green-500/10 border-green-500/30'
+                                : micStatus === 'denied'
+                                    ? 'bg-red-500/10 border-red-500/30'
+                                    : 'bg-gray-800/50 border-gray-700'
                                 }`}>
                                 <div className="flex items-center gap-3">
                                     <div className={`p-2 rounded-xl ${micStatus === 'granted' ? 'bg-green-500/20' : 'bg-gray-700'
@@ -228,10 +228,11 @@ export const PermissionModal: React.FC<PermissionModalProps> = ({
                                 </button>
                             ) : (
                                 <button
-                                    className="flex-[2] py-3.5 bg-green-500 text-black text-sm font-bold rounded-xl shadow-lg shadow-green-500/20 cursor-default flex items-center justify-center gap-2"
+                                    onClick={onPermissionsGranted}
+                                    className="flex-[2] py-3.5 bg-green-500 text-black text-sm font-bold rounded-xl shadow-lg shadow-green-500/20 hover:bg-green-400 transition-all flex items-center justify-center gap-2"
                                 >
                                     <Check className="w-4 h-4" />
-                                    Verified
+                                    Start Call
                                 </button>
                             )}
                         </div>
