@@ -38,6 +38,19 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    // Network-first strategy for navigation requests (HTML pages)
+    // This ensures users always get the latest version of index.html
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            fetch(event.request)
+                .catch(() => {
+                    return caches.match(event.request);
+                })
+        );
+        return;
+    }
+
+    // Stale-while-revalidate for other assets
     event.respondWith(
         caches.match(event.request)
             .then((response) => {

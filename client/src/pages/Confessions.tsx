@@ -21,7 +21,7 @@ export const Confessions: React.FC = () => {
     const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
     const [isPosting, setIsPosting] = useState(false);
     const [viewImage, setViewImage] = useState<string | null>(null);
-    const [accessDenied, setAccessDenied] = useState(false);
+
 
     // Poll State
     const [isPollMode, setIsPollMode] = useState(false);
@@ -42,16 +42,12 @@ export const Confessions: React.FC = () => {
     // Fetch Confessions from Supabase
     useEffect(() => {
         if (!currentUser || !supabase) return;
-        if (currentUser.university !== 'Amity University, Raipur') {
-            setAccessDenied(true);
-            return;
-        }
         fetchConfessions();
     }, [currentUser]);
 
     const fetchConfessions = async () => {
         if (!currentUser || !supabase) return;
-        
+
         // 1. Fetch Basic Confessions
         const { data: posts, error } = await supabase
             .from('confessions')
@@ -61,7 +57,6 @@ export const Confessions: React.FC = () => {
                 confession_reactions (emoji, user_id),
                 confession_comments (id)
             `)
-            .eq('university', currentUser.university)
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -131,7 +126,7 @@ export const Confessions: React.FC = () => {
             const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
             let top = rect.top - 400 - 10;
             if (rect.top < 400) top = rect.bottom + 10;
-            
+
             let left = rect.left;
             if (left + 320 > window.innerWidth) left = window.innerWidth - 340;
 
@@ -171,7 +166,7 @@ export const Confessions: React.FC = () => {
                         confession_id: post.id,
                         text: text
                     }));
-                
+
                 await supabase.from('poll_options').insert(optionsToInsert);
             }
 
@@ -193,15 +188,15 @@ export const Confessions: React.FC = () => {
 
     const handlePollVote = async (confessionId: string, optionId: string) => {
         if (!currentUser || !supabase) return;
-        
+
         // Optimistic Update
         setConfessions(prev => prev.map(c => {
             if (c.id !== confessionId || !c.pollOptions) return c;
-            if (c.userVote) return c; 
+            if (c.userVote) return c;
             return {
                 ...c,
                 userVote: optionId,
-                pollOptions: c.pollOptions.map(opt => 
+                pollOptions: c.pollOptions.map(opt =>
                     opt.id === optionId ? { ...opt, votes: opt.votes + 1 } : opt
                 )
             };
@@ -215,7 +210,7 @@ export const Confessions: React.FC = () => {
                 user_id: currentUser.id
             });
             if (error) throw error;
-        } catch(err) {
+        } catch (err) {
             console.error('Vote error:', err);
             fetchConfessions(); // Revert on error
         }
@@ -318,21 +313,7 @@ export const Confessions: React.FC = () => {
 
     const sortedConfessions = getSortedConfessions();
 
-    if (accessDenied) {
-        return (
-            <div className="h-screen bg-black text-white flex flex-col items-center justify-center p-6 text-center">
-                <div className="w-20 h-20 bg-gray-900 rounded-full flex items-center justify-center mb-6">
-                    <X className="w-10 h-10 text-red-500" />
-                </div>
-                <h1 className="text-2xl font-black uppercase mb-2">Access Denied</h1>
-                <p className="text-gray-400 max-w-md">
-                    The Confessions page is currently exclusive to students of
-                    <span className="text-white font-bold block mt-1">Amity University, Raipur</span>
-                </p>
-                <button onClick={() => navigate('/home')} className="mt-8 px-8 py-3 bg-gray-800 rounded-full font-bold hover:bg-gray-700 transition-colors">Go Back</button>
-            </div>
-        );
-    }
+
 
     return (
         <div className="h-[100dvh] bg-transparent text-white flex flex-col relative overflow-hidden">
@@ -344,9 +325,9 @@ export const Confessions: React.FC = () => {
                     </button>
                     <div>
                         <h1 className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
-                            Confessions
+                            Global Confessions
                         </h1>
-                        <p className="text-xs text-gray-500 font-mono truncate max-w-[180px]">{currentUser?.university}</p>
+                        <p className="text-xs text-gray-500 font-mono truncate max-w-[180px]">All Universities</p>
                     </div>
                 </div>
 
@@ -395,6 +376,7 @@ export const Confessions: React.FC = () => {
                                         <span className="text-xs font-bold text-gray-500">?</span>
                                     </div>
                                     <span className="text-sm font-bold text-gray-400">{conf.userId}</span>
+                                    <span className="text-xs text-gray-600">• {conf.university}</span>
                                 </div>
                                 <span className="text-[10px] text-gray-600">{new Date(conf.timestamp).toLocaleDateString()}</span>
                             </div>
@@ -519,7 +501,7 @@ export const Confessions: React.FC = () => {
                     ))
                 )}
             </div>
-            
+
             {/* Input Area (Same as before, simplified for brevity) */}
             <div className="p-4 bg-black border-t border-gray-900 shrink-0 z-20 mb-24 md:mb-0">
                 <div className="bg-gray-900 rounded-2xl p-2 border border-gray-800 focus-within:border-neon transition-colors">
@@ -531,8 +513,8 @@ export const Confessions: React.FC = () => {
                             </button>
                         </div>
                     )}
-                    
-                     {isPollMode && (
+
+                    {isPollMode && (
                         <div className="mb-4 ml-2 mr-2 space-y-2 animate-fade-in">
                             {pollOptions.map((opt, i) => (
                                 <div key={i} className="flex items-center gap-2">
@@ -562,24 +544,24 @@ export const Confessions: React.FC = () => {
                     )}
 
                     <div className="flex gap-2 items-end">
-                         <textarea
+                        <textarea
                             value={newText}
                             onChange={e => setNewText(e.target.value)}
                             placeholder={isPollMode ? "Ask a question..." : "Type your confession anonymously..."}
                             className="flex-1 bg-transparent text-white px-4 py-3 outline-none resize-none h-14 text-sm"
                         />
-                         <div className="flex items-center gap-2 pb-2 pr-2">
+                        <div className="flex items-center gap-2 pb-2 pr-2">
                             <button onClick={() => { setIsPollMode(!isPollMode); setNewImage(null); }} className={`p-2 rounded-full transition-colors ${isPollMode ? 'bg-neon/20 text-neon' : 'hover:bg-gray-800 text-gray-400'}`}>
                                 <BarChart2 className="w-5 h-5" />
                             </button>
-                             <button onClick={handleImageClick} disabled={isPollMode} className={`p-2 rounded-full transition-colors hover:bg-gray-800 ${isPollMode ? 'opacity-30 cursor-not-allowed' : ''}`}>
+                            <button onClick={handleImageClick} disabled={isPollMode} className={`p-2 rounded-full transition-colors hover:bg-gray-800 ${isPollMode ? 'opacity-30 cursor-not-allowed' : ''}`}>
                                 <ImageIcon className={`w-5 h-5 ${currentUser?.isPremium ? 'text-gray-400 hover:text-white' : 'text-yellow-500/70'}`} />
                             </button>
-                             <input id="confession-image-input" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                            <input id="confession-image-input" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                             <button onClick={handlePost} disabled={(isPollMode ? (pollOptions.filter(o => o.trim()).length < 2 || !newText.trim()) : (!newText.trim() && !newImage)) || isPosting} className="p-2 bg-neon rounded-full text-white disabled:opacity-50 disabled:cursor-not-allowed shadow-neon-sm">
                                 {isPosting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                             </button>
-                         </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -589,18 +571,18 @@ export const Confessions: React.FC = () => {
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => { setActiveReactionMenu(null); setMenuPosition(null); }}></div>
                     <div className="fixed z-50 bg-gray-900 border border-gray-800 rounded-xl shadow-2xl overflow-hidden animate-fade-in-up origin-bottom-left" style={{ top: menuPosition.top, left: menuPosition.left }}>
-                         <div className="flex items-center gap-1 p-2 border-b border-gray-800 bg-black/50 overflow-x-auto max-w-[300px] custom-scrollbar">
+                        <div className="flex items-center gap-1 p-2 border-b border-gray-800 bg-black/50 overflow-x-auto max-w-[300px] custom-scrollbar">
                             {REACTIONS.map(emoji => (
                                 <button key={emoji} onClick={() => handleReaction(activeReactionMenu, emoji)} className="text-xl hover:scale-125 transition-transform p-1 shrink-0">{emoji}</button>
                             ))}
                         </div>
-                         <div className="w-[300px] h-[350px]">
+                        <div className="w-[300px] h-[350px]">
                             <EmojiPicker onEmojiClick={(data) => handleExtendedReaction(activeReactionMenu, data)} theme={Theme.DARK} width="100%" height="350px" searchDisabled={false} previewConfig={{ showPreview: false }} />
                         </div>
                     </div>
                 </>
             )}
-            
+
             {/* ... Premium Modal ... */}
             {/* ... Image Lightbox ... */}
             {/* (Keep the rest of the file logic the same) */}
@@ -621,7 +603,7 @@ export const Confessions: React.FC = () => {
                     </div>
                 </div>
             )}
-             {viewImage && (
+            {viewImage && (
                 <div className="fixed inset-0 z-[60] bg-black/95 flex items-center justify-center p-4 animate-fade-in" onClick={() => setViewImage(null)}>
                     <button className="absolute top-6 right-6 p-3 bg-gray-800/50 rounded-full hover:bg-gray-700 text-white transition-colors" onClick={() => setViewImage(null)}>
                         <X className="w-6 h-6" />
