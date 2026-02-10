@@ -161,11 +161,26 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
     };
   }, [callSessionId, onLeave]);
 
-  // Play remote video when users join
+  // Play remote video when users join or update
   useEffect(() => {
     remoteUsers.forEach((user) => {
       if (user.videoTrack) {
-        user.videoTrack.play(`remote-video-${user.uid}`);
+        try {
+          // Verify container exists
+          const containerId = `remote-video-${user.uid}`;
+          const container = document.getElementById(containerId);
+          if (container) {
+            if (!user.videoTrack.isPlaying) {
+              user.videoTrack.play(containerId);
+              console.log(`Playing video for user ${user.uid}`);
+            }
+          } else {
+            console.warn(`Video container ${containerId} not found, retrying...`);
+            // Determine why container is missing. It should be rendered if user is in remoteUsers.
+          }
+        } catch (error) {
+          console.error('Error playing remote video:', error);
+        }
       }
     });
   }, [remoteUsers]);
@@ -229,18 +244,26 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
       </div>
 
       {/* Video Container */}
+      {/* Video Container */}
       <div className="flex-1 relative bg-gray-900">
-        {/* Remote Video (full screen) */}
-        {remoteUsers.length > 0 && remoteUsers[0].videoTrack ? (
-          <div className="absolute inset-0">
+        {/* Render ALL remote users hidden or visible */}
+        {remoteUsers.map((user) => (
+          <div
+            key={user.uid}
+            className={`absolute inset-0 ${user.videoTrack ? 'z-10' : '-z-10'}`}
+            style={{ display: user.videoTrack ? 'block' : 'none' }}
+          >
             <div
-              id={`remote-video-${remoteUsers[0].uid}`}
+              id={`remote-video-${user.uid}`}
               className="w-full h-full"
               style={{ objectFit: 'cover' }}
             />
           </div>
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
+        ))}
+
+        {/* Waiting/Audio-only UI - Show if no remote video tracks are visible */}
+        {(!remoteUsers.length || !remoteUsers.some(u => u.videoTrack)) && (
+          <div className="absolute inset-0 flex items-center justify-center z-0">
             <div className="text-center">
               <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-neon shadow-lg shadow-neon/50 mx-auto mb-6 animate-pulse">
                 <img
