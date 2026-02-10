@@ -428,6 +428,7 @@ export const Chat: React.FC = () => {
               // Start the call
               startCall(
                 isRevealed ? partner.realName : partner.anonymousId,
+                partner.avatar || 'https://via.placeholder.com/150',
                 callSession.app_id,
                 callSession.channel_name,
                 callSession.token,

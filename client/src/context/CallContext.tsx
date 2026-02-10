@@ -19,11 +19,12 @@ interface CallContextType {
   channelName: string;
   token: string;
   partnerName: string;
+  partnerAvatar: string;
   callType: 'audio' | 'video';
   callSessionId: string;
   incomingCall: IncomingCall | null;
   outgoingCall: { receiverName: string; receiverAvatar: string; callType: 'audio' | 'video' } | null;
-  startCall: (name: string, appId: string, channelName: string, token: string, type: 'audio' | 'video', sessionId: string) => void;
+  startCall: (name: string, avatar: string, appId: string, channelName: string, token: string, type: 'audio' | 'video', sessionId: string) => void;
   endCall: () => void;
   acceptCall: () => void;
   rejectCall: () => void;
@@ -39,6 +40,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [channelName, setChannelName] = useState('');
   const [token, setToken] = useState('');
   const [partnerName, setPartnerName] = useState('');
+  const [partnerAvatar, setPartnerAvatar] = useState('');
   const [callType, setCallType] = useState<'audio' | 'video'>('video');
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
   const [outgoingCall, setOutgoingCall] = useState<{ receiverName: string; receiverAvatar: string; callType: 'audio' | 'video' } | null>(null);
@@ -109,8 +111,9 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [currentUser]);
 
-  const startCall = (name: string, appIdParam: string, channelNameParam: string, tokenParam: string, type: 'audio' | 'video' = 'video', sessionId: string) => {
+  const startCall = (name: string, avatar: string, appIdParam: string, channelNameParam: string, tokenParam: string, type: 'audio' | 'video' = 'video', sessionId: string) => {
     setPartnerName(name);
+    setPartnerAvatar(avatar);
     setAppId(appIdParam);
     setChannelName(channelNameParam);
     setToken(tokenParam);
@@ -126,6 +129,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setChannelName('');
     setToken('');
     setPartnerName('');
+    setPartnerAvatar('');
     setCallSessionId('');
     setOutgoingCall(null);
   };
@@ -152,6 +156,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Start the call
     startCall(
       incomingCall.callerName,
+      incomingCall.callerAvatar,
       incomingCall.appId,
       incomingCall.channelName,
       incomingCall.token,
@@ -195,6 +200,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
         channelName,
         token,
         partnerName,
+        partnerAvatar,
         callType,
         callSessionId,
         incomingCall,

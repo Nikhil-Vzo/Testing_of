@@ -15,11 +15,12 @@ interface VideoCallProps {
   token: string;
   onLeave: () => void;
   partnerName: string;
+  partnerAvatar: string;
   callType: 'audio' | 'video';
   callSessionId: string;
 }
 
-export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token, onLeave, partnerName, callType, callSessionId }) => {
+export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token, onLeave, partnerName, partnerAvatar, callType, callSessionId }) => {
   const [localVideoTrack, setLocalVideoTrack] = useState<ICameraVideoTrack | null>(null);
   const [localAudioTrack, setLocalAudioTrack] = useState<IMicrophoneAudioTrack | null>(null);
   const [remoteUsers, setRemoteUsers] = useState<IAgoraRTCRemoteUser[]>([]);
@@ -37,13 +38,12 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
           await client.subscribe(user, mediaType);
           console.log('Subscribed to user:', user.uid);
 
-          if (mediaType === 'video') {
-            setRemoteUsers((prev) => {
-              const exists = prev.find(u => u.uid === user.uid);
-              if (exists) return prev;
-              return [...prev, user];
-            });
-          }
+          // Add user to state if not already there (regardless of media type)
+          setRemoteUsers((prev) => {
+            const exists = prev.find(u => u.uid === user.uid);
+            if (exists) return prev;
+            return [...prev, user];
+          });
 
           if (mediaType === 'audio') {
             user.audioTrack?.play();
@@ -53,7 +53,12 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
         client.on('user-unpublished', (user, mediaType) => {
           console.log('User unpublished:', user.uid, mediaType);
           if (mediaType === 'video') {
-            setRemoteUsers((prev) => prev.filter(u => u.uid !== user.uid));
+            // For video calls, if they turn off video, we might want to keep them in the list 
+            // but just show avatar. If we remove them, it goes to "Waiting...". 
+            // Actually, we should only remove them on 'user-left'.
+            // However, to re-render the video slot as empty, we might need to update state.
+            // But 'remoteUsers' is "users in call". 
+            // Let's NOT remove them here, just let the videoTrack be undefined on re-render.
           }
         });
 
@@ -178,18 +183,6 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
     if (localVideoTrack) {
       // Just toggle enabled state
       const newState = !isVideoOff;
-      // Note: isVideoOff state is inverted logic (true = OFF)
-      // setEnabled(true) -> ON. setEnabled(false) -> OFF.
-      // If currently OFF (isVideoOff=true), we want to turn ON (newState=false).
-      // So setEnabled(!newState).
-      // Wait, isVideoOff describes CURRENT state.
-      // If I click button:
-      // Current: OFF. Expect: ON.
-      // setEnabled(true). setIsVideoOff(false).
-
-      // Current: ON. Expect: OFF.
-      // setEnabled(false). setIsVideoOff(true).
-
       const shouldEnable = isVideoOff; // If currently off, we enable
       await localVideoTrack.setEnabled(shouldEnable);
       setIsVideoOff(!isVideoOff);
@@ -244,15 +237,16 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">
-              <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-                {callType === 'audio' ? (
-                  <span className="text-3xl">📞</span>
-                ) : (
-                  <span className="text-3xl">👻</span>
-                )}
+              <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-neon shadow-lg shadow-neon/50 mx-auto mb-6 animate-pulse">
+                <img
+                  src={partnerAvatar || 'https://via.placeholder.com/150'}
+                  alt={partnerName}
+                  className="w-full h-full object-cover"
+                />
               </div>
-              <p className="text-gray-400">
-                {remoteUsers.length > 0 ? 'Connected' : `Waiting for ${partnerName}...`}
+              <h2 className="text-2xl font-bold text-white mb-2">{partnerName}</h2>
+              <p className="text-gray-400 animate-pulse">
+                {remoteUsers.length > 0 ? 'Connected • Audio Only' : 'Waiting for connection...'}
               </p>
             </div>
           </div>
