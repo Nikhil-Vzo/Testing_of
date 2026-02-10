@@ -374,15 +374,17 @@ export const Confessions: React.FC = () => {
                 ) : (
                     sortedConfessions.map(conf => (
                         <div key={conf.id} className="bg-gray-900/40 border border-gray-800 rounded-2xl p-5 animate-fade-in-up">
-                            <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center">
-                                        <span className="text-xs font-bold text-gray-500">?</span>
-                                    </div>
-                                    <span className="text-sm font-bold text-gray-400">{conf.userId}</span>
-                                    <span className="text-xs text-gray-600">• {conf.university}</span>
+                            <div className="flex gap-3 mb-3">
+                                <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center shrink-0">
+                                    <span className="text-sm font-bold text-gray-500">?</span>
                                 </div>
-                                <span className="text-[10px] text-gray-600">{new Date(conf.timestamp).toLocaleDateString()}</span>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm font-bold text-gray-200">{conf.userId}</span>
+                                        <span className="text-[10px] text-gray-600 ml-2 whitespace-nowrap">{new Date(conf.timestamp).toLocaleDateString()}</span>
+                                    </div>
+                                    <p className="text-xs text-gray-500 truncate w-full">{conf.university}</p>
+                                </div>
                             </div>
 
                             <p className="text-gray-200 text-sm leading-relaxed mb-4 whitespace-pre-wrap">{conf.text}</p>
