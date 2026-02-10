@@ -27,7 +27,7 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(callType === 'audio');
   const [isJoined, setIsJoined] = useState(false);
-  const [client] = useState(() => AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' }));
+  const [client] = useState(() => AgoraRTC.createClient({ mode: 'rtc', codec: 'h264' }));
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -282,7 +282,7 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
 
         {/* Local Video (picture-in-picture) */}
         {/* Only show if we have a video track */}
-        <div className={`absolute top-20 right-4 w-32 h-44 md:w-40 md:h-56 bg-gray-800 rounded-2xl overflow-hidden border-2 border-gray-700 shadow-2xl transition-all duration-300 ${(!localVideoTrack || isVideoOff) ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        <div className={`absolute top-20 right-4 w-32 h-44 md:w-40 md:h-56 bg-gray-800 rounded-2xl overflow-hidden border-2 border-gray-700 shadow-2xl transition-all duration-300 z-50 ${(!localVideoTrack || isVideoOff) ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
           <div
             id="local-video"
             className="w-full h-full"
