@@ -38,10 +38,15 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
           await client.subscribe(user, mediaType);
           console.log('Subscribed to user:', user.uid);
 
-          // Add user to state if not already there (regardless of media type)
+          // Update user in state (replace or add) to trigger effects and re-renders
           setRemoteUsers((prev) => {
-            const exists = prev.find(u => u.uid === user.uid);
-            if (exists) return prev;
+            const index = prev.findIndex(u => u.uid === user.uid);
+            if (index !== -1) {
+              // Create new array with updated user object to trigger re-render
+              const newUsers = [...prev];
+              newUsers[index] = user;
+              return newUsers;
+            }
             return [...prev, user];
           });
 
