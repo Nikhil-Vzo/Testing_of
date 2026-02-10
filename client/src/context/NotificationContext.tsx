@@ -150,7 +150,15 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         }
 
         if (!currentUser || !supabase) return;
-        await supabase.from('notifications').delete().eq('id', id);
+        const { error } = await supabase.from('notifications').delete().eq('id', id);
+
+        if (error) {
+            console.error('Error deleting notification:', error);
+            // Revert optimistic update? 
+            // For now, just logging is enough to verify RLS issues. 
+            // In a real app we might toast an error or refresh list.
+            fetchNotifications(true); // Re-fetch to restore state if delete failed
+        }
     };
 
     return (

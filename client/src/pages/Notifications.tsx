@@ -333,7 +333,7 @@ export const Notifications: React.FC = () => {
                   <p className="text-sm text-gray-400 leading-relaxed">{notif.message}</p>
 
                   {/* Action Buttons for Likes */}
-                  {notif.type === 'like' && !notif.read && (
+                  {notif.type === 'like' && (
                     <div className="space-y-2 mt-4">
                       {/* View Profile Button */}
                       <button
