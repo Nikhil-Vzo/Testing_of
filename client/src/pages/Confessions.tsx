@@ -123,14 +123,18 @@ export const Confessions: React.FC = () => {
             setActiveReactionMenu(null);
             setMenuPosition(null);
         } else {
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-            let top = rect.top - 400 - 10;
-            if (rect.top < 400) top = rect.bottom + 10;
+            if (window.innerWidth >= 768) {
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                let top = rect.top - 400 - 10;
+                if (rect.top < 400) top = rect.bottom + 10;
 
-            let left = rect.left;
-            if (left + 320 > window.innerWidth) left = window.innerWidth - 340;
+                let left = rect.left;
+                if (left + 320 > window.innerWidth) left = window.innerWidth - 340;
 
-            setMenuPosition({ top, left });
+                setMenuPosition({ top, left });
+            } else {
+                setMenuPosition(null);
+            }
             setActiveReactionMenu(id);
         }
     };
@@ -316,11 +320,11 @@ export const Confessions: React.FC = () => {
 
 
     return (
-        <div className="h-[100dvh] bg-transparent text-white flex flex-col relative overflow-hidden">
+        <div className="h-full bg-transparent text-white flex flex-col relative overflow-hidden">
             {/* Header */}
             <div className="p-4 border-b border-gray-900 flex items-center justify-between bg-black z-20 shrink-0">
                 <div className="flex items-center gap-3">
-                    <button onClick={() => navigate('/home')} className="p-2 hover:bg-gray-800 rounded-full transition-colors">
+                    <button onClick={() => navigate('/home')} className="p-2 hover:bg-gray-800 rounded-full transition-colors hidden md:block">
                         <ArrowLeft className="w-6 h-6 text-gray-400" />
                     </button>
                     <div>
@@ -503,7 +507,7 @@ export const Confessions: React.FC = () => {
             </div>
 
             {/* Input Area (Same as before, simplified for brevity) */}
-            <div className="p-4 bg-black border-t border-gray-900 shrink-0 z-20 mb-24 md:mb-0">
+            <div className="p-4 bg-black border-t border-gray-900 shrink-0 z-20 mb-20 md:mb-0">
                 <div className="bg-gray-900 rounded-2xl p-2 border border-gray-800 focus-within:border-neon transition-colors">
                     {newImage && !isPollMode && (
                         <div className="relative w-20 h-20 mb-2 ml-2">
@@ -567,16 +571,21 @@ export const Confessions: React.FC = () => {
             </div>
 
             {/* Reuse existing Premium & Image Modal JSX */}
-            {activeReactionMenu && menuPosition && (
+            {activeReactionMenu && (
                 <>
-                    <div className="fixed inset-0 z-40" onClick={() => { setActiveReactionMenu(null); setMenuPosition(null); }}></div>
-                    <div className="fixed z-50 bg-gray-900 border border-gray-800 rounded-xl shadow-2xl overflow-hidden animate-fade-in-up origin-bottom-left" style={{ top: menuPosition.top, left: menuPosition.left }}>
-                        <div className="flex items-center gap-1 p-2 border-b border-gray-800 bg-black/50 overflow-x-auto max-w-[300px] custom-scrollbar">
+                    <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]" onClick={() => { setActiveReactionMenu(null); setMenuPosition(null); }}></div>
+                    <div
+                        className={`fixed z-50 bg-gray-900 border border-gray-800 shadow-2xl overflow-hidden animate-fade-in-up 
+                            ${menuPosition ? 'rounded-xl' : 'bottom-0 left-0 right-0 rounded-t-3xl border-b-0 pb-8'}
+                        `}
+                        style={menuPosition ? { top: menuPosition.top, left: menuPosition.left } : {}}
+                    >
+                        <div className="flex items-center gap-1 p-2 border-b border-gray-800 bg-black/50 overflow-x-auto custom-scrollbar md:max-w-[300px]">
                             {REACTIONS.map(emoji => (
-                                <button key={emoji} onClick={() => handleReaction(activeReactionMenu, emoji)} className="text-xl hover:scale-125 transition-transform p-1 shrink-0">{emoji}</button>
+                                <button key={emoji} onClick={() => handleReaction(activeReactionMenu, emoji)} className="text-2xl md:text-xl hover:scale-125 transition-transform p-3 md:p-1 shrink-0">{emoji}</button>
                             ))}
                         </div>
-                        <div className="w-[300px] h-[350px]">
+                        <div className="w-full md:w-[300px] h-[350px]">
                             <EmojiPicker onEmojiClick={(data) => handleExtendedReaction(activeReactionMenu, data)} theme={Theme.DARK} width="100%" height="350px" searchDisabled={false} previewConfig={{ showPreview: false }} />
                         </div>
                     </div>
