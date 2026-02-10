@@ -446,7 +446,8 @@ export const Chat: React.FC = () => {
                 tokenData.appId,
                 tokenData.channelName,
                 tokenData.token,
-                callType
+                callType,
+                callSession.id
               );
               setIsStartingCall(false);
             } else if (updatedSession.status === 'rejected') {

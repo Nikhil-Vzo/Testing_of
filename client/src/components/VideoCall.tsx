@@ -6,6 +6,8 @@ import AgoraRTC, {
 } from 'agora-rtc-sdk-ng';
 import { X, Mic, MicOff, Video as VideoIcon, VideoOff, PhoneOff, ShieldCheck } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import { endCall as endCallAPI } from '../services/callSignaling';
+import { supabase } from '../lib/supabase';
 
 interface VideoCallProps {
   appId: string;
@@ -14,9 +16,10 @@ interface VideoCallProps {
   onLeave: () => void;
   partnerName: string;
   callType: 'audio' | 'video';
+  callSessionId: string;
 }
 
-export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token, onLeave, partnerName, callType }) => {
+export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token, onLeave, partnerName, callType, callSessionId }) => {
   const [localVideoTrack, setLocalVideoTrack] = useState<ICameraVideoTrack | null>(null);
   const [localAudioTrack, setLocalAudioTrack] = useState<IMicrophoneAudioTrack | null>(null);
   const [remoteUsers, setRemoteUsers] = useState<IAgoraRTCRemoteUser[]>([]);
@@ -119,6 +122,35 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
     };
   }, [appId, channelName, token, onLeave, callType]);
 
+  // Listen for call ended by partner
+  useEffect(() => {
+    if (!callSessionId) return;
+
+    const channel = supabase
+      .channel(`call_status:${callSessionId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'call_sessions',
+          filter: `id=eq.${callSessionId}`
+        },
+        (payload) => {
+          const updatedSession = payload.new as any;
+          if (updatedSession.status === 'ended') {
+            console.log('Call ended by partner');
+            onLeave(); // Exit locally
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [callSessionId, onLeave]);
+
   // Play remote video when users join
   useEffect(() => {
     remoteUsers.forEach((user) => {
@@ -136,6 +168,11 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
   };
 
   const toggleVideo = async () => {
+    if (callType === 'audio') {
+      showToast('Video not available in audio call', 'error');
+      return;
+    }
+
     if (callType === 'audio' && !localVideoTrack) {
       // If upgrading audio to video, we need to create video track
       // But for now, let's keep it simple: Audio calls stay audio-only (no video button?)
@@ -182,10 +219,16 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
     }
   };
 
-  const handleEndCall = () => {
+  const handleEndCall = async () => {
     localAudioTrack?.close();
     localVideoTrack?.close();
     client.leave();
+
+    // Update DB status to 'ended'
+    if (callSessionId) {
+      await endCallAPI(callSessionId);
+    }
+
     onLeave();
   };
 
@@ -269,6 +312,9 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
           <PhoneOff className="w-8 h-8 text-white" />
         </button>
 
+      </button>
+
+      {callType === 'video' && (
         <button
           onClick={toggleVideo}
           className={`p-4 rounded-full transition-all ${isVideoOff ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-700 hover:bg-gray-600'
@@ -276,7 +322,8 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
         >
           {isVideoOff ? <VideoOff className="w-6 h-6 text-white" /> : <VideoIcon className="w-6 h-6 text-white" />}
         </button>
-      </div>
+      )}
     </div>
+    </div >
   );
 };
