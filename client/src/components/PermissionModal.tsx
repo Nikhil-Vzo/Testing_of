@@ -21,52 +21,93 @@ export const PermissionModal: React.FC<PermissionModalProps> = ({
     useEffect(() => {
         if (isOpen) {
             checkCurrentPermissions();
+            // Re-check when window gains focus (user comes back from settings)
+            window.addEventListener('focus', checkCurrentPermissions);
+            return () => window.removeEventListener('focus', checkCurrentPermissions);
         }
     }, [isOpen]);
 
     const checkCurrentPermissions = async () => {
-        // Basic check if already granted
         try {
-            if (requiredPermissions.includes('camera')) {
-                const cam = await navigator.permissions.query({ name: 'camera' as PermissionName });
-                setCameraStatus(cam.state === 'granted' ? 'granted' : 'pending');
-            } else {
-                setCameraStatus('granted'); // Not needed
+            // 1. Try modern Permissions API first
+            let apiSupported = false;
+            if (navigator.permissions && navigator.permissions.query) {
+                try {
+                    if (requiredPermissions.includes('camera')) {
+                        const cam = await navigator.permissions.query({ name: 'camera' as PermissionName });
+                        setCameraStatus(cam.state === 'granted' ? 'granted' : 'pending');
+                    } else {
+                        // If camera not required, treat as granted logic-wise
+                    }
+
+                    const mic = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+                    setMicStatus(mic.state === 'granted' ? 'granted' : 'pending');
+                    apiSupported = true;
+                } catch (e) {
+                    console.log('Permission API query failed or inconsistent');
+                }
             }
 
-            const mic = await navigator.permissions.query({ name: 'microphone' as PermissionName });
-            setMicStatus(mic.state === 'granted' ? 'granted' : 'pending');
+            // 2. Fallback: Check if we can enumerate devices with labels
+            // If we can see labels, we have permission.
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            let hasCamPermission = false;
+            let hasMicPermission = false;
+
+            devices.forEach(dev => {
+                if (dev.kind === 'videoinput' && dev.label.length > 0) hasCamPermission = true;
+                if (dev.kind === 'audioinput' && dev.label.length > 0) hasMicPermission = true;
+            });
+
+            if (hasCamPermission && requiredPermissions.includes('camera')) setCameraStatus('granted');
+            if (hasMicPermission) setMicStatus('granted');
+
         } catch (e) {
-            // Firefox/Safari might not support query
-            console.log('Permission query not supported, waiting for manual trigger');
+            console.log('Permission check failed, waiting for manual trigger', e);
         }
     };
 
     const requestPermissions = async () => {
         setChecking(true);
         try {
+            // Request audio first if only audio is needed, or both
             const constraints: MediaStreamConstraints = {};
-            if (requiredPermissions.includes('camera')) constraints.video = true;
+
+            // Important: Requesting both at once is often better for UI flow
+            if (requiredPermissions.includes('camera')) {
+                constraints.video = true;
+            }
             constraints.audio = true;
 
+            console.log('[PermissionModal] Requesting permissions with constraints:', constraints);
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
             // If successful, stop tracks immediately to release device
             stream.getTracks().forEach(track => track.stop());
 
-            setCameraStatus('granted');
+            // Force update state locally as success
+            if (requiredPermissions.includes('camera')) setCameraStatus('granted');
             setMicStatus('granted');
 
-            // Delay slightly for UX
+            // Verify with enumerate to be sure
+            setTimeout(checkCurrentPermissions, 100);
+
+            // Delay slightly for UX before closing
             setTimeout(() => {
                 onPermissionsGranted();
             }, 500);
 
-        } catch (err) {
+        } catch (err: any) {
             console.error('Permission denied:', err);
-            // Try to detect which one failed (not precise in all browsers)
-            if (requiredPermissions.includes('camera')) setCameraStatus('denied');
-            setMicStatus('denied');
+
+            // Handle "Permission denied" vs "Device not found"
+            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                if (requiredPermissions.includes('camera')) setCameraStatus('denied');
+                setMicStatus('denied');
+            } else {
+                // Maybe device missing?
+                console.warn('Device error:', err.message);
+            }
         } finally {
             setChecking(false);
         }
@@ -133,8 +174,12 @@ export const PermissionModal: React.FC<PermissionModalProps> = ({
                 </div>
 
                 {(cameraStatus === 'denied' || micStatus === 'denied') && (
-                    <div className="p-3 bg-red-900/20 border border-red-900/50 rounded-lg text-xs text-red-400">
-                        Access was blocked. Please enable permissions in your browser settings (lock icon in address bar) and reload.
+                    <div className="p-3 bg-red-900/20 border border-red-900/50 rounded-lg text-xs text-red-400 text-left">
+                        <strong>Access Blocked:</strong><br />
+                        1. Tap the lock icon 🔒 in your address bar<br />
+                        2. Select "Permissions" or "Site Settings"<br />
+                        3. Allow <strong>Microphone</strong> & <strong>Camera</strong><br />
+                        4. Come back here (we'll check automatically)
                     </div>
                 )}
 
@@ -156,9 +201,9 @@ export const PermissionModal: React.FC<PermissionModalProps> = ({
                         </button>
                     ) : (
                         <button
-                            className="flex-1 py-3 text-sm font-bold bg-green-500 text-white rounded-xl cursor-default"
+                            className="flex-1 py-3 text-sm font-bold bg-green-500 text-white rounded-xl cursor-default animate-pulse"
                         >
-                            Access Granted
+                            Starting Call...
                         </button>
                     )}
                 </div>
