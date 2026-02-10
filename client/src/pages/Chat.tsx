@@ -355,7 +355,8 @@ export const Chat: React.FC = () => {
     // Show outgoing call modal
     setOutgoingCall({
       receiverName: isRevealed ? partner.realName : partner.anonymousId,
-      receiverAvatar: partner.avatar || 'https://via.placeholder.com/150'
+      receiverAvatar: partner.avatar || 'https://via.placeholder.com/150',
+      callType: callType
     });
 
     try {
@@ -480,8 +481,7 @@ export const Chat: React.FC = () => {
   };
 
   const startAudioCall = async () => {
-    // For now, audio calls use the same video room (user can disable video)
-    await startVideoCall();
+    await startVideoCall('audio');
   };
 
   const handleViewProfile = () => {

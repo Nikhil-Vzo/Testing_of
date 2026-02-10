@@ -21,12 +21,12 @@ interface CallContextType {
   partnerName: string;
   callType: 'audio' | 'video';
   incomingCall: IncomingCall | null;
-  outgoingCall: { receiverName: string; receiverAvatar: string } | null;
+  outgoingCall: { receiverName: string; receiverAvatar: string; callType: 'audio' | 'video' } | null;
   startCall: (name: string, appId: string, channelName: string, token: string, type: 'audio' | 'video') => void;
   endCall: () => void;
   acceptCall: () => void;
   rejectCall: () => void;
-  setOutgoingCall: (call: { receiverName: string; receiverAvatar: string } | null) => void;
+  setOutgoingCall: (call: { receiverName: string; receiverAvatar: string; callType: 'audio' | 'video' } | null) => void;
 }
 
 const CallContext = createContext<CallContextType | undefined>(undefined);
@@ -40,7 +40,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [partnerName, setPartnerName] = useState('');
   const [callType, setCallType] = useState<'audio' | 'video'>('video');
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
-  const [outgoingCall, setOutgoingCall] = useState<{ receiverName: string; receiverAvatar: string } | null>(null);
+  const [outgoingCall, setOutgoingCall] = useState<{ receiverName: string; receiverAvatar: string; callType: 'audio' | 'video' } | null>(null);
   const callTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Subscribe to incoming calls

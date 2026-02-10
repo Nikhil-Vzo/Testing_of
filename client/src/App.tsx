@@ -109,7 +109,7 @@ export default function App() {
           receiverName={outgoingCall.receiverName}
           receiverAvatar={outgoingCall.receiverAvatar}
           onCancel={() => setOutgoingCall(null)}
-          isVideoCall={true}
+          isVideoCall={outgoingCall.callType === 'video'}
         />
       )}
 
