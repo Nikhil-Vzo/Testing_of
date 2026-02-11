@@ -400,14 +400,8 @@ export const Confessions: React.FC = () => {
     return (
         <div className="h-full w-full bg-black text-white flex flex-col relative overflow-hidden selection:bg-neon selection:text-white font-sans">
 
-            {/* === ANIMATED BACKGROUND === */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                <div className="absolute top-[-20%] left-[-20%] w-[70%] h-[70%] rounded-full blur-[100px] bg-gradient-to-r from-neon/10 to-purple-900/10 animate-pulse-slow" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full blur-[120px] bg-blue-900/10" />
-            </div>
-
             {/* Header */}
-            <div className="flex-none p-4 border-b border-gray-800/60 bg-black/80 backdrop-blur-md flex items-center justify-between z-40 sticky top-0">
+            <div className="flex-none p-4 border-b border-gray-900 bg-black z-40 sticky top-0 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <button onClick={() => navigate('/home')} className="p-2 hover:bg-gray-800 rounded-full transition-colors hidden md:block">
                         <ArrowLeft className="w-6 h-6 text-gray-400" />
@@ -451,54 +445,10 @@ export const Confessions: React.FC = () => {
             </div>
 
             {/* Feed */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-6 pb-40 md:pb-32 relative z-10">
-                {/* Pinned OthrHalff Welcome Post */}
-                <div className="relative group">
-                    <div className="absolute -inset-0.5 bg-gradient-to-r from-neon to-purple-600 rounded-[18px] opacity-75 blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
-                    <div className="relative bg-black/80 backdrop-blur-xl border border-gray-800/60 rounded-2xl p-5 shadow-2xl">
-                        <div className="absolute top-3 right-3 flex items-center gap-1.5">
-                            <Crown className="w-3.5 h-3.5 text-yellow-500 drop-shadow-md" />
-                            <span className="text-[10px] font-black uppercase text-yellow-500 tracking-wider">Official</span>
-                        </div>
-                        <div className="flex gap-4 mb-3">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-neon to-purple-600 p-[1px] shadow-lg shadow-neon/20">
-                                <div className="w-full h-full bg-black rounded-2xl flex items-center justify-center">
-                                    <Ghost className="w-6 h-6 text-neon" />
-                                </div>
-                            </div>
-                            <div className="flex-1 min-w-0 pt-0.5">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-base font-black text-white tracking-tight">OthrHalff Team</span>
-                                    <div className="bg-neon/10 border border-neon/20 px-1.5 py-0.5 rounded text-[9px] font-bold text-neon uppercase tracking-wider">MOD</div>
-                                </div>
-                                <p className="text-xs text-gray-500 font-mono mt-0.5">Admin Announcement</p>
-                            </div>
-                        </div>
-                        <p className="text-gray-200 text-sm leading-relaxed mb-4 font-medium">Hey, thanks for using our services! 💜 We will be soon expanding into other colleges too. Stay tuned and keep confessing! 🚀</p>
-                        <div className="flex flex-col gap-2 border-t border-gray-800/50 pt-3">
-                            <div className="flex items-center gap-4">
-                                <button
-                                    onClick={(e) => handleReactionClick(e, othrhalffPost.id)}
-                                    className="flex items-center gap-2 text-gray-400 hover:text-neon transition-all text-xs font-bold group bg-gray-900/50 px-3 py-1.5 rounded-full hover:bg-neon/10 border border-transparent hover:border-neon/20"
-                                >
-                                    <SmilePlus className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                                    <span>React</span>
-                                </button>
-                                <button
-                                    onClick={() => toggleComments(othrhalffPost.id)}
-                                    className="flex items-center gap-2 text-gray-400 hover:text-blue-400 transition-all text-xs font-bold bg-gray-900/50 px-3 py-1.5 rounded-full hover:bg-blue-500/10 border border-transparent hover:border-blue-500/20"
-                                >
-                                    <MessageCircle className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                                    <span>Comments</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4 pb-32 md:pb-24 relative z-10">
                 {sortedConfessions.length === 0 ? (
                     <div className="text-center py-20">
-                        <div className="w-24 h-24 bg-gray-900/50 rounded-full flex items-center justify-center mx-auto mb-6 border border-gray-800 animate-float">
+                        <div className="w-24 h-24 bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-6 border border-gray-800">
                             <Ghost className="w-10 h-10 text-gray-700" />
                         </div>
                         <h2 className="text-lg font-bold text-gray-300 mb-2">It's quiet in here...</h2>
@@ -507,42 +457,34 @@ export const Confessions: React.FC = () => {
                 ) : (
                     sortedConfessions.map(conf => (
                         <div key={conf.id} className="group relative">
-                            {/* Hover Glow */}
-                            <div className="absolute -inset-0.5 bg-gradient-to-r from-neon/20 to-blue-500/20 rounded-2xl opacity-0 group-hover:opacity-100 transition duration-500 blur-sm"></div>
-
-                            <div className="relative bg-gray-900/40 backdrop-blur-md border border-gray-800 hover:border-gray-700/80 rounded-2xl p-5 transition-all duration-300">
+                            <div className="relative bg-black border border-gray-900 rounded-xl p-4 transition-all duration-300 hover:border-gray-800">
                                 <div className="flex gap-3 mb-3">
-                                    <div className="w-10 h-10 rounded-xl bg-gray-800 border border-gray-700 flex items-center justify-center shrink-0 shadow-inner">
-                                        <span className="text-sm font-black text-gray-500">?</span>
+                                    <div className="w-10 h-10 rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center shrink-0">
+                                        <span className="text-sm font-black text-gray-600">?</span>
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between">
-                                            <span className="text-sm font-bold text-gray-200 group-hover:text-neon transition-colors">{conf.userId}</span>
-                                            <span className="text-[10px] text-gray-600 bg-black/30 px-2 py-0.5 rounded-full border border-gray-800/50">{new Date(conf.timestamp).toLocaleDateString()}</span>
+                                            <span className="text-sm font-bold text-gray-300">{conf.userId}</span>
+                                            <span className="text-[10px] text-gray-600 font-mono">{new Date(conf.timestamp).toLocaleDateString()}</span>
                                         </div>
-                                        <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mt-0.5 w-full truncate">{conf.university}</p>
+                                        <p className="text-[10px] text-gray-600 uppercase tracking-wider font-bold mt-0.5 w-full truncate">{conf.university}</p>
                                     </div>
                                 </div>
 
-                                <p className="text-gray-200 text-sm leading-relaxed mb-4 whitespace-pre-wrap pl-1 border-l-2 border-gray-800 pl-3 group-hover:border-neon/30 transition-colors">{conf.text}</p>
+                                <p className="text-gray-300 text-sm leading-relaxed mb-4 whitespace-pre-wrap pl-3 border-l-2 border-gray-800">{conf.text}</p>
 
                                 {conf.imageUrl && (
                                     <div
-                                        className="mb-4 rounded-xl overflow-hidden border border-gray-800 aspect-video cursor-pointer group/img relative bg-black shadow-lg"
+                                        className="mb-4 rounded-lg overflow-hidden border border-gray-900 aspect-video cursor-pointer relative bg-black"
                                         onClick={() => setViewImage(conf.imageUrl || null)}
                                     >
-                                        <img src={conf.imageUrl} alt="Confession" className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-700" />
-                                        <div className="absolute inset-0 bg-black/40 group-hover/img:bg-black/20 transition-colors flex items-center justify-center backdrop-blur-[1px] group-hover/img:backdrop-blur-none">
-                                            <div className="bg-black/50 p-3 rounded-full border border-white/10 backdrop-blur-md group-hover/img:scale-110 transition-transform">
-                                                <ZoomIn className="w-6 h-6 text-white/90" />
-                                            </div>
-                                        </div>
+                                        <img src={conf.imageUrl} alt="Confession" className="w-full h-full object-cover" />
                                     </div>
                                 )}
 
                                 {/* Poll Rendering */}
                                 {conf.type === 'poll' && conf.pollOptions && (
-                                    <div className="mb-4 space-y-2 bg-black/20 p-3 rounded-xl border border-gray-800/50">
+                                    <div className="mb-4 space-y-2 bg-gray-900/30 p-3 rounded-lg border border-gray-900">
                                         {conf.pollOptions.map(option => {
                                             const totalVotes = conf.pollOptions?.reduce((acc, curr) => acc + curr.votes, 0) || 0;
                                             const percentage = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
@@ -553,33 +495,33 @@ export const Confessions: React.FC = () => {
                                                     key={option.id}
                                                     onClick={() => handlePollVote(conf.id, option.id)}
                                                     disabled={!!conf.userVote}
-                                                    className={`w-full relative h-10 rounded-lg overflow-hidden border transition-all ${isSelected ? 'border-neon ring-1 ring-neon/20' : 'border-gray-800 hover:border-gray-700'}`}
+                                                    className={`w-full relative h-9 rounded overflow-hidden border transition-all ${isSelected ? 'border-neon/50' : 'border-gray-800 hover:border-gray-700'}`}
                                                 >
-                                                    <div className={`absolute top-0 left-0 h-full transition-all duration-700 ease-out ${isSelected ? 'bg-neon/20' : 'bg-gray-800/80'}`} style={{ width: `${percentage}%` }} />
-                                                    <div className="absolute inset-0 flex items-center justify-between px-4 z-10">
-                                                        <span className={`text-sm font-medium ${isSelected ? 'text-neon' : 'text-gray-300'}`}>{option.text}</span>
+                                                    <div className={`absolute top-0 left-0 h-full transition-all duration-500 ${isSelected ? 'bg-neon/10' : 'bg-gray-800'}`} style={{ width: `${percentage}%` }} />
+                                                    <div className="absolute inset-0 flex items-center justify-between px-3 z-10">
+                                                        <span className={`text-xs font-medium ${isSelected ? 'text-neon' : 'text-gray-400'}`}>{option.text}</span>
                                                         {conf.userVote && (
-                                                            <span className="text-xs font-bold font-mono text-gray-400">{percentage}%</span>
+                                                            <span className="text-[10px] font-bold font-mono text-gray-500">{percentage}%</span>
                                                         )}
                                                     </div>
                                                 </button>
                                             );
                                         })}
                                         <div className="flex justify-end pt-1">
-                                            <span className="text-[10px] uppercase font-bold text-gray-600">{conf.pollOptions.reduce((acc, curr) => acc + curr.votes, 0)} votes</span>
+                                            <span className="text-[10px] uppercase font-bold text-gray-700">{conf.pollOptions.reduce((acc, curr) => acc + curr.votes, 0)} votes</span>
                                         </div>
                                     </div>
                                 )}
 
-                                <div className="flex flex-col gap-2 border-t border-gray-800/50 pt-3">
+                                <div className="flex flex-col gap-2 border-t border-gray-900 pt-3">
                                     {/* Reactions Display */}
                                     {conf.reactions && Object.values(conf.reactions).some(v => v > 0) && (
                                         <div className="flex flex-wrap gap-1.5 mb-2">
                                             {Object.entries(conf.reactions).map(([emoji, count]) => (
                                                 (count as number) > 0 && (
-                                                    <span key={emoji} className="inline-flex items-center gap-1.5 bg-gray-900 text-[10px] px-2.5 py-1 rounded-full text-gray-300 border border-gray-800 shadow-sm animate-fade-in">
-                                                        <span className="text-xs">{emoji}</span>
-                                                        <span className="font-bold text-white">{count as number}</span>
+                                                    <span key={emoji} className="inline-flex items-center gap-1 bg-gray-900 text-[10px] px-2 py-0.5 rounded-full text-gray-400 border border-gray-800">
+                                                        <span>{emoji}</span>
+                                                        <span className="font-bold">{count as number}</span>
                                                     </span>
                                                 )
                                             ))}
@@ -590,7 +532,7 @@ export const Confessions: React.FC = () => {
                                         <div className="flex items-center gap-3">
                                             <button
                                                 onClick={(e) => handleReactionClick(e, conf.id)}
-                                                className="flex items-center gap-2 text-gray-500 hover:text-neon transition-all text-xs font-bold bg-white/5 hover:bg-neon/10 px-3 py-1.5 rounded-full border border-transparent hover:border-neon/20"
+                                                className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors text-xs font-bold px-2 py-1 rounded-md hover:bg-gray-900"
                                             >
                                                 <SmilePlus className="w-4 h-4" />
                                                 <span>React</span>
@@ -598,11 +540,10 @@ export const Confessions: React.FC = () => {
 
                                             <button
                                                 onClick={() => toggleComments(conf.id)}
-                                                className={`flex items-center gap-2 transition-all text-xs font-bold px-3 py-1.5 rounded-full border border-transparent ${expandedComments[conf.id] ? 'text-blue-400 bg-blue-500/10 border-blue-500/20' : 'text-gray-500 hover:text-blue-400 bg-white/5 hover:bg-blue-500/10 hover:border-blue-500/20'}`}
+                                                className={`flex items-center gap-2 transition-colors text-xs font-bold px-2 py-1 rounded-md ${expandedComments[conf.id] ? 'text-blue-400 bg-blue-900/10' : 'text-gray-500 hover:text-blue-400 hover:bg-gray-900'}`}
                                             >
                                                 <MessageCircle className="w-4 h-4" />
                                                 <span>{conf.comments?.length || 0}</span>
-                                                <span className="hidden sm:inline">Comments</span>
                                             </button>
                                         </div>
                                     </div>
@@ -610,30 +551,25 @@ export const Confessions: React.FC = () => {
 
                                 {/* Comments Section */}
                                 {expandedComments[conf.id] && (
-                                    <div className="mt-4 pt-4 border-t border-gray-800/30 animate-fade-in-down">
-                                        <div className="space-y-3 mb-4 max-h-60 overflow-y-auto custom-scrollbar pr-2 scroll-smooth">
+                                    <div className="mt-3 pt-3 border-t border-gray-900 animate-fade-in-down">
+                                        <div className="space-y-2 mb-3 max-h-40 overflow-y-auto custom-scrollbar pr-2">
                                             {conf.comments && conf.comments.length > 0 ? (
                                                 conf.comments.map(comment => (
-                                                    <div key={comment.id} className="bg-black/40 border border-gray-800/50 p-3 rounded-xl">
+                                                    <div key={comment.id} className="bg-gray-900/50 p-2 rounded-lg">
                                                         <div className="flex justify-between items-center mb-1">
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="w-4 h-4 rounded-full bg-gray-700 flex items-center justify-center text-[8px] font-bold text-gray-400">?</div>
-                                                                <span className="text-xs font-bold text-gray-400">{comment.userId}</span>
-                                                            </div>
-                                                            <span className="text-[9px] text-gray-600 font-mono">{new Date(comment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                            <span className="text-[10px] font-bold text-gray-500">{comment.userId}</span>
+                                                            <span className="text-[9px] text-gray-700 font-mono">{new Date(comment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                         </div>
-                                                        <p className="text-sm text-gray-300 pl-6">{comment.text}</p>
+                                                        <p className="text-xs text-gray-300">{comment.text}</p>
                                                     </div>
                                                 ))
                                             ) : (
-                                                <div className="text-center py-4 bg-black/20 rounded-xl border border-dashed border-gray-800">
-                                                    <p className="text-xs text-gray-500">No comments yet. Be the first!</p>
-                                                </div>
+                                                <p className="text-xs text-center text-gray-600 py-2">No comments yet.</p>
                                             )}
                                         </div>
-                                        <div className="flex gap-2 relative">
+                                        <div className="flex gap-2">
                                             <input
-                                                className="flex-1 bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:border-neon focus:ring-1 focus:ring-neon/20 outline-none transition-all placeholder:text-gray-600"
+                                                className="flex-1 bg-black border border-gray-800 rounded-lg px-3 py-2 text-xs text-white focus:border-gray-600 outline-none transition-colors placeholder:text-gray-700"
                                                 placeholder="Add a comment..."
                                                 value={commentInputs[conf.id] || ''}
                                                 onChange={(e) => setCommentInputs(prev => ({ ...prev, [conf.id]: e.target.value }))}
@@ -642,9 +578,9 @@ export const Confessions: React.FC = () => {
                                             <button
                                                 onClick={() => handleCommentSubmit(conf.id)}
                                                 disabled={!commentInputs[conf.id]?.trim()}
-                                                className="p-2.5 bg-neon text-white rounded-xl hover:bg-neon/90 hover:scale-105 active:scale-95 transition-all disabled:opacity-30 disabled:hover:scale-100 shadow-lg shadow-neon/20"
+                                                className="p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-30"
                                             >
-                                                <Send className="w-4 h-4" />
+                                                <Send className="w-3.5 h-3.5" />
                                             </button>
                                         </div>
                                     </div>
@@ -656,143 +592,106 @@ export const Confessions: React.FC = () => {
             </div>
 
             {/* === FIXED INPUT AREA === */}
-            {/* Anchored at bottom-0 for desktop, bottom-20 (nav height) for mobile */}
-            <div className="fixed bottom-20 md:bottom-0 left-0 right-0 z-30 p-4 pointer-events-none flex justify-center w-full">
+            <div className="fixed bottom-20 md:bottom-0 left-0 right-0 z-30 p-3 pointer-events-none flex justify-center w-full bg-gradient-to-t from-black via-black to-transparent pb-6 pt-10">
                 <div className="max-w-2xl w-full pointer-events-auto">
 
-                    {/* Floating Glass Capsule */}
-                    <div className="bg-black/60 backdrop-blur-xl border border-gray-700/50 rounded-[2rem] p-2 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] ring-1 ring-white/5 transition-all focus-within:ring-neon/30 focus-within:border-neon/30 focus-within:bg-black/80">
+                    {/* Simplified Input Capsule */}
+                    <div className="bg-black border border-gray-800 rounded-full p-2 shadow-2xl flex items-center gap-2">
                         {newImage && !isPollMode && (
-                            <div className="relative w-16 h-16 mb-2 ml-2 animate-fade-in-up">
-                                <img src={newImage} alt="Preview" className="w-full h-full object-cover rounded-xl border border-gray-700" />
-                                <button onClick={() => setNewImage(null)} className="absolute -top-2 -right-2 bg-gray-800 border border-gray-700 rounded-full p-1 shadow-lg hover:bg-red-500 hover:border-red-500 hover:text-white transition-colors text-gray-400">
-                                    <X className="w-3 h-3" />
+                            <div className="relative w-10 h-10 ml-1">
+                                <img src={newImage} alt="Preview" className="w-full h-full object-cover rounded-lg border border-gray-800" />
+                                <button onClick={() => setNewImage(null)} className="absolute -top-1 -right-1 bg-gray-800 rounded-full p-0.5 text-white">
+                                    <X className="w-2.5 h-2.5" />
                                 </button>
                             </div>
                         )}
 
-                        {isPollMode && (
-                            <div className="mb-2 mx-2 space-y-2 animate-fade-in border-b border-gray-800/50 pb-3 mt-1">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-xs font-bold text-neon uppercase tracking-wider flex items-center gap-1"><BarChart2 className="w-3 h-3" /> Poll Options</span>
-                                    <button onClick={() => setIsPollMode(false)} className="text-[10px] text-gray-500 hover:text-white underline">Cancel</button>
-                                </div>
+                        <button
+                            onClick={() => { setIsPollMode(!isPollMode); setNewImage(null); }}
+                            className={`p-2 rounded-full transition-colors ${isPollMode ? 'text-neon' : 'text-gray-500 hover:text-gray-300'}`}
+                        >
+                            <BarChart2 className="w-5 h-5" />
+                        </button>
+
+                        <div className="h-4 w-px bg-gray-800"></div>
+
+                        <input id="confession-image-input" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                        <button
+                            onClick={handleImageClick}
+                            disabled={isPollMode}
+                            className={`p-2 rounded-full transition-colors ${isPollMode ? 'opacity-30 cursor-not-allowed' : 'text-gray-500 hover:text-gray-300'}`}
+                        >
+                            <ImageIcon className="w-5 h-5" />
+                        </button>
+
+                        <input
+                            value={newText}
+                            onChange={e => setNewText(e.target.value)}
+                            placeholder={isPollMode ? "Poll question..." : "Confess anonymously..."}
+                            className="flex-1 bg-transparent text-white px-2 outline-none text-[10px] md:text-xs placeholder:text-gray-600 font-medium"
+                        />
+
+                        <button
+                            onClick={handlePost}
+                            disabled={(isPollMode ? (pollOptions.filter(o => o.trim()).length < 2 || !newText.trim()) : (!newText.trim() && !newImage)) || isPosting}
+                            className="p-2.5 bg-neon rounded-full text-black disabled:opacity-50 disabled:bg-gray-800 disabled:text-gray-500"
+                        >
+                            {isPosting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 font-bold" />}
+                        </button>
+                    </div>
+
+                    {/* Poll Option Inputs (Only show if Poll Mode) */}
+                    {isPollMode && (
+                        <div className="mt-2 bg-black border border-gray-800 rounded-xl p-3 animate-fade-in-up mx-2">
+                            <div className="space-y-2">
                                 {pollOptions.map((opt, i) => (
-                                    <div key={i} className="flex items-center gap-2">
-                                        <div className="w-5 h-5 rounded-full bg-gray-800 flex items-center justify-center text-[10px] text-gray-500 font-bold border border-gray-700">{i + 1}</div>
-                                        <input
-                                            className="flex-1 bg-gray-900/50 border border-gray-800/50 text-white text-xs px-3 py-2 rounded-lg outline-none focus:border-neon focus:bg-gray-900 transition-colors"
-                                            placeholder={`Option ${i + 1}`}
-                                            value={opt}
-                                            onChange={(e) => {
-                                                const newOpts = [...pollOptions];
-                                                newOpts[i] = e.target.value;
-                                                setPollOptions(newOpts);
-                                            }}
-                                        />
-                                        {pollOptions.length > 2 && (
-                                            <button onClick={() => setPollOptions(pollOptions.filter((_, idx) => idx !== i))} className="text-gray-600 hover:text-red-400 p-1">
-                                                <X className="w-3.5 h-3.5" />
-                                            </button>
-                                        )}
-                                    </div>
+                                    <input
+                                        key={i}
+                                        className="w-full bg-gray-900 border border-gray-800 text-white text-xs px-3 py-2 rounded-lg outline-none focus:border-gray-600"
+                                        placeholder={`Option ${i + 1}`}
+                                        value={opt}
+                                        onChange={(e) => {
+                                            const newOpts = [...pollOptions];
+                                            newOpts[i] = e.target.value;
+                                            setPollOptions(newOpts);
+                                        }}
+                                    />
                                 ))}
                                 {pollOptions.length < 4 && (
-                                    <button onClick={() => setPollOptions([...pollOptions, ''])} className="w-full py-1.5 text-xs text-center text-gray-500 hover:text-neon hover:bg-neon/5 rounded-lg border border-dashed border-gray-800 hover:border-neon/30 transition-all font-medium mt-1">
+                                    <button onClick={() => setPollOptions([...pollOptions, ''])} className="text-[10px] text-neon hover:underline font-bold w-full text-center py-1">
                                         + Add Option
                                     </button>
                                 )}
                             </div>
-                        )}
-
-                        <div className="flex gap-2 items-center px-1">
-                            <button
-                                onClick={() => { setIsPollMode(!isPollMode); setNewImage(null); }}
-                                className={`p-2.5 rounded-full transition-all duration-300 ${isPollMode ? 'bg-neon text-white shadow-neon-sm' : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700 hover:text-white'}`}
-                                title="Create Poll"
-                            >
-                                <BarChart2 className="w-5 h-5" />
-                            </button>
-
-                            <div className="h-6 w-px bg-gray-800 mx-0.5"></div>
-
-                            <input id="confession-image-input" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                            <button
-                                onClick={handleImageClick}
-                                disabled={isPollMode}
-                                className={`p-2.5 rounded-full transition-all duration-300 group ${isPollMode ? 'opacity-30 cursor-not-allowed' : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700 hover:text-white'}`}
-                                title="Upload Image"
-                            >
-                                <ImageIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                            </button>
-
-                            <textarea
-                                value={newText}
-                                onChange={e => setNewText(e.target.value)}
-                                placeholder={isPollMode ? "Ask a poll question..." : "Confess something anonymously..."}
-                                className="flex-1 bg-transparent text-white px-2 py-3 outline-none resize-none h-12 max-h-32 text-sm placeholder:text-gray-500"
-                                rows={1}
-                            />
-
-                            <button
-                                onClick={handlePost}
-                                disabled={(isPollMode ? (pollOptions.filter(o => o.trim()).length < 2 || !newText.trim()) : (!newText.trim() && !newImage)) || isPosting}
-                                className="p-3 bg-gradient-to-br from-neon to-pink-600 rounded-full text-white disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(255,0,127,0.3)] hover:scale-105 active:scale-95 transition-all"
-                            >
-                                {isPosting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 fill-white" />}
-                            </button>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
 
-            {/* Reuse existing Premium & Image Modal JSX */}
+            {/* Reaction Modal */}
             {activeReactionMenu && (
                 <>
-                    <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px]" onClick={() => { setActiveReactionMenu(null); setMenuPosition(null); }}></div>
+                    <div className="fixed inset-0 z-40 bg-black/50" onClick={() => { setActiveReactionMenu(null); setMenuPosition(null); }}></div>
                     <div
-                        className={`fixed z-50 bg-gray-900 border border-gray-700/50 shadow-2xl overflow-hidden animate-spring-up 
-                            ${menuPosition ? 'rounded-2xl' : 'bottom-0 left-0 right-0 rounded-t-3xl border-b-0 pb-8'}
+                        className={`fixed z-50 bg-gray-900 border border-gray-800 shadow-xl overflow-hidden
+                            ${menuPosition ? 'rounded-xl' : 'bottom-0 left-0 right-0 rounded-t-xl border-b-0 pb-6'}
                         `}
                         style={menuPosition ? { top: menuPosition.top, left: menuPosition.left } : {}}
                     >
-                        <div className="p-3 bg-black/50 border-b border-gray-800 flex justify-between items-center">
-                            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider pl-2">Tap to React</span>
-                        </div>
-                        <div className="flex items-center justify-around gap-1 p-3 bg-gray-900/50 overflow-x-auto custom-scrollbar md:max-w-[320px]">
+                        <div className="flex items-center justify-around gap-1 p-2 bg-black overflow-x-auto custom-scrollbar md:max-w-[300px]">
                             {REACTIONS.map(emoji => (
-                                <button key={emoji} onClick={() => handleReaction(activeReactionMenu, emoji)} className="text-3xl md:text-2xl hover:scale-125 transition-transform p-2 shrink-0">{emoji}</button>
+                                <button key={emoji} onClick={() => handleReaction(activeReactionMenu, emoji)} className="text-2xl hover:scale-110 transition-transform p-2">{emoji}</button>
                             ))}
-                        </div>
-                        <div className="w-full md:w-[320px] h-[300px]">
-                            <EmojiPicker onEmojiClick={(data) => handleExtendedReaction(activeReactionMenu, data)} theme={Theme.DARK} width="100%" height="300px" searchDisabled={false} previewConfig={{ showPreview: false }} />
                         </div>
                     </div>
                 </>
             )}
 
             {viewImage && (
-                <div className="fixed inset-0 z-[60] bg-black/95 flex items-center justify-center p-4 animate-fade-in" onClick={() => setViewImage(null)}>
-                    <button className="absolute top-6 right-6 p-3 bg-gray-800/50 rounded-full hover:bg-gray-700 text-white transition-colors backdrop-blur-md" onClick={() => setViewImage(null)}>
-                        <X className="w-6 h-6" />
-                    </button>
-                    <img src={viewImage || undefined} alt="Full Size" className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()} />
+                <div className="fixed inset-0 z-[60] bg-black/95 flex items-center justify-center p-4" onClick={() => setViewImage(null)}>
+                    <img src={viewImage || undefined} alt="Full Size" className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-lg" onClick={(e) => e.stopPropagation()} />
                 </div>
             )}
-
-            <style>{`
-                .animate-pulse-slow {
-                    animation: pulse 8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-                }
-                .animate-float {
-                    animation: float 6s ease-in-out infinite;
-                }
-                @keyframes float {
-                    0% { transform: translateY(0px); }
-                    50% { transform: translateY(-10px); }
-                    100% { transform: translateY(0px); }
-                }
-            `}</style>
         </div>
     );
 };
