@@ -300,7 +300,7 @@ export const Profile: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 items-start">
 
                         {/* Left Col: Bio & Interests */}
-                        <div className={`${(isSelf && !isEditing) ? 'md:col-span-9' : 'md:col-span-12'} space-y-6`}>
+                        <div className={`${(isSelf && !isEditing) ? 'md:col-span-8' : 'md:col-span-12'} space-y-6`}>
                             {isEditing ? (
                                 <div className="bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-[2rem] p-6 md:p-8 animate-fade-in shadow-xl">
                                     <div className="flex items-center justify-between mb-8 border-b border-gray-800 pb-4">
@@ -450,7 +450,7 @@ export const Profile: React.FC = () => {
 
                         {/* Right Col: Stats & Support (Conditional) */}
                         {(isSelf && !isEditing) && (
-                            <div className="md:col-span-3 space-y-6 sticky top-6">
+                            <div className="md:col-span-4 space-y-6 sticky top-6">
                                 {/* Support & Contact */}
                                 <div className="bg-gray-900/40 border border-gray-800 rounded-[2rem] p-6 backdrop-blur-md space-y-3">
                                     <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Account</h3>
