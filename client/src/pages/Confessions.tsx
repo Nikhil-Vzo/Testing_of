@@ -114,11 +114,6 @@ export const Confessions: React.FC = () => {
                 reactionCounts[r.emoji] = (reactionCounts[r.emoji] || 0) + 1;
             });
 
-            const myReactionObj = p.confession_reactions.find((r: any) => r.user_id === currentUser.id);
-            if (myReactionObj) {
-                // console.log('Found my reaction for post', p.id, myReactionObj.emoji);
-            }
-
             return {
                 id: p.id,
                 userId: p.id === adminPostId || p.text === ADMIN_TEXT_SIGNATURE ? 'OthrHalff Team' : 'Anonymous', // Override name for admin post
@@ -318,31 +313,28 @@ export const Confessions: React.FC = () => {
         const confession = confessions.find(c => c.id === id);
         const currentReaction = confession?.userReaction;
 
-        console.log('--- Reaction Debug ---');
-        console.log('Confession ID:', id);
-        console.log('Current User:', currentUser?.id);
-        console.log('Emoji Clicked:', emoji);
-        console.log('Current Reaction State:', currentReaction);
-
         try {
             // 1. If clicked same emoji -> Remove it (Toggle OFF)
-            // 2. If clicked different emoji -> Remove old ONE -> Insert NEW ONE (Switch)
-            // 3. If no existing reaction -> Insert NEW ONE
+            // 2. If clicked different emoji -> Upsert (Update or Insert) - Handles the switch atomically
 
-            if (currentReaction) {
+            if (currentReaction === emoji) {
                 await supabase
                     .from('confession_reactions')
                     .delete()
                     .eq('confession_id', id)
                     .eq('user_id', currentUser!.id);
-            }
+            } else {
+                // Upsert handles both "New Reaction" and "Change Reaction" without 409 conflicts
+                // It relies on the unique constraint on (confession_id, user_id)
+                const { error } = await supabase
+                    .from('confession_reactions')
+                    .upsert({
+                        confession_id: id,
+                        user_id: currentUser!.id,
+                        emoji: emoji
+                    }, { onConflict: 'confession_id,user_id' });
 
-            if (currentReaction !== emoji) {
-                await supabase.from('confession_reactions').insert({
-                    confession_id: id,
-                    user_id: currentUser!.id,
-                    emoji: emoji
-                });
+                if (error) throw error;
             }
 
             fetchConfessions();
