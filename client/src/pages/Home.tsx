@@ -532,7 +532,7 @@ export const Home: React.FC = () => {
                                                 : currentProfile.anonymousId}
                                         </h1>
                                         <span className="text-xl md:text-2xl font-normal text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
-                                            {currentProfile.year === 'Freshman' ? '18' : '20'}
+                                            {currentProfile.year === '1st Year' ? '18' : '20'}
                                         </span>
                                         {currentProfile.isVerified && (
                                             <Sparkles className="w-5 h-5 text-blue-400 drop-shadow-lg" />

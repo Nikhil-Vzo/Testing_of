@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { UserProfile } from '../types';
 import { NeonInput, NeonButton } from '../components/Common';
 import { Ghost, Upload, Lock, ChevronDown, Loader2, AlertCircle, CheckCircle2, X, Calendar } from 'lucide-react';
-import { AVATAR_PRESETS, MOCK_INTERESTS, CHHATTISGARH_COLLEGES, LOOKING_FOR_OPTIONS } from '../constants';
+import { AVATAR_PRESETS, MOCK_INTERESTS, CHHATTISGARH_COLLEGES, LOOKING_FOR_OPTIONS, BRANCH_CATEGORIES, YEAR_OPTIONS } from '../constants';
 import { authService } from '../services/auth';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -42,8 +42,10 @@ export const Onboarding: React.FC = () => {
     realName: '',
     bio: '',
     branch: '',
-    year: 'Freshman'
+    year: '1st Year'
   });
+
+  const [branchCategory, setBranchCategory] = useState('');
 
   // --- NEW: Check for existing profile & Auto-fill from Google ---
   useEffect(() => {
@@ -148,6 +150,10 @@ export const Onboarding: React.FC = () => {
     }
     if (!tempProfile.realName?.trim()) {
       setError("Please enter your real name.");
+      return;
+    }
+    if (!tempProfile.branch?.trim()) {
+      setError("Please select your field of study.");
       return;
     }
     if (!dobDay || !dobMonth || !dobYear) {
@@ -344,12 +350,38 @@ export const Onboarding: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Branch / Major</label>
-              <NeonInput
-                value={tempProfile.branch || ''}
-                onChange={e => setTempProfile({ ...tempProfile, branch: e.target.value })}
-                placeholder="e.g., CS"
-              />
+              <label className="block text-sm text-gray-400 mb-1">Field of Study</label>
+              <div className="relative">
+                <select
+                  className="w-full bg-gray-900 border-2 border-gray-800 text-white px-4 py-3 rounded-xl outline-none focus:border-neon appearance-none h-[52px] pr-10"
+                  value={branchCategory}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setBranchCategory(val);
+                    if (val !== 'Other') {
+                      setTempProfile({ ...tempProfile, branch: val });
+                    } else {
+                      setTempProfile({ ...tempProfile, branch: '' });
+                    }
+                  }}
+                >
+                  <option value="">Select Field</option>
+                  {BRANCH_CATEGORIES.map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5 pointer-events-none" />
+              </div>
+
+              {branchCategory === 'Other' && (
+                <div className="mt-2 animate-fade-in">
+                  <NeonInput
+                    value={tempProfile.branch || ''}
+                    onChange={e => setTempProfile({ ...tempProfile, branch: e.target.value })}
+                    placeholder="Specific Branch/Major"
+                  />
+                </div>
+              )}
             </div>
 
             <div>
@@ -360,11 +392,9 @@ export const Onboarding: React.FC = () => {
                   value={tempProfile.year}
                   onChange={e => setTempProfile({ ...tempProfile, year: e.target.value })}
                 >
-                  <option>Freshman</option>
-                  <option>Sophomore</option>
-                  <option>Junior</option>
-                  <option>Senior</option>
-                  <option>Grad</option>
+                  {YEAR_OPTIONS.map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
                 </select>
                 <ChevronDown className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5 pointer-events-none" />
               </div>

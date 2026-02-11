@@ -9,7 +9,7 @@ import {
     LogOut, ChevronDown, Settings, Lock, ShieldBan,
     MessageCircle, Mail, Phone, Loader2, Heart, Search
 } from 'lucide-react';
-import { AVATAR_PRESETS, LOOKING_FOR_OPTIONS } from '../constants';
+import { AVATAR_PRESETS, LOOKING_FOR_OPTIONS, YEAR_OPTIONS } from '../constants';
 
 export const Profile: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -317,10 +317,10 @@ export const Profile: React.FC = () => {
                                                 <div className="relative">
                                                     <select
                                                         className="w-full bg-gray-900 border border-gray-700 text-white px-4 py-3 rounded-xl outline-none focus:border-neon appearance-none"
-                                                        value={editForm.year || 'Freshman'}
+                                                        value={editForm.year || '1st Year'}
                                                         onChange={e => setEditForm({ ...editForm, year: e.target.value })}
                                                     >
-                                                        {['Freshman', 'Sophomore', 'Junior', 'Senior', 'Grad'].map(y => <option key={y} value={y}>{y}</option>)}
+                                                        {YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
                                                     </select>
                                                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
                                                 </div>

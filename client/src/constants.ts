@@ -16,6 +16,26 @@ export const LOOKING_FOR_OPTIONS = [
   "Flirt"
 ];
 
+export const BRANCH_CATEGORIES = [
+  "Engineering & Technology",
+  "Commerce & Management",
+  "Arts & Humanities",
+  "Law",
+  "Journalism & Media",
+  "Medical & Health",
+  "Design & Architecture",
+  "Other"
+];
+
+export const YEAR_OPTIONS = [
+  "1st Year",
+  "2nd Year",
+  "3rd Year",
+  "4th Year",
+  "5th Year",
+  "Postgrad – 1st Year"
+];
+
 export const AVATAR_PRESETS = [
   "https://api.dicebear.com/9.x/thumbs/svg?seed=Felix",
   "https://api.dicebear.com/9.x/thumbs/svg?seed=Aneka",
