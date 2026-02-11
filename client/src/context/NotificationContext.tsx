@@ -73,9 +73,31 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 } : undefined
             }));
 
-            console.log('Fetched notifications:', mapped.length, 'Unread:', mapped.filter(n => !n.read).length);
-            setNotifications(mapped);
-            setUnreadCount(mapped.filter(n => !n.read).length);
+            // Deduplicate: Keep only the most recent notification per user for 'like' and 'match' types
+            const uniqueNotifications: NotificationItem[] = [];
+            const seenMap = new Set<string>();
+
+            for (const notif of mapped) {
+                // Determine uniqueness key
+                let uniqueKey = notif.id; // Default: uniqueness by ID
+
+                if (notif.type === 'like' || notif.type === 'match') {
+                    // For social interactions, dedupe by Sender + Type
+                    // This prevents "User X liked you" appearing twice
+                    if (notif.fromUserId) {
+                        uniqueKey = `${notif.type}-${notif.fromUserId}`;
+                    }
+                }
+
+                if (!seenMap.has(uniqueKey)) {
+                    seenMap.add(uniqueKey);
+                    uniqueNotifications.push(notif);
+                }
+            }
+
+            console.log('Fetched notifications:', uniqueNotifications.length, 'Unread:', uniqueNotifications.filter(n => !n.read).length);
+            setNotifications(uniqueNotifications);
+            setUnreadCount(uniqueNotifications.filter(n => !n.read).length);
         } catch (err) {
             console.error('Error fetching notifications:', err);
         } finally {
