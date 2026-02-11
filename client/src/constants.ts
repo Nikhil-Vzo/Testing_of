@@ -5,6 +5,16 @@ export const MOCK_INTERESTS = [
   "Reading", "Travel", "Fitness", "Coffee", "Startups", "AI"
 ];
 
+export const LOOKING_FOR_OPTIONS = [
+  "Gym Partner",
+  "Gaming",
+  "Study Partner",
+  "Hangout Partner",
+  "Relationship",
+  "Fun",
+  "Flirt"
+];
+
 export const AVATAR_PRESETS = [
   "https://api.dicebear.com/9.x/thumbs/svg?seed=Felix",
   "https://api.dicebear.com/9.x/thumbs/svg?seed=Aneka",

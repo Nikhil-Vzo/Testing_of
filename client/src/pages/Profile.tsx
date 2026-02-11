@@ -7,9 +7,9 @@ import { NeonButton, NeonInput } from '../components/Common';
 import {
     Edit2, Camera, X, Ghost, User, GraduationCap, CheckCircle2,
     LogOut, ChevronDown, Settings, Lock, ShieldBan,
-    MessageCircle, Mail, Phone, Loader2, Heart
+    MessageCircle, Mail, Phone, Loader2, Heart, Search
 } from 'lucide-react';
-import { AVATAR_PRESETS } from '../constants';
+import { AVATAR_PRESETS, LOOKING_FOR_OPTIONS } from '../constants';
 
 export const Profile: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -65,7 +65,8 @@ export const Profile: React.FC = () => {
                         dob: data.dob,
                         isVerified: data.is_verified,
                         avatar: data.avatar,
-                        isPremium: data.is_premium
+                        isPremium: data.is_premium,
+                        lookingFor: data.looking_for || []
                     };
                     setFetchedProfile(mapped);
                 }
@@ -115,7 +116,9 @@ export const Profile: React.FC = () => {
                 bio: editForm.bio,
                 dob: editForm.dob,
                 avatar: editForm.avatar,
+
                 interests: editForm.interests,
+                looking_for: editForm.lookingFor,
                 updated_at: new Date().toISOString()
             };
 
@@ -342,6 +345,31 @@ export const Profile: React.FC = () => {
                                             />
                                         </div>
 
+                                        {/* Edit Looking For */}
+                                        <div>
+                                            <label className="text-xs text-gray-500 uppercase font-bold block mb-2">Looking For</label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {LOOKING_FOR_OPTIONS.map(option => (
+                                                    <button
+                                                        key={option}
+                                                        onClick={() => {
+                                                            const current = editForm.lookingFor || [];
+                                                            const updated = current.includes(option)
+                                                                ? current.filter(i => i !== option)
+                                                                : [...current, option];
+                                                            setEditForm({ ...editForm, lookingFor: updated });
+                                                        }}
+                                                        className={`px-3 py-1 rounded-full text-xs border transition-all ${(editForm.lookingFor || []).includes(option)
+                                                            ? 'bg-pink-500 border-pink-500 text-white shadow-lg'
+                                                            : 'bg-transparent border-gray-700 text-gray-400 hover:border-gray-500'
+                                                            }`}
+                                                    >
+                                                        {option}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
                                         <div className="flex gap-4 pt-4 border-t border-gray-800">
                                             <NeonButton onClick={saveProfile} className="flex-1" disabled={saving}>
                                                 {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Save Changes'}
@@ -374,6 +402,22 @@ export const Profile: React.FC = () => {
                                                     #{tag}
                                                 </span>
                                             ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Looking For */}
+                                    <div className="bg-gray-900/40 border border-gray-800 rounded-[2rem] p-8 backdrop-blur-md mt-6">
+                                        <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                                            <Search className="w-5 h-5 text-pink-500" /> Looking For
+                                        </h3>
+                                        <div className="flex flex-wrap gap-3">
+                                            {(profileUser.lookingFor && profileUser.lookingFor.length > 0) ? profileUser.lookingFor.map(tag => (
+                                                <span key={tag} className="px-5 py-2 bg-pink-500/10 border border-pink-500/30 rounded-2xl text-sm font-bold text-pink-200 cursor-default">
+                                                    {tag}
+                                                </span>
+                                            )) : (
+                                                <span className="text-gray-500 italic">Not specified</span>
+                                            )}
                                         </div>
                                     </div>
                                 </>

@@ -45,6 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               branch: profile.branch,
               year: profile.year,
               interests: profile.interests || [],
+              lookingFor: profile.looking_for || [],
               bio: profile.bio,
               dob: profile.dob,
               isVerified: profile.is_verified,

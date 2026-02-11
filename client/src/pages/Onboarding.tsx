@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { UserProfile } from '../types';
 import { NeonInput, NeonButton } from '../components/Common';
 import { Ghost, Upload, Lock, ChevronDown, Loader2, AlertCircle, CheckCircle2, X, Calendar } from 'lucide-react';
-import { AVATAR_PRESETS, MOCK_INTERESTS, CHHATTISGARH_COLLEGES } from '../constants';
+import { AVATAR_PRESETS, MOCK_INTERESTS, CHHATTISGARH_COLLEGES, LOOKING_FOR_OPTIONS } from '../constants';
 import { authService } from '../services/auth';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -34,6 +34,7 @@ export const Onboarding: React.FC = () => {
 
   const [tempProfile, setTempProfile] = useState<Partial<UserProfile>>({
     interests: [],
+    lookingFor: [],
     gender: 'Male',
     university: CHHATTISGARH_COLLEGES[0],
     avatar: AVATAR_PRESETS[0],
@@ -74,6 +75,7 @@ export const Onboarding: React.FC = () => {
             branch: existingProfile.branch,
             year: existingProfile.year,
             interests: existingProfile.interests || [],
+            lookingFor: existingProfile.looking_for || [],
             bio: existingProfile.bio,
             dob: existingProfile.dob,
             isVerified: existingProfile.is_verified,
@@ -126,6 +128,16 @@ export const Onboarding: React.FC = () => {
     });
   };
 
+  const toggleLookingFor = (option: string) => {
+    setTempProfile(prev => {
+      const current = prev.lookingFor || [];
+      if (current.includes(option)) return { ...prev, lookingFor: current.filter(i => i !== option) };
+      // No max limit mentioned, but let's keep it reasonable or unlimited. User said "at least 2".
+      // Let's not limit max for now.
+      return { ...prev, lookingFor: [...current, option] };
+    });
+  };
+
   const handleCreateProfile = async () => {
     setError(null);
 
@@ -144,6 +156,10 @@ export const Onboarding: React.FC = () => {
     }
     if ((tempProfile.interests || []).length === 0) {
       setError("Please select at least one interest.");
+      return;
+    }
+    if ((tempProfile.lookingFor || []).length < 2) {
+      setError("Please select at least 2 'Looking For' options.");
       return;
     }
 
@@ -180,6 +196,7 @@ export const Onboarding: React.FC = () => {
         branch: tempProfile.branch || 'General',
         year: tempProfile.year || 'Freshman',
         interests: tempProfile.interests || [],
+        lookingFor: tempProfile.lookingFor || [],
         bio: tempProfile.bio || '',
         avatar: tempProfile.avatar || AVATAR_PRESETS[0],
         dob: formattedDob
@@ -421,6 +438,25 @@ export const Onboarding: React.FC = () => {
                     }`}
                 >
                   {interest}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Looking For */}
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">I'm looking for... (Select at least 2)</label>
+            <div className="flex flex-wrap gap-2">
+              {LOOKING_FOR_OPTIONS.map(option => (
+                <button
+                  key={option}
+                  onClick={() => toggleLookingFor(option)}
+                  className={`px-3 py-1 rounded-full text-xs border transition-all ${(tempProfile.lookingFor || []).includes(option)
+                    ? 'bg-pink-500 border-pink-500 text-white shadow-lg'
+                    : 'bg-transparent border-gray-700 text-gray-400 hover:border-gray-500'
+                    }`}
+                >
+                  {option}
                 </button>
               ))}
             </div>

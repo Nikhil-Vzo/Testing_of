@@ -29,6 +29,7 @@ export const authService = {
             bio: user.bio,
             dob: user.dob,
             is_verified: user.isVerified,
+            looking_for: user.lookingFor,
             avatar: user.avatar, // Storing base64/URL string
             updated_at: new Date().toISOString(),
           };

@@ -8,6 +8,7 @@ export interface UserProfile {
   branch: string;
   year: string;
   interests: string[];
+  lookingFor?: string[];
   bio: string;
   dob: string;
   isVerified: boolean;
