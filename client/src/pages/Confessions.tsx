@@ -130,7 +130,8 @@ export const Confessions: React.FC = () => {
                     text: opt.text,
                     votes: opt.vote_count
                 })),
-                userVote: myVoteMap.get(p.id)
+                userVote: myVoteMap.get(p.id),
+                userReaction: p.confession_reactions.find((r: any) => r.user_id === currentUser.id)?.emoji
             };
         });
 
@@ -309,17 +310,33 @@ export const Confessions: React.FC = () => {
         setActiveReactionMenu(null);
         setMenuPosition(null);
 
-        // DB Insert
+        const confession = confessions.find(c => c.id === id);
+        const currentReaction = confession?.userReaction;
+
         try {
-            await supabase.from('confession_reactions').insert({
-                confession_id: id,
-                user_id: currentUser!.id,
-                emoji: emoji
-            });
+            // 1. If clicked same emoji -> Remove it (Toggle OFF)
+            // 2. If clicked different emoji -> Remove old ONE -> Insert NEW ONE (Switch)
+            // 3. If no existing reaction -> Insert NEW ONE
+
+            if (currentReaction) {
+                await supabase
+                    .from('confession_reactions')
+                    .delete()
+                    .eq('confession_id', id)
+                    .eq('user_id', currentUser!.id);
+            }
+
+            if (currentReaction !== emoji) {
+                await supabase.from('confession_reactions').insert({
+                    confession_id: id,
+                    user_id: currentUser!.id,
+                    emoji: emoji
+                });
+            }
+
             fetchConfessions();
         } catch (err: any) {
-            // Ignore unique violation (user reacted same emoji twice)
-            if (err.code !== '23505') console.error('React error:', err);
+            console.error('React error:', err);
         }
     };
 
@@ -512,7 +529,7 @@ export const Confessions: React.FC = () => {
                     // But our fetch logic attempts to create/find a real one.
 
                     return (
-                        <div className="bg-black border border-gray-900 rounded-xl p-4 mb-4 relative shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+                        <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-xl p-4 mb-4 relative shadow-[0_0_20px_rgba(0,0,0,0.5)]">
                             <div className="absolute top-4 right-4 animate-pulse">
                                 <Crown className="w-3 h-3 text-yellow-500" />
                             </div>
@@ -619,7 +636,7 @@ export const Confessions: React.FC = () => {
                     sortedConfessions
                         .filter(c => c.id !== 'othrhalff-welcome' && c.id !== adminPostId) // Don't show admin post in regular feed if it's there
                         .map(conf => (
-                            <div key={conf.id} className="bg-black border border-gray-900 rounded-xl p-4">
+                            <div key={conf.id} className="bg-black/40 backdrop-blur-md border border-white/10 rounded-xl p-4">
                                 <div className="flex gap-3 mb-3">
                                     <div className="w-10 h-10 rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center shrink-0">
                                         <span className="text-sm font-bold text-gray-500">?</span>

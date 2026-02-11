@@ -74,6 +74,7 @@ export interface Confession {
   type?: 'text' | 'poll';
   pollOptions?: PollOption[];
   userVote?: string;
+  userReaction?: string; // Emoji user reacted with
 }
 
 export enum AppView {
