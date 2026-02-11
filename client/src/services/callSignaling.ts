@@ -196,6 +196,28 @@ export const sendCallSignal = async (receiverId: string, payload: any) => {
 };
 
 /**
+ * Check if a user is currently busy (on an active call or has a ringing call)
+ */
+export const checkUserBusy = async (userId: string): Promise<boolean> => {
+    if (!supabase) return false;
+
+    try {
+        const { data, error } = await supabase
+            .from('call_sessions')
+            .select('id')
+            .or(`caller_id.eq.${userId},receiver_id.eq.${userId}`)
+            .in('status', ['ringing', 'active'])
+            .limit(1);
+
+        if (error) throw error;
+        return (data && data.length > 0) || false;
+    } catch (error) {
+        console.error('Error checking user busy status:', error);
+        return false;
+    }
+};
+
+/**
  * Subscribe to incoming calls for the current user
  */
 export const subscribeToIncomingCalls = (

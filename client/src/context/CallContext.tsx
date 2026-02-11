@@ -48,14 +48,31 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [callSessionId, setCallSessionId] = useState('');
 
+  // Refs for latest state (used in subscription callbacks to avoid stale closures)
+  const isCallActiveRef = useRef(false);
+  const incomingCallRef = useRef<IncomingCall | null>(null);
+  const outgoingCallRef = useRef<typeof outgoingCall>(null);
+
+  // Keep refs in sync
+  useEffect(() => { isCallActiveRef.current = isCallActive; }, [isCallActive]);
+  useEffect(() => { incomingCallRef.current = incomingCall; }, [incomingCall]);
+  useEffect(() => { outgoingCallRef.current = outgoingCall; }, [outgoingCall]);
+
   // Subscribe to incoming calls
   useEffect(() => {
     if (!currentUser) return;
 
     const unsubscribe = subscribeToIncomingCalls(currentUser.id, async (payload: any) => {
+      // === BUSY STATE: Ignore new calls if user is already on a call or has an incoming call ===
+      const isBusy = isCallActiveRef.current || incomingCallRef.current !== null || outgoingCallRef.current !== null;
+
       // Handle Broadcast (Optimistic)
       if (payload.isBroadcast) {
         console.log('[CallContext] Received broadcast signal:', payload);
+        if (isBusy) {
+          console.log('[CallContext] User is busy, ignoring broadcast signal');
+          return;
+        }
         setIncomingCall({
           callSessionId: '', // Placeholder, will be updated by DB
           callerId: payload.id,
@@ -85,6 +102,13 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (callerProfile) {
+        // If user is busy (on a call, has incoming, or making outgoing), auto-reject this DB session
+        if (isBusy) {
+          console.log('[CallContext] User is busy, auto-rejecting call session:', callSession.id);
+          await rejectCallAPI(callSession.id);
+          return;
+        }
+
         setIncomingCall(prev => ({
           callSessionId: callSession.id,
           callerId: callSession.caller_id,

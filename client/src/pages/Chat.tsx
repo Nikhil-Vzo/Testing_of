@@ -11,12 +11,12 @@ import { VideoCall } from '../components/VideoCall';
 import { PermissionModal } from '../components/PermissionModal';
 import { blockUser, unblockUser, isUserBlocked, isBlockedBy } from '../services/blockService';
 import { ConfirmationModal } from '../components/ConfirmationModal';
-import { initiateCall } from '../services/callSignaling';
+import { initiateCall, checkUserBusy } from '../services/callSignaling';
 
 export const Chat: React.FC = () => {
   const { id: matchId } = useParams<{ id: string }>(); // This is the MATCH ID from the URL
   const { currentUser } = useAuth();
-  const { startCall, setOutgoingCall } = useCall();
+  const { startCall, setOutgoingCall, isCallActive } = useCall();
   const { subscribeToUser, unsubscribeFromUser, isUserOnline, getLastSeen } = usePresence();
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -333,6 +333,12 @@ export const Chat: React.FC = () => {
   const startVideoCall = async (type: 'audio' | 'video' = 'video') => {
     if (!partner || isStartingCall || !matchId) return;
 
+    // Check if we're already on a call
+    if (isCallActive) {
+      showToast('You are already on a call.', 'warning');
+      return;
+    }
+
     // Check if partner is online
     const partnerOnline = isUserOnline(partner.id);
 
@@ -371,6 +377,18 @@ export const Chat: React.FC = () => {
     if (!partner || !matchId || !currentUser) return;
 
     setIsStartingCall(true);
+
+    // Check if receiver is busy (on another call)
+    try {
+      const receiverBusy = await checkUserBusy(partner.id);
+      if (receiverBusy) {
+        showToast(`${partner.realName || partner.anonymousId} is on another call. Try again later.`, 'info');
+        setIsStartingCall(false);
+        return;
+      }
+    } catch (err) {
+      console.error('Error checking busy status:', err);
+    }
 
     // Show outgoing call modal
     setOutgoingCall({
