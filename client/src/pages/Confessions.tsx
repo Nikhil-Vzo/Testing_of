@@ -351,7 +351,49 @@ export const Confessions: React.FC = () => {
 
     const sortedConfessions = getSortedConfessions();
 
+    // Amity-only gate
+    const isAmityStudent = currentUser?.university?.toLowerCase().includes('amity');
 
+    if (!isAmityStudent) {
+        return (
+            <div className="h-full bg-transparent text-white flex flex-col relative overflow-hidden">
+                <div className="p-4 border-b border-gray-900 flex items-center justify-between bg-black z-20 shrink-0">
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => navigate('/home')} className="p-2 hover:bg-gray-800 rounded-full transition-colors hidden md:block">
+                            <ArrowLeft className="w-6 h-6 text-gray-400" />
+                        </button>
+                        <div>
+                            <h1 className="text-xl font-black uppercase tracking-tight">Campus Confessions</h1>
+                            <p className="text-xs text-gray-500 font-mono">Coming Soon</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex-1 flex items-center justify-center px-6">
+                    <div className="text-center max-w-md animate-fade-in">
+                        <div className="w-20 h-20 bg-neon/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-neon/30">
+                            <MessageCircle className="w-10 h-10 text-neon" />
+                        </div>
+                        <h2 className="text-2xl font-black text-white mb-3">Amity Exclusive — For Now</h2>
+                        <p className="text-gray-400 text-sm leading-relaxed mb-6">
+                            Campus Confessions is currently available only for <span className="text-neon font-bold">Amity University</span> students.
+                            We're working on bringing this to your campus soon!
+                        </p>
+                        <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-4 mb-6">
+                            <p className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-2">Your Campus</p>
+                            <p className="text-sm text-gray-300 font-medium">{currentUser?.university || 'Unknown'}</p>
+                        </div>
+                        <button
+                            onClick={() => navigate('/home')}
+                            className="px-8 py-3 bg-neon text-white font-bold rounded-full hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,0,127,0.4)]"
+                        >
+                            Back to Home
+                        </button>
+                        <p className="text-xs text-gray-600 mt-4">Enrolling other colleges soon 🚀</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="h-full bg-transparent text-white flex flex-col relative overflow-hidden">
@@ -363,9 +405,9 @@ export const Confessions: React.FC = () => {
                     </button>
                     <div>
                         <h1 className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
-                            Global Confessions
+                            Campus Confessions
                         </h1>
-                        <p className="text-xs text-gray-500 font-mono truncate max-w-[180px]">All Universities</p>
+                        <p className="text-xs text-gray-500 font-mono truncate max-w-[180px]">Amity University</p>
                     </div>
                 </div>
 
