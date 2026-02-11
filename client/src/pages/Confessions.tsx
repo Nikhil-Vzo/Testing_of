@@ -307,39 +307,69 @@ export const Confessions: React.FC = () => {
     };
 
     const handleReaction = async (id: string, emoji: string) => {
+        if (!currentUser) return;
+
+        // Close the menu immediately for better UX
         setActiveReactionMenu(null);
         setMenuPosition(null);
 
         const confession = confessions.find(c => c.id === id);
-        const currentReaction = confession?.userReaction;
+        const previousReaction = confession?.userReaction;
 
+        // --- OPTIMISTIC UI UPDATE ---
+        setConfessions(prev => prev.map(c => {
+            if (c.id !== id) return c;
+
+            const newReactions = { ...c.reactions };
+
+            // 1. Remove the old reaction count if it existed
+            if (previousReaction) {
+                newReactions[previousReaction] = Math.max(0, (newReactions[previousReaction] || 1) - 1);
+            }
+
+            // 2. Determine the new state
+            let newUserReaction: string | undefined = emoji;
+
+            if (previousReaction === emoji) {
+                // Toggling OFF: same emoji clicked
+                newUserReaction = undefined;
+            } else {
+                // Switching or New: Add to the new emoji count
+                newReactions[emoji] = (newReactions[emoji] || 0) + 1;
+            }
+
+            return {
+                ...c,
+                userReaction: newUserReaction,
+                reactions: newReactions,
+                likes: Object.values(newReactions).reduce((a, b) => a + b, 0) // Recalculate total likes
+            };
+        }));
+
+        // --- DATABASE SYNC ---
         try {
-            // 1. If clicked same emoji -> Remove it (Toggle OFF)
-            // 2. If clicked different emoji -> Upsert (Update or Insert) - Handles the switch atomically
-
-            if (currentReaction === emoji) {
-                await supabase
+            if (previousReaction === emoji) {
+                // Delete from DB if toggled off
+                const { error } = await supabase
                     .from('confession_reactions')
                     .delete()
                     .eq('confession_id', id)
-                    .eq('user_id', currentUser!.id);
+                    .eq('user_id', currentUser.id);
+                if (error) throw error;
             } else {
-                // Upsert handles both "New Reaction" and "Change Reaction" without 409 conflicts
-                // It relies on the unique constraint on (confession_id, user_id)
+                // Upsert handles both new and switched reactions
                 const { error } = await supabase
                     .from('confession_reactions')
                     .upsert({
                         confession_id: id,
-                        user_id: currentUser!.id,
+                        user_id: currentUser.id,
                         emoji: emoji
                     }, { onConflict: 'confession_id,user_id' });
-
                 if (error) throw error;
             }
-
-            fetchConfessions();
-        } catch (err: any) {
-            console.error('React error:', err);
+        } catch (err) {
+            console.error('Reaction sync error:', err);
+            fetchConfessions(); // Revert to server state on error
         }
     };
 
