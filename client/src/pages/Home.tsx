@@ -129,6 +129,7 @@ export const Home: React.FC = () => {
                         dob: p.dob,
                         isVerified: p.is_verified,
                         avatar: p.avatar,
+                        lookingFor: p.looking_for || [],
                         matchPercentage: Math.floor(Math.random() * (99 - 70 + 1) + 70),
                         distance: 'On Campus'
                     }));
@@ -564,6 +565,15 @@ export const Home: React.FC = () => {
                                             <span className="drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)]">
                                                 {[currentProfile.branch, currentProfile.year].filter(Boolean).join(' • ')}
                                             </span>
+                                        </div>
+                                    )}
+                                    {currentProfile.lookingFor && currentProfile.lookingFor.length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                            {currentProfile.lookingFor.slice(0, 2).map(tag => (
+                                                <span key={tag} className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-neon/20 text-neon border border-neon/30 backdrop-blur-sm drop-shadow-lg">
+                                                    {tag}
+                                                </span>
+                                            ))}
                                         </div>
                                     )}
                                 </div>
