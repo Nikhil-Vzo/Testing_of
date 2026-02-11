@@ -7,7 +7,9 @@ import { NeonButton, NeonInput } from '../components/Common';
 import {
     Edit2, Camera, X, Ghost, User, GraduationCap, CheckCircle2,
     LogOut, ChevronDown, Settings, Lock, ShieldBan,
-    MessageCircle, Mail, Phone, Loader2, Heart, Search
+    MessageCircle, Mail, Phone, Loader2, Heart, Search,
+    Download, Smartphone, ExternalLink, Code, Scale, FileText,
+    Shield, Info, Briefcase, Users
 } from 'lucide-react';
 import { AVATAR_PRESETS, LOOKING_FOR_OPTIONS, YEAR_OPTIONS } from '../constants';
 
@@ -27,6 +29,28 @@ export const Profile: React.FC = () => {
     const [fetchedProfile, setFetchedProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+    // Capture PWA install prompt
+    useEffect(() => {
+        const handler = (e: any) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+        };
+        window.addEventListener('beforeinstallprompt', handler);
+        return () => window.removeEventListener('beforeinstallprompt', handler);
+    }, []);
+
+    const handleInstallPWA = async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') setDeferredPrompt(null);
+        } else {
+            // iOS / already installed fallback
+            alert('To install: tap the Share button in your browser, then "Add to Home Screen".');
+        }
+    };
 
     // Determine if viewing self
     const isSelf = !id || id === currentUser?.id;
@@ -452,6 +476,66 @@ export const Profile: React.FC = () => {
                                             <LogOut className="w-5 h-5" />
                                         </div>
                                         <span className="font-bold text-gray-300 group-hover:text-red-400 text-sm">Log Out</span>
+                                    </button>
+                                </div>
+
+                                {/* Install App */}
+                                <div className="bg-gray-900/40 border border-gray-800 rounded-[2rem] p-6 backdrop-blur-md">
+                                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Install App</h3>
+                                    <button
+                                        onClick={handleInstallPWA}
+                                        className="w-full p-4 rounded-xl bg-gradient-to-r from-neon/20 to-purple-600/20 border border-neon/30 hover:border-neon/60 group text-left transition-all flex items-center gap-3"
+                                    >
+                                        <div className="p-2.5 bg-neon/10 rounded-xl text-neon">
+                                            <Smartphone className="w-5 h-5" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <span className="font-bold text-white text-sm block">Install OthrHalff</span>
+                                            <span className="text-xs text-gray-400">Add to home screen for the best experience</span>
+                                        </div>
+                                        <Download className="w-4 h-4 text-gray-500 group-hover:text-neon transition-colors" />
+                                    </button>
+                                </div>
+
+                                {/* Company & Legal */}
+                                <div className="bg-gray-900/40 border border-gray-800 rounded-[2rem] p-6 backdrop-blur-md space-y-2">
+                                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Company & Legal</h3>
+
+                                    {[
+                                        { label: 'About Us', icon: Info, path: '/about' },
+                                        { label: 'Privacy Policy', icon: Lock, path: '/privacy' },
+                                        { label: 'Terms of Service', icon: Scale, path: '/terms' },
+                                        { label: 'Safety', icon: Shield, path: '/safety' },
+                                        { label: 'Community Guidelines', icon: FileText, path: '/guidelines' },
+                                        { label: 'Careers', icon: Briefcase, path: '/careers' },
+                                    ].map(item => (
+                                        <button
+                                            key={item.path}
+                                            onClick={() => navigate(item.path)}
+                                            className="w-full p-3.5 rounded-xl hover:bg-gray-800/60 group text-left transition-all flex items-center gap-3"
+                                        >
+                                            <item.icon className="w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors" />
+                                            <span className="text-sm text-gray-300 group-hover:text-white transition-colors flex-1">{item.label}</span>
+                                            <ExternalLink className="w-3.5 h-3.5 text-gray-600 group-hover:text-gray-400 transition-colors" />
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Meet the Devs */}
+                                <div className="bg-gray-900/40 border border-gray-800 rounded-[2rem] p-6 backdrop-blur-md">
+                                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Behind the Scenes</h3>
+                                    <button
+                                        onClick={() => navigate('/developers')}
+                                        className="w-full p-4 rounded-xl bg-gradient-to-r from-blue-600/10 to-purple-600/10 border border-blue-500/20 hover:border-blue-500/40 group text-left transition-all flex items-center gap-3"
+                                    >
+                                        <div className="p-2.5 bg-blue-500/10 rounded-xl text-blue-400">
+                                            <Code className="w-5 h-5" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <span className="font-bold text-white text-sm block">Meet the Devs</span>
+                                            <span className="text-xs text-gray-400">The team behind OthrHalff</span>
+                                        </div>
+                                        <Users className="w-4 h-4 text-gray-500 group-hover:text-blue-400 transition-colors" />
                                     </button>
                                 </div>
                             </div>
