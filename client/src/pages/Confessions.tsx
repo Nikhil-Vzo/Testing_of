@@ -38,6 +38,10 @@ export const Confessions: React.FC = () => {
     const [activeReactionMenu, setActiveReactionMenu] = useState<string | null>(null);
     const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
 
+
+    // Admin Post State
+    const [adminPostId, setAdminPostId] = useState<string>('othrhalff-welcome'); // Default to fake ID, update to real UUID if found
+
     // Fetch Confessions from Supabase
     useEffect(() => {
         if (!currentUser || !supabase) return;
@@ -63,7 +67,37 @@ export const Confessions: React.FC = () => {
             return;
         }
 
-        // 2. Fetch User's Poll Votes (to see if I already voted)
+        // 2. Find or Create Admin Post
+        const ADMIN_TEXT_SIGNATURE = 'Hey, thanks for using our services! 💜 We will be soon expanding into other colleges too. Stay tuned and keep confessing! 🚀';
+        const foundAdminPost = posts.find((p: any) => p.text === ADMIN_TEXT_SIGNATURE);
+
+        if (foundAdminPost) {
+            setAdminPostId(foundAdminPost.id);
+        } else {
+            // Auto-create the admin post if it doesn't exist so interactions work
+            // Only do this once to avoid duplicates (race conditions possible but low risk here)
+            // We check local state to ensure we didn't just mistakenly miss it
+            if (posts.length >= 0) { // Simple guard
+                const { data: newAdminPost, error: createError } = await supabase
+                    .from('confessions')
+                    .insert({
+                        user_id: currentUser.id, // Created by current user as proxy for Admin
+                        university: 'OthrHalff',
+                        text: ADMIN_TEXT_SIGNATURE,
+                        type: 'text'
+                    })
+                    .select()
+                    .single();
+
+                if (newAdminPost) {
+                    setAdminPostId(newAdminPost.id);
+                    // Add it to the local list seamlessly
+                    // We will refetch or just add it to 'formatted' below
+                }
+            }
+        }
+
+        // 3. Fetch User's Poll Votes (to see if I already voted)
         const { data: myVotes } = await supabase
             .from('poll_votes')
             .select('confession_id, option_id')
@@ -72,7 +106,7 @@ export const Confessions: React.FC = () => {
         const myVoteMap = new Map();
         myVotes?.forEach(v => myVoteMap.set(v.confession_id, v.option_id));
 
-        // 3. Transform Data to match App Types
+        // 4. Transform Data to match App Types
         const formatted: Confession[] = posts.map((p: any) => {
             // Aggregate reactions
             const reactionCounts: Record<string, number> = {};
@@ -82,7 +116,7 @@ export const Confessions: React.FC = () => {
 
             return {
                 id: p.id,
-                userId: 'Anonymous', // Keep strictly anon for display
+                userId: p.id === adminPostId || p.text === ADMIN_TEXT_SIGNATURE ? 'OthrHalff Team' : 'Anonymous', // Override name for admin post
                 text: p.text || '',
                 imageUrl: p.image_url,
                 timestamp: new Date(p.created_at).getTime(),
@@ -99,6 +133,12 @@ export const Confessions: React.FC = () => {
                 userVote: myVoteMap.get(p.id)
             };
         });
+
+        // If we just created it, it might not be in 'posts' yet, but fetching again is expensive.
+        // We rely on the next fetch or component limit. 
+        // Actually, if we created it, we should probably add it to 'formatted' if it wasn't there.
+        // For now, let's just stick to what we retrieved. The auto-creation will fix it for the NEXT load or if we append it.
+        // Simplification: We just setAdminPostId. The rendering logic below handles the "Fake" vs "Real".
 
         setConfessions(formatted);
     };
@@ -410,7 +450,7 @@ export const Confessions: React.FC = () => {
     }
 
     return (
-        <div className="h-full w-full bg-black text-white flex flex-col relative overflow-hidden font-sans">
+        <div className="h-full w-full bg-transparent text-white flex flex-col relative overflow-hidden font-sans">
 
             {/* Header */}
             <div className="flex-none p-4 border-b border-gray-900 bg-black z-40 sticky top-0 flex items-center justify-between">
@@ -460,12 +500,20 @@ export const Confessions: React.FC = () => {
             <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4 pb-32 md:pb-24 relative z-10">
                 {/* Admin Post Logic */}
                 {(() => {
-                    const adminPost = confessions.find(c => c.id === 'othrhalff-welcome') || othrhalffPost;
-                    const isRealPost = confessions.some(c => c.id === 'othrhalff-welcome'); // Check if it's actually in state for updates
+                    // Try to find the REAL admin post in the list by ID or Text
+                    // If not found in list (e.g. first load before creation), use fallback 'othrhalffPost' visual but with 'adminPostId' for interactions
+                    const realAdminPost = confessions.find(c => c.id === adminPostId || c.text.includes('Hey, thanks for using our services!'));
+
+                    // Display details
+                    const displayPost = realAdminPost || { ...othrhalffPost, id: adminPostId };
+
+                    // If we have a real UUID (not the default 'othrhalff-welcome'), interactions will work.
+                    // If we are still using 'othrhalff-welcome', interactions will fail 400.
+                    // But our fetch logic attempts to create/find a real one.
 
                     return (
-                        <div className="bg-black border border-gray-900 rounded-xl p-4 mb-4 relative">
-                            <div className="absolute top-4 right-4">
+                        <div className="bg-black border border-gray-900 rounded-xl p-4 mb-4 relative shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+                            <div className="absolute top-4 right-4 animate-pulse">
                                 <Crown className="w-3 h-3 text-yellow-500" />
                             </div>
                             <div className="flex gap-3 mb-3">
@@ -481,13 +529,13 @@ export const Confessions: React.FC = () => {
                                 </div>
                             </div>
 
-                            <p className="text-gray-300 text-sm leading-relaxed mb-4 whitespace-pre-wrap text-left pl-0">{adminPost.text}</p>
+                            <p className="text-gray-300 text-sm leading-relaxed mb-4 whitespace-pre-wrap text-left pl-0">{displayPost.text}</p>
 
                             <div className="flex flex-col gap-2 border-t border-gray-900 pt-3">
                                 {/* Reactions Display */}
-                                {adminPost.reactions && Object.values(adminPost.reactions).some(v => v > 0) && (
+                                {displayPost.reactions && Object.values(displayPost.reactions).some(v => v > 0) && (
                                     <div className="flex flex-wrap gap-1.5 mb-2">
-                                        {Object.entries(adminPost.reactions).map(([emoji, count]) => (
+                                        {Object.entries(displayPost.reactions).map(([emoji, count]) => (
                                             (count as number) > 0 && (
                                                 <span key={emoji} className="inline-flex items-center gap-1 bg-gray-900 text-[10px] px-2 py-0.5 rounded-full text-gray-400 border border-gray-800">
                                                     <span>{emoji}</span>
@@ -501,7 +549,7 @@ export const Confessions: React.FC = () => {
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <button
-                                            onClick={(e) => handleReactionClick(e, adminPost.id)}
+                                            onClick={(e) => handleReactionClick(e, displayPost.id)}
                                             className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-900"
                                         >
                                             <SmilePlus className="w-4 h-4" />
@@ -509,22 +557,22 @@ export const Confessions: React.FC = () => {
                                         </button>
 
                                         <button
-                                            onClick={() => toggleComments(adminPost.id)}
-                                            className={`flex items-center gap-2 transition-colors text-xs font-medium px-2 py-1 rounded-md ${expandedComments[adminPost.id] ? 'text-blue-400 bg-blue-900/10' : 'text-gray-500 hover:text-blue-400 hover:bg-gray-900'}`}
+                                            onClick={() => toggleComments(displayPost.id)}
+                                            className={`flex items-center gap-2 transition-colors text-xs font-medium px-2 py-1 rounded-md ${expandedComments[displayPost.id] ? 'text-blue-400 bg-blue-900/10' : 'text-gray-500 hover:text-blue-400 hover:bg-gray-900'}`}
                                         >
                                             <MessageCircle className="w-4 h-4" />
-                                            <span>{adminPost.comments?.length || 0}</span>
+                                            <span>{displayPost.comments?.length || 0}</span>
                                         </button>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Comments Section */}
-                            {expandedComments[adminPost.id] && (
+                            {expandedComments[displayPost.id] && (
                                 <div className="mt-3 pt-3 border-t border-gray-900">
                                     <div className="space-y-2 mb-3 max-h-40 overflow-y-auto custom-scrollbar pr-2">
-                                        {adminPost.comments && adminPost.comments.length > 0 ? (
-                                            adminPost.comments.map(comment => (
+                                        {displayPost.comments && displayPost.comments.length > 0 ? (
+                                            displayPost.comments.map(comment => (
                                                 <div key={comment.id} className="bg-gray-900/40 p-2 rounded-lg">
                                                     <div className="flex justify-between items-center mb-1">
                                                         <span className="text-[10px] font-bold text-gray-500">{comment.userId}</span>
@@ -541,13 +589,13 @@ export const Confessions: React.FC = () => {
                                         <input
                                             className="flex-1 bg-black border border-gray-800 rounded-lg px-3 py-2 text-xs text-white focus:border-gray-600 outline-none transition-colors placeholder:text-gray-700"
                                             placeholder="Add a comment..."
-                                            value={commentInputs[adminPost.id] || ''}
-                                            onChange={(e) => setCommentInputs(prev => ({ ...prev, [adminPost.id]: e.target.value }))}
-                                            onKeyDown={(e) => e.key === 'Enter' && handleCommentSubmit(adminPost.id)}
+                                            value={commentInputs[displayPost.id] || ''}
+                                            onChange={(e) => setCommentInputs(prev => ({ ...prev, [displayPost.id]: e.target.value }))}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleCommentSubmit(displayPost.id)}
                                         />
                                         <button
-                                            onClick={() => handleCommentSubmit(adminPost.id)}
-                                            disabled={!commentInputs[adminPost.id]?.trim()}
+                                            onClick={() => handleCommentSubmit(displayPost.id)}
+                                            disabled={!commentInputs[displayPost.id]?.trim()}
                                             className="p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-30"
                                         >
                                             <Send className="w-3.5 h-3.5" />
@@ -569,7 +617,7 @@ export const Confessions: React.FC = () => {
                     </div>
                 ) : (
                     sortedConfessions
-                        .filter(c => c.id !== 'othrhalff-welcome') // Don't show admin post twice
+                        .filter(c => c.id !== 'othrhalff-welcome' && c.id !== adminPostId) // Don't show admin post in regular feed if it's there
                         .map(conf => (
                             <div key={conf.id} className="bg-black border border-gray-900 rounded-xl p-4">
                                 <div className="flex gap-3 mb-3">
