@@ -1,13 +1,13 @@
 import { MatchProfile, Notification } from './types';
 
 export const MOCK_INTERESTS = [
-  "Coding", "Gaming", "Anime", "Music", "Art", "Photography",
-  "Reading", "Travel", "Fitness", "Coffee", "Startups", "AI"
+  "Coding", "Gaming", "Anime", "Music", "Art",
+  "Reading", "Travel", "Fitness"
 ];
 
 export const LOOKING_FOR_OPTIONS = [
   "Gym Partner",
-  "Gaming",
+  "Gaming Partner",
   "Study Partner",
   "Hangout Partner",
   "Relationship",
