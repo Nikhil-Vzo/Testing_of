@@ -723,7 +723,7 @@ export const Chat: React.FC = () => {
       </div>
 
       {/* 2. Messages Area */}
-      <div ref={chatContainerRef} className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4 select-none min-h-0" style={{ userSelect: 'none', WebkitUserSelect: 'none' }}>
+      <div ref={chatContainerRef} className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4 select-none min-h-0 overscroll-contain" style={{ userSelect: 'none', WebkitUserSelect: 'none' }}>
         {/* Privacy Notice - Non-sticky with subtle colors */}
         <div className="mb-4">
           <div className="bg-gradient-to-r from-blue-900/10 to-purple-900/10 border border-blue-800/20 rounded-2xl p-3 backdrop-blur-sm">

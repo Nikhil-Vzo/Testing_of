@@ -69,7 +69,7 @@ export const AppLayout: React.FC = () => {
   ];
 
   return (
-    <div className="flex h-screen bg-black text-white font-sans overflow-hidden selection:bg-neon selection:text-white">
+    <div className="flex h-screen md:h-screen supports-[height:100dvh]:h-[100dvh] bg-black text-white font-sans overflow-hidden selection:bg-neon selection:text-white">
 
       {/* Desktop Sidebar Redesign */}
       <aside className="hidden md:flex w-[280px] flex-col border-r border-gray-900 bg-black z-20 relative">
