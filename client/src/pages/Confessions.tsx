@@ -114,6 +114,11 @@ export const Confessions: React.FC = () => {
                 reactionCounts[r.emoji] = (reactionCounts[r.emoji] || 0) + 1;
             });
 
+            const myReactionObj = p.confession_reactions.find((r: any) => r.user_id === currentUser.id);
+            if (myReactionObj) {
+                // console.log('Found my reaction for post', p.id, myReactionObj.emoji);
+            }
+
             return {
                 id: p.id,
                 userId: p.id === adminPostId || p.text === ADMIN_TEXT_SIGNATURE ? 'OthrHalff Team' : 'Anonymous', // Override name for admin post
@@ -312,6 +317,12 @@ export const Confessions: React.FC = () => {
 
         const confession = confessions.find(c => c.id === id);
         const currentReaction = confession?.userReaction;
+
+        console.log('--- Reaction Debug ---');
+        console.log('Confession ID:', id);
+        console.log('Current User:', currentUser?.id);
+        console.log('Emoji Clicked:', emoji);
+        console.log('Current Reaction State:', currentReaction);
 
         try {
             // 1. If clicked same emoji -> Remove it (Toggle OFF)
@@ -529,7 +540,7 @@ export const Confessions: React.FC = () => {
                     // But our fetch logic attempts to create/find a real one.
 
                     return (
-                        <div className="sticky top-0 z-30 bg-gray-900/40 backdrop-blur-xl border border-gray-800/50 rounded-xl p-4 mb-4 relative shadow-lg">
+                        <div className="bg-gray-900/40 backdrop-blur-xl border border-gray-800/50 rounded-xl p-4 mb-4 relative shadow-lg">
                             <div className="absolute top-4 right-4 animate-pulse">
                                 <Crown className="w-3 h-3 text-yellow-500" />
                             </div>
