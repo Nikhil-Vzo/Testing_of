@@ -48,6 +48,7 @@ export const AVATAR_PRESETS = [
 ];
 
 export const CHHATTISGARH_COLLEGES = [
+  "Amity University, Raipur",
   "National Institute of Technology (NIT), Raipur",
   "Indian Institute of Management (IIM), Raipur",
   "Indian Institute of Technology (IIT), Bhilai",
@@ -57,7 +58,6 @@ export const CHHATTISGARH_COLLEGES = [
   "Pt. Ravishankar Shukla University (PRSU), Raipur",
   "Chhattisgarh Swami Vivekanand Technical University (CSVTU), Bhilai",
   "Guru Ghasidas Vishwavidyalaya (GGU), Bilaspur",
-  "Amity University, Raipur",
   "Kalinga University, Raipur",
   "ITM University, Raipur",
   "MATS University, Raipur",
