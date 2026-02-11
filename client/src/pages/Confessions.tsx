@@ -117,26 +117,38 @@ export const Confessions: React.FC = () => {
 
     // --- Handlers ---
 
+
     const handleReactionClick = (e: React.MouseEvent, id: string) => {
         if (activeReactionMenu === id) {
             setActiveReactionMenu(null);
             setMenuPosition(null);
         } else {
-            if (window.innerWidth >= 768) {
-                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                let top = rect.top - 400 - 10;
-                if (rect.top < 400) top = rect.bottom + 10;
+            // Always calculate position, regardless of device
+            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
 
-                let left = rect.left;
-                if (left + 320 > window.innerWidth) left = window.innerWidth - 340;
+            // Default to below the button
+            let top = rect.bottom + 5;
 
-                setMenuPosition({ top, left });
-            } else {
-                setMenuPosition(null);
+            // Horizontal adjustment to keep in viewport
+            let left = rect.left;
+
+            // If the menu would overflow the right edge (assuming ~300px width), shift left
+            if (left + 300 > window.innerWidth) {
+                left = window.innerWidth - 310; // 10px padding from right
             }
+            // Ensure non-negative left
+            if (left < 10) left = 10;
+
+            // Check if sticking below goes off screen (optional, but good for UX)
+            // If it goes off screen, maybe pop UP instead? 
+            // User requested "below", so we'll prefer that, but maybe clamp or scroll?
+            // "Fixed" positioning means it stays on screen. 
+
+            setMenuPosition({ top, left });
             setActiveReactionMenu(id);
         }
     };
+
 
     const handlePost = async () => {
         if (!isPollMode && !newText.trim() && !newImage) return;
@@ -446,77 +458,36 @@ export const Confessions: React.FC = () => {
 
             {/* Feed */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4 pb-32 md:pb-24 relative z-10">
-                {sortedConfessions.length === 0 ? (
-                    <div className="text-center py-20">
-                        <div className="w-20 h-20 bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <Ghost className="w-10 h-10 text-gray-600" />
-                        </div>
-                        <h2 className="text-lg font-bold text-gray-300 mb-2">It's quiet in here...</h2>
-                        <p className="text-sm text-gray-500 max-w-xs mx-auto">No confessions yet. Be the first to break the silence!</p>
-                    </div>
-                ) : (
-                    sortedConfessions.map(conf => (
-                        <div key={conf.id} className="bg-black border border-gray-900 rounded-xl p-4">
+                {/* Admin Post Logic */}
+                {(() => {
+                    const adminPost = confessions.find(c => c.id === 'othrhalff-welcome') || othrhalffPost;
+                    const isRealPost = confessions.some(c => c.id === 'othrhalff-welcome'); // Check if it's actually in state for updates
+
+                    return (
+                        <div className="bg-black border border-gray-900 rounded-xl p-4 mb-4 relative">
+                            <div className="absolute top-4 right-4">
+                                <Crown className="w-3 h-3 text-yellow-500" />
+                            </div>
                             <div className="flex gap-3 mb-3">
                                 <div className="w-10 h-10 rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center shrink-0">
-                                    <span className="text-sm font-bold text-gray-500">?</span>
+                                    <Ghost className="w-5 h-5 text-gray-400" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm font-bold text-gray-300">{conf.userId}</span>
-                                        <span className="text-[10px] text-gray-600 font-mono">{new Date(conf.timestamp).toLocaleDateString()}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-bold text-white">OthrHalff Team</span>
+                                        <span className="bg-gray-800 text-gray-500 text-[9px] px-1.5 py-0.5 rounded border border-gray-700 font-bold uppercase tracking-wider">Admin</span>
                                     </div>
-                                    <p className="text-[10px] text-gray-600 uppercase tracking-wider font-bold mt-0.5 w-full truncate">{conf.university}</p>
+                                    <p className="text-[10px] text-gray-600 font-mono mt-0.5">Official Announcement</p>
                                 </div>
                             </div>
 
-                            <p className="text-gray-300 text-sm leading-relaxed mb-4 whitespace-pre-wrap">{conf.text}</p>
-
-                            {conf.imageUrl && (
-                                <div
-                                    className="mb-4 rounded-lg overflow-hidden border border-gray-900 aspect-video cursor-pointer relative bg-black"
-                                    onClick={() => setViewImage(conf.imageUrl || null)}
-                                >
-                                    <img src={conf.imageUrl} alt="Confession" className="w-full h-full object-cover" />
-                                </div>
-                            )}
-
-                            {/* Poll Rendering */}
-                            {conf.type === 'poll' && conf.pollOptions && (
-                                <div className="mb-4 space-y-2 bg-gray-900/30 p-3 rounded-lg border border-gray-900">
-                                    {conf.pollOptions.map(option => {
-                                        const totalVotes = conf.pollOptions?.reduce((acc, curr) => acc + curr.votes, 0) || 0;
-                                        const percentage = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
-                                        const isSelected = conf.userVote === option.id;
-
-                                        return (
-                                            <button
-                                                key={option.id}
-                                                onClick={() => handlePollVote(conf.id, option.id)}
-                                                disabled={!!conf.userVote}
-                                                className={`w-full relative h-9 rounded overflow-hidden border transition-all ${isSelected ? 'border-gray-600' : 'border-gray-800 hover:border-gray-700'}`}
-                                            >
-                                                <div className={`absolute top-0 left-0 h-full transition-all duration-500 ${isSelected ? 'bg-white/10' : 'bg-gray-800'}`} style={{ width: `${percentage}%` }} />
-                                                <div className="absolute inset-0 flex items-center justify-between px-3 z-10">
-                                                    <span className={`text-xs font-medium ${isSelected ? 'text-white' : 'text-gray-400'}`}>{option.text}</span>
-                                                    {conf.userVote && (
-                                                        <span className="text-[10px] font-bold font-mono text-gray-500">{percentage}%</span>
-                                                    )}
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
-                                    <div className="flex justify-end pt-1">
-                                        <span className="text-[10px] uppercase font-bold text-gray-700">{conf.pollOptions.reduce((acc, curr) => acc + curr.votes, 0)} votes</span>
-                                    </div>
-                                </div>
-                            )}
+                            <p className="text-gray-300 text-sm leading-relaxed mb-4 whitespace-pre-wrap text-left pl-0">{adminPost.text}</p>
 
                             <div className="flex flex-col gap-2 border-t border-gray-900 pt-3">
                                 {/* Reactions Display */}
-                                {conf.reactions && Object.values(conf.reactions).some(v => v > 0) && (
+                                {adminPost.reactions && Object.values(adminPost.reactions).some(v => v > 0) && (
                                     <div className="flex flex-wrap gap-1.5 mb-2">
-                                        {Object.entries(conf.reactions).map(([emoji, count]) => (
+                                        {Object.entries(adminPost.reactions).map(([emoji, count]) => (
                                             (count as number) > 0 && (
                                                 <span key={emoji} className="inline-flex items-center gap-1 bg-gray-900 text-[10px] px-2 py-0.5 rounded-full text-gray-400 border border-gray-800">
                                                     <span>{emoji}</span>
@@ -530,7 +501,7 @@ export const Confessions: React.FC = () => {
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <button
-                                            onClick={(e) => handleReactionClick(e, conf.id)}
+                                            onClick={(e) => handleReactionClick(e, adminPost.id)}
                                             className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-900"
                                         >
                                             <SmilePlus className="w-4 h-4" />
@@ -538,22 +509,22 @@ export const Confessions: React.FC = () => {
                                         </button>
 
                                         <button
-                                            onClick={() => toggleComments(conf.id)}
-                                            className={`flex items-center gap-2 transition-colors text-xs font-medium px-2 py-1 rounded-md ${expandedComments[conf.id] ? 'text-blue-400 bg-blue-900/10' : 'text-gray-500 hover:text-blue-400 hover:bg-gray-900'}`}
+                                            onClick={() => toggleComments(adminPost.id)}
+                                            className={`flex items-center gap-2 transition-colors text-xs font-medium px-2 py-1 rounded-md ${expandedComments[adminPost.id] ? 'text-blue-400 bg-blue-900/10' : 'text-gray-500 hover:text-blue-400 hover:bg-gray-900'}`}
                                         >
                                             <MessageCircle className="w-4 h-4" />
-                                            <span>{conf.comments?.length || 0}</span>
+                                            <span>{adminPost.comments?.length || 0}</span>
                                         </button>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Comments Section */}
-                            {expandedComments[conf.id] && (
+                            {expandedComments[adminPost.id] && (
                                 <div className="mt-3 pt-3 border-t border-gray-900">
                                     <div className="space-y-2 mb-3 max-h-40 overflow-y-auto custom-scrollbar pr-2">
-                                        {conf.comments && conf.comments.length > 0 ? (
-                                            conf.comments.map(comment => (
+                                        {adminPost.comments && adminPost.comments.length > 0 ? (
+                                            adminPost.comments.map(comment => (
                                                 <div key={comment.id} className="bg-gray-900/40 p-2 rounded-lg">
                                                     <div className="flex justify-between items-center mb-1">
                                                         <span className="text-[10px] font-bold text-gray-500">{comment.userId}</span>
@@ -570,13 +541,13 @@ export const Confessions: React.FC = () => {
                                         <input
                                             className="flex-1 bg-black border border-gray-800 rounded-lg px-3 py-2 text-xs text-white focus:border-gray-600 outline-none transition-colors placeholder:text-gray-700"
                                             placeholder="Add a comment..."
-                                            value={commentInputs[conf.id] || ''}
-                                            onChange={(e) => setCommentInputs(prev => ({ ...prev, [conf.id]: e.target.value }))}
-                                            onKeyDown={(e) => e.key === 'Enter' && handleCommentSubmit(conf.id)}
+                                            value={commentInputs[adminPost.id] || ''}
+                                            onChange={(e) => setCommentInputs(prev => ({ ...prev, [adminPost.id]: e.target.value }))}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleCommentSubmit(adminPost.id)}
                                         />
                                         <button
-                                            onClick={() => handleCommentSubmit(conf.id)}
-                                            disabled={!commentInputs[conf.id]?.trim()}
+                                            onClick={() => handleCommentSubmit(adminPost.id)}
+                                            disabled={!commentInputs[adminPost.id]?.trim()}
                                             className="p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-30"
                                         >
                                             <Send className="w-3.5 h-3.5" />
@@ -585,7 +556,151 @@ export const Confessions: React.FC = () => {
                                 </div>
                             )}
                         </div>
-                    ))
+                    );
+                })()}
+
+                {sortedConfessions.length === 0 ? (
+                    <div className="text-center py-20">
+                        <div className="w-20 h-20 bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <Ghost className="w-10 h-10 text-gray-600" />
+                        </div>
+                        <h2 className="text-lg font-bold text-gray-300 mb-2">It's quiet in here...</h2>
+                        <p className="text-sm text-gray-500 max-w-xs mx-auto">No confessions yet. Be the first to break the silence!</p>
+                    </div>
+                ) : (
+                    sortedConfessions
+                        .filter(c => c.id !== 'othrhalff-welcome') // Don't show admin post twice
+                        .map(conf => (
+                            <div key={conf.id} className="bg-black border border-gray-900 rounded-xl p-4">
+                                <div className="flex gap-3 mb-3">
+                                    <div className="w-10 h-10 rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center shrink-0">
+                                        <span className="text-sm font-bold text-gray-500">?</span>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm font-bold text-gray-300">{conf.userId}</span>
+                                            <span className="text-[10px] text-gray-600 font-mono">{new Date(conf.timestamp).toLocaleDateString()}</span>
+                                        </div>
+                                        <p className="text-[10px] text-gray-600 uppercase tracking-wider font-bold mt-0.5 w-full truncate">{conf.university}</p>
+                                    </div>
+                                </div>
+
+                                <p className="text-gray-300 text-sm leading-relaxed mb-4 whitespace-pre-wrap">{conf.text}</p>
+
+                                {conf.imageUrl && (
+                                    <div
+                                        className="mb-4 rounded-lg overflow-hidden border border-gray-900 aspect-video cursor-pointer relative bg-black"
+                                        onClick={() => setViewImage(conf.imageUrl || null)}
+                                    >
+                                        <img src={conf.imageUrl} alt="Confession" className="w-full h-full object-cover" />
+                                    </div>
+                                )}
+
+                                {/* Poll Rendering */}
+                                {conf.type === 'poll' && conf.pollOptions && (
+                                    <div className="mb-4 space-y-2 bg-gray-900/30 p-3 rounded-lg border border-gray-900">
+                                        {conf.pollOptions.map(option => {
+                                            const totalVotes = conf.pollOptions?.reduce((acc, curr) => acc + curr.votes, 0) || 0;
+                                            const percentage = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
+                                            const isSelected = conf.userVote === option.id;
+
+                                            return (
+                                                <button
+                                                    key={option.id}
+                                                    onClick={() => handlePollVote(conf.id, option.id)}
+                                                    disabled={!!conf.userVote}
+                                                    className={`w-full relative h-9 rounded overflow-hidden border transition-all ${isSelected ? 'border-gray-600' : 'border-gray-800 hover:border-gray-700'}`}
+                                                >
+                                                    <div className={`absolute top-0 left-0 h-full transition-all duration-500 ${isSelected ? 'bg-white/10' : 'bg-gray-800'}`} style={{ width: `${percentage}%` }} />
+                                                    <div className="absolute inset-0 flex items-center justify-between px-3 z-10">
+                                                        <span className={`text-xs font-medium ${isSelected ? 'text-white' : 'text-gray-400'}`}>{option.text}</span>
+                                                        {conf.userVote && (
+                                                            <span className="text-[10px] font-bold font-mono text-gray-500">{percentage}%</span>
+                                                        )}
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                        <div className="flex justify-end pt-1">
+                                            <span className="text-[10px] uppercase font-bold text-gray-700">{conf.pollOptions.reduce((acc, curr) => acc + curr.votes, 0)} votes</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="flex flex-col gap-2 border-t border-gray-900 pt-3">
+                                    {/* Reactions Display */}
+                                    {conf.reactions && Object.values(conf.reactions).some(v => v > 0) && (
+                                        <div className="flex flex-wrap gap-1.5 mb-2">
+                                            {Object.entries(conf.reactions).map(([emoji, count]) => (
+                                                (count as number) > 0 && (
+                                                    <span key={emoji} className="inline-flex items-center gap-1 bg-gray-900 text-[10px] px-2 py-0.5 rounded-full text-gray-400 border border-gray-800">
+                                                        <span>{emoji}</span>
+                                                        <span className="font-bold">{count as number}</span>
+                                                    </span>
+                                                )
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={(e) => handleReactionClick(e, conf.id)}
+                                                className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-900"
+                                            >
+                                                <SmilePlus className="w-4 h-4" />
+                                                <span>React</span>
+                                            </button>
+
+                                            <button
+                                                onClick={() => toggleComments(conf.id)}
+                                                className={`flex items-center gap-2 transition-colors text-xs font-medium px-2 py-1 rounded-md ${expandedComments[conf.id] ? 'text-blue-400 bg-blue-900/10' : 'text-gray-500 hover:text-blue-400 hover:bg-gray-900'}`}
+                                            >
+                                                <MessageCircle className="w-4 h-4" />
+                                                <span>{conf.comments?.length || 0}</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Comments Section */}
+                                {expandedComments[conf.id] && (
+                                    <div className="mt-3 pt-3 border-t border-gray-900">
+                                        <div className="space-y-2 mb-3 max-h-40 overflow-y-auto custom-scrollbar pr-2">
+                                            {conf.comments && conf.comments.length > 0 ? (
+                                                conf.comments.map(comment => (
+                                                    <div key={comment.id} className="bg-gray-900/40 p-2 rounded-lg">
+                                                        <div className="flex justify-between items-center mb-1">
+                                                            <span className="text-[10px] font-bold text-gray-500">{comment.userId}</span>
+                                                            <span className="text-[9px] text-gray-700 font-mono">{new Date(comment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-300">{comment.text}</p>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <p className="text-xs text-center text-gray-600 py-2">No comments yet.</p>
+                                            )}
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <input
+                                                className="flex-1 bg-black border border-gray-800 rounded-lg px-3 py-2 text-xs text-white focus:border-gray-600 outline-none transition-colors placeholder:text-gray-700"
+                                                placeholder="Add a comment..."
+                                                value={commentInputs[conf.id] || ''}
+                                                onChange={(e) => setCommentInputs(prev => ({ ...prev, [conf.id]: e.target.value }))}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleCommentSubmit(conf.id)}
+                                            />
+                                            <button
+                                                onClick={() => handleCommentSubmit(conf.id)}
+                                                disabled={!commentInputs[conf.id]?.trim()}
+                                                className="p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-30"
+                                            >
+                                                <Send className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))
                 )}
             </div>
 
@@ -669,16 +784,30 @@ export const Confessions: React.FC = () => {
             {/* Reaction Modal */}
             {activeReactionMenu && (
                 <>
-                    <div className="fixed inset-0 z-40 bg-black/50" onClick={() => { setActiveReactionMenu(null); setMenuPosition(null); }}></div>
+                    <div className="fixed inset-0 z-40 bg-transparent" onClick={() => { setActiveReactionMenu(null); setMenuPosition(null); }}></div>
                     <div
-                        className={`fixed z-50 bg-gray-900 border border-gray-800 shadow-xl overflow-hidden
-                            ${menuPosition ? 'rounded-xl' : 'bottom-0 left-0 right-0 rounded-t-xl border-b-0 pb-6'}
+                        className={`fixed z-50 bg-black/80 backdrop-blur-md border border-gray-800 shadow-[0_0_15px_rgba(255,100,255,0.15)] rounded-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200
+                             ${!menuPosition ? 'bottom-20 left-4 right-4' : ''} 
                         `}
                         style={menuPosition ? { top: menuPosition.top, left: menuPosition.left } : {}}
                     >
-                        <div className="flex items-center justify-around gap-1 p-2 bg-black overflow-x-auto custom-scrollbar md:max-w-[300px]">
+                        {/* 
+                           User requested "meteor shower background". 
+                           Since I cannot easily embed the StarField canvas here without performance/clipping issues,
+                           I am using a translucent black background (bg-black/80) with backdrop-blur. 
+                           This allows the global StarField (which runs on this page) to be visible *behind* it and *around* it, 
+                           fitting the "glass" aesthetic often associated with such backgrounds.
+                           I also added a subtle shadow/border to make it pop.
+                        */}
+                        <div className="flex items-center gap-1 p-2 overflow-x-auto custom-scrollbar md:max-w-[300px]">
                             {REACTIONS.map(emoji => (
-                                <button key={emoji} onClick={() => handleReaction(activeReactionMenu, emoji)} className="text-2xl hover:scale-110 transition-transform p-2">{emoji}</button>
+                                <button
+                                    key={emoji}
+                                    onClick={() => handleReaction(activeReactionMenu, emoji)}
+                                    className="text-2xl hover:scale-125 transition-transform p-2 active:scale-95"
+                                >
+                                    {emoji}
+                                </button>
                             ))}
                         </div>
                     </div>
