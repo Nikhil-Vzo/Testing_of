@@ -102,8 +102,15 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (callerProfile) {
-        // If user is busy (on a call, has incoming, or making outgoing), auto-reject this DB session
-        if (isBusy) {
+        // Check if this is just the official DB record for the broadcast we already received
+        // We know it's the same call if we have a pending broadcast from the same caller
+        const isDuplicateMsg =
+          incomingCallRef.current &&
+          incomingCallRef.current.callerId === callSession.caller_id &&
+          !incomingCallRef.current.callSessionId; // Broadcast has no sessionId yet
+
+        // If user is busy (on a call, has incoming, or making outgoing), AND it's not the same call
+        if (isBusy && !isDuplicateMsg) {
           console.log('[CallContext] User is busy, auto-rejecting call session:', callSession.id);
           await rejectCallAPI(callSession.id);
           return;
