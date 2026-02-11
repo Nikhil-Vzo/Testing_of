@@ -42,6 +42,7 @@ export const Home: React.FC = () => {
     // Animation states
     const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
     const [showSuccessBurst, setShowSuccessBurst] = useState(false);
+    const [isSwiping, setIsSwiping] = useState(false); // Prevent rapid double-taps
     const cardRef = useRef<HTMLDivElement>(null);
 
     // Preload images for smoother experience
@@ -219,7 +220,9 @@ export const Home: React.FC = () => {
     };
 
     const handleSwipe = async (direction: 'left' | 'right') => {
-        if (!currentProfile || !currentUser || !supabase) return;
+        if (!currentProfile || !currentUser || !supabase || isSwiping) return;
+
+        setIsSwiping(true); // Lock to prevent double-taps
 
         const targetId = currentProfile.id;
         const action = direction === 'right' ? 'like' : 'pass';
@@ -263,7 +266,8 @@ export const Home: React.FC = () => {
                 sessionStorage.setItem(PROFILES_CACHE_KEY, JSON.stringify(updated));
             }
 
-            setCurrentIndex(prev => prev + 1);
+            // currentIndex stays the same because we removed the current item from the queue,
+            // so the next profile naturally slides into the current position.
 
             try {
                 // Use UPSERT to handle recycling (re-swiping on previously passed users)
@@ -281,6 +285,8 @@ export const Home: React.FC = () => {
             } catch (err) {
                 console.error('Swipe logic error:', err);
             }
+
+            setIsSwiping(false); // Unlock after swipe is fully processed
         }, 300);
     };
 
@@ -583,14 +589,16 @@ export const Home: React.FC = () => {
                             <div className="absolute bottom-0 inset-x-0 flex justify-center gap-6 z-20 h-20 items-center pb-2">
                                 <button
                                     onClick={() => handleSwipe('left')}
-                                    className="w-16 h-16 bg-gradient-to-br from-gray-900 to-gray-800 backdrop-blur-xl border border-gray-700 rounded-full flex items-center justify-center text-red-400 hover:text-red-300 hover:scale-110 hover:shadow-[0_0_30px_rgba(239,68,68,0.3)] transition-all duration-300 active:scale-95 shadow-xl"
+                                    disabled={isSwiping}
+                                    className="w-16 h-16 bg-gradient-to-br from-gray-900 to-gray-800 backdrop-blur-xl border border-gray-700 rounded-full flex items-center justify-center text-red-400 hover:text-red-300 hover:scale-110 hover:shadow-[0_0_30px_rgba(239,68,68,0.3)] transition-all duration-300 active:scale-95 shadow-xl disabled:opacity-50 disabled:pointer-events-none"
                                 >
                                     <X className="w-7 h-7" strokeWidth={3} />
                                 </button>
 
                                 <button
                                     onClick={() => handleSwipe('right')}
-                                    className="w-16 h-16 bg-gradient-to-br from-neon to-pink-600 backdrop-blur-xl border border-neon/30 rounded-full flex items-center justify-center text-white hover:scale-110 hover:shadow-[0_0_40px_rgba(255,0,127,0.5)] transition-all duration-300 active:scale-95 shadow-[0_0_20px_rgba(255,0,127,0.3)]"
+                                    disabled={isSwiping}
+                                    className="w-16 h-16 bg-gradient-to-br from-neon to-pink-600 backdrop-blur-xl border border-neon/30 rounded-full flex items-center justify-center text-white hover:scale-110 hover:shadow-[0_0_40px_rgba(255,0,127,0.5)] transition-all duration-300 active:scale-95 shadow-[0_0_20px_rgba(255,0,127,0.3)] disabled:opacity-50 disabled:pointer-events-none"
                                 >
                                     <Heart className="w-7 h-7 fill-current" />
                                 </button>
