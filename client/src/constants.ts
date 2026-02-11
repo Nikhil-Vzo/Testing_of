@@ -6,11 +6,12 @@ export const MOCK_INTERESTS = [
 ];
 
 export const LOOKING_FOR_OPTIONS = [
+
+  "Relationship",
+  "Study Partner",
   "Gym Partner",
   "Gaming Partner",
-  "Study Partner",
   "Hangout Partner",
-  "Relationship",
   "Fun",
   "Flirt"
 ];
