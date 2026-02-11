@@ -444,6 +444,32 @@ export const Profile: React.FC = () => {
                                             )}
                                         </div>
                                     </div>
+
+                                    {/* Company & Legal (Moved to Main Content) */}
+                                    <div className="bg-gray-900/40 border border-gray-800 rounded-[2rem] p-8 backdrop-blur-md mt-6">
+                                        <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                                            <Scale className="w-5 h-5 text-gray-400" /> Company & Legal
+                                        </h3>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                            {[
+                                                { label: 'About Us', icon: Info, path: '/about' },
+                                                { label: 'Privacy Policy', icon: Lock, path: '/privacy' },
+                                                { label: 'Terms of Service', icon: Scale, path: '/terms' },
+                                                { label: 'Safety', icon: Shield, path: '/safety' },
+                                                { label: 'Guidelines', icon: FileText, path: '/guidelines' },
+                                                { label: 'Careers', icon: Briefcase, path: '/careers' },
+                                            ].map(item => (
+                                                <button
+                                                    key={item.path}
+                                                    onClick={() => navigate(item.path)}
+                                                    className="w-full p-4 rounded-2xl hover:bg-gray-800/60 group text-left transition-all flex items-center gap-3 border border-gray-800 hover:border-gray-600 bg-black/20"
+                                                >
+                                                    <item.icon className="w-5 h-5 text-gray-500 group-hover:text-white transition-colors" />
+                                                    <span className="text-sm font-medium text-gray-400 group-hover:text-white transition-colors truncate">{item.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </>
                             )}
                         </div>
@@ -497,30 +523,7 @@ export const Profile: React.FC = () => {
                                     </button>
                                 </div>
 
-                                {/* Company & Legal */}
-                                <div className="bg-gray-900/40 border border-gray-800 rounded-[2rem] p-6 backdrop-blur-md space-y-2">
-                                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Company & Legal</h3>
 
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {[
-                                            { label: 'About Us', icon: Info, path: '/about' },
-                                            { label: 'Privacy Policy', icon: Lock, path: '/privacy' },
-                                            { label: 'Terms of Service', icon: Scale, path: '/terms' },
-                                            { label: 'Safety', icon: Shield, path: '/safety' },
-                                            { label: 'Guidelines', icon: FileText, path: '/guidelines' },
-                                            { label: 'Careers', icon: Briefcase, path: '/careers' },
-                                        ].map(item => (
-                                            <button
-                                                key={item.path}
-                                                onClick={() => navigate(item.path)}
-                                                className="w-full p-3.5 rounded-xl hover:bg-gray-800/60 group text-left transition-all flex items-center gap-3 border border-transparent hover:border-gray-700"
-                                            >
-                                                <item.icon className="w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors" />
-                                                <span className="text-sm text-gray-300 group-hover:text-white transition-colors truncate">{item.label}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
 
                                 {/* Meet the Devs */}
                                 <div className="bg-gray-900/40 border border-gray-800 rounded-[2rem] p-6 backdrop-blur-md">
