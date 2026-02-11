@@ -297,10 +297,10 @@ export const Profile: React.FC = () => {
                     </div>
 
                     {/* 2. DETAILS GRID */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 items-start">
 
                         {/* Left Col: Bio & Interests */}
-                        <div className={`${(isSelf && !isEditing) ? 'md:col-span-2' : 'md:col-span-3'} space-y-6`}>
+                        <div className={`${(isSelf && !isEditing) ? 'md:col-span-9' : 'md:col-span-12'} space-y-6`}>
                             {isEditing ? (
                                 <div className="bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-[2rem] p-6 md:p-8 animate-fade-in shadow-xl">
                                     <div className="flex items-center justify-between mb-8 border-b border-gray-800 pb-4">
@@ -450,7 +450,7 @@ export const Profile: React.FC = () => {
 
                         {/* Right Col: Stats & Support (Conditional) */}
                         {(isSelf && !isEditing) && (
-                            <div className="space-y-6">
+                            <div className="md:col-span-3 space-y-6 sticky top-6">
                                 {/* Support & Contact */}
                                 <div className="bg-gray-900/40 border border-gray-800 rounded-[2rem] p-6 backdrop-blur-md space-y-3">
                                     <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Account</h3>
@@ -501,24 +501,25 @@ export const Profile: React.FC = () => {
                                 <div className="bg-gray-900/40 border border-gray-800 rounded-[2rem] p-6 backdrop-blur-md space-y-2">
                                     <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Company & Legal</h3>
 
-                                    {[
-                                        { label: 'About Us', icon: Info, path: '/about' },
-                                        { label: 'Privacy Policy', icon: Lock, path: '/privacy' },
-                                        { label: 'Terms of Service', icon: Scale, path: '/terms' },
-                                        { label: 'Safety', icon: Shield, path: '/safety' },
-                                        { label: 'Community Guidelines', icon: FileText, path: '/guidelines' },
-                                        { label: 'Careers', icon: Briefcase, path: '/careers' },
-                                    ].map(item => (
-                                        <button
-                                            key={item.path}
-                                            onClick={() => navigate(item.path)}
-                                            className="w-full p-3.5 rounded-xl hover:bg-gray-800/60 group text-left transition-all flex items-center gap-3"
-                                        >
-                                            <item.icon className="w-4 h-4 text-gray-500 group-hover:text-gray-300 transition-colors" />
-                                            <span className="text-sm text-gray-300 group-hover:text-white transition-colors flex-1">{item.label}</span>
-                                            <ExternalLink className="w-3.5 h-3.5 text-gray-600 group-hover:text-gray-400 transition-colors" />
-                                        </button>
-                                    ))}
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {[
+                                            { label: 'About', icon: Info, path: '/about' },
+                                            { label: 'Privacy', icon: Lock, path: '/privacy' },
+                                            { label: 'Terms', icon: Scale, path: '/terms' },
+                                            { label: 'Safety', icon: Shield, path: '/safety' },
+                                            { label: 'Guidelines', icon: FileText, path: '/guidelines' },
+                                            { label: 'Careers', icon: Briefcase, path: '/careers' },
+                                        ].map(item => (
+                                            <button
+                                                key={item.path}
+                                                onClick={() => navigate(item.path)}
+                                                className="w-full p-2.5 rounded-lg hover:bg-gray-800/60 group text-left transition-all flex items-center gap-2 border border-transparent hover:border-gray-700"
+                                            >
+                                                <item.icon className="w-3.5 h-3.5 text-gray-500 group-hover:text-gray-300 transition-colors" />
+                                                <span className="text-xs text-gray-300 group-hover:text-white transition-colors truncate">{item.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
 
                                 {/* Meet the Devs */}
