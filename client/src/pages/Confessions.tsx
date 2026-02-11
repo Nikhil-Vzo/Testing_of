@@ -470,7 +470,7 @@ export const Confessions: React.FC = () => {
         <div className="h-full w-full bg-transparent text-white flex flex-col relative overflow-hidden font-sans">
 
             {/* Header */}
-            <div className="flex-none p-4 border-b border-gray-900 bg-black z-40 sticky top-0 flex items-center justify-between">
+            <div className="flex-none p-4 border-b border-gray-800/50 bg-black/20 backdrop-blur-md z-40 sticky top-0 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <button onClick={() => navigate('/home')} className="p-2 hover:bg-gray-800 rounded-full transition-colors hidden md:block">
                         <ArrowLeft className="w-6 h-6 text-gray-400" />
@@ -529,7 +529,8 @@ export const Confessions: React.FC = () => {
                     // But our fetch logic attempts to create/find a real one.
 
                     return (
-                        <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-xl p-4 mb-4 relative shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+                    return (
+                        <div className="bg-gray-900/30 backdrop-blur-md border border-gray-800/50 rounded-xl p-4 mb-4 relative shadow-lg">
                             <div className="absolute top-4 right-4 animate-pulse">
                                 <Crown className="w-3 h-3 text-yellow-500" />
                             </div>
@@ -636,7 +637,7 @@ export const Confessions: React.FC = () => {
                     sortedConfessions
                         .filter(c => c.id !== 'othrhalff-welcome' && c.id !== adminPostId) // Don't show admin post in regular feed if it's there
                         .map(conf => (
-                            <div key={conf.id} className="bg-black/40 backdrop-blur-md border border-white/10 rounded-xl p-4">
+                            <div key={conf.id} className="bg-gray-900/30 backdrop-blur-md border border-gray-800/50 rounded-xl p-4 hover:bg-gray-900/40 transition-colors">
                                 <div className="flex gap-3 mb-3">
                                     <div className="w-10 h-10 rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center shrink-0">
                                         <span className="text-sm font-bold text-gray-500">?</span>
