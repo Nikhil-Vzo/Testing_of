@@ -480,7 +480,34 @@ export const Profile: React.FC = () => {
                                         <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">College Email (.edu)</label>
                                         <NeonInput placeholder="student@university.edu" value={verifyData.email} onChange={e => setVerifyData({ ...verifyData, email: e.target.value })} />
                                     </div>
-                                    <NeonButton onClick={() => setVerifyStep(2)} className="w-full py-4 text-base">Send Verification</NeonButton>
+                                    <NeonButton onClick={async () => {
+                                        if (!verifyData.email.trim() || !verifyData.email.includes('@')) {
+                                            alert("Please enter a valid email.");
+                                            return;
+                                        }
+                                        if (!currentUser) return;
+
+                                        setSaving(true);
+                                        try {
+                                            const { error } = await supabase
+                                                .from('verification_requests')
+                                                .insert({
+                                                    user_id: currentUser.id,
+                                                    email: verifyData.email,
+                                                    status: 'pending'
+                                                });
+
+                                            if (error) throw error;
+                                            setVerifyStep(2);
+                                        } catch (err) {
+                                            console.error('Verification request failed:', err);
+                                            alert('Failed to send request. Please try again.');
+                                        } finally {
+                                            setSaving(false);
+                                        }
+                                    }} className="w-full py-4 text-base" disabled={saving}>
+                                        {saving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Send Verification'}
+                                    </NeonButton>
                                 </div>
                             ) : (
                                 <div className="text-center py-4">

@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RotateCcw, Ghost, Shield, Heart, Mail, Briefcase, FileText, AlertTriangle, CheckCircle2, Lock, Scale } from 'lucide-react';
+import { RotateCcw, Ghost, Shield, Heart, Mail, Briefcase, FileText, AlertTriangle, CheckCircle2, Lock, Scale, Loader2, Send } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
+import { NeonButton, NeonInput } from '../components/Common';
 
 // --- Shared Layout Component ---
 const PageLayout: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode }> = ({ title, icon, children }) => {
@@ -46,10 +49,10 @@ export const About: React.FC = () => (
       Othrhalff was born in a dorm room with a simple mission: to bring connection back to campus life without the pressure of superficial swiping.
     </p>
     <div className="p-6 border border-yellow-500/30 bg-yellow-500/5 rounded-xl">
-        <h4 className="text-yellow-500 font-bold mb-2 flex items-center gap-2"><AlertTriangle className="w-4 h-4"/> Disclaimer</h4>
-        <p className="text-xs text-yellow-200/70">
-            Othrhalff is an independent platform and is <strong>not affiliated, associated, authorized, endorsed by, or in any way officially connected</strong> with any university, college, or educational institution mentioned on this site. All product and company names are trademarks™ or registered® trademarks of their respective holders. Use of them does not imply any affiliation with or endorsement by them.
-        </p>
+      <h4 className="text-yellow-500 font-bold mb-2 flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> Disclaimer</h4>
+      <p className="text-xs text-yellow-200/70">
+        Othrhalff is an independent platform and is <strong>not affiliated, associated, authorized, endorsed by, or in any way officially connected</strong> with any university, college, or educational institution mentioned on this site. All product and company names are trademarks™ or registered® trademarks of their respective holders. Use of them does not imply any affiliation with or endorsement by them.
+      </p>
     </div>
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
       <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
@@ -86,25 +89,144 @@ export const Careers: React.FC = () => (
   </PageLayout>
 );
 
-export const Contact: React.FC = () => (
-  <PageLayout title="Contact Us" icon={<Mail className="w-8 h-8 text-neon" />}>
-    <p className="mb-8">Have a question, a bug report, or a success story? We'd love to hear from you.</p>
+export const Contact: React.FC = () => {
+  const { currentUser } = useAuth();
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
+  const [category, setCategory] = useState('Support');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div className="p-6 bg-gray-800/50 rounded-2xl border border-gray-700 hover:border-neon transition-colors cursor-pointer group">
-        <h3 className="text-white font-bold mb-2 group-hover:text-neon transition-colors">Support</h3>
-        <p className="text-sm mb-4">For account issues and bug reports.</p>
-        <a href="mailto:support@otherhalf.app" className="text-neon text-sm font-mono">support@otherhalf.app</a>
-      </div>
+  // Auto-fill email if logged in
+  useEffect(() => {
+    if (currentUser?.universityEmail) {
+      setEmail(currentUser.universityEmail);
+    }
+  }, [currentUser]);
 
-      <div className="p-6 bg-gray-800/50 rounded-2xl border border-gray-700 hover:border-neon transition-colors cursor-pointer group">
-        <h3 className="text-white font-bold mb-2 group-hover:text-neon transition-colors">Legal & Safety</h3>
-        <p className="text-sm mb-4">For law enforcement or legal inquiries.</p>
-        <a href="mailto:legal@otherhalf.app" className="text-neon text-sm font-mono">legal@otherhalf.app</a>
-      </div>
-    </div>
-  </PageLayout>
-);
+  const handleSubmit = async () => {
+    if (!email.trim() || !message.trim()) {
+      alert("Please fill in all fields.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (supabase) {
+        const { error } = await supabase.from('support_tickets').insert({
+          user_id: currentUser?.id || null, // Allow anon / null if not logged in (RLS might block, but schema allows null)
+          email: email,
+          category: category,
+          message: message,
+          status: 'open'
+        });
+
+        if (error) throw error;
+        setSubmitted(true);
+      } else {
+        alert("Database connection not ready.");
+      }
+    } catch (err) {
+      console.error("Ticket error:", err);
+      alert("Failed to submit ticket. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <PageLayout title="Contact Us" icon={<Mail className="w-8 h-8 text-neon" />}>
+      {submitted ? (
+        <div className="text-center py-12">
+          <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-green-500/30 animate-fade-in-up">
+            <CheckCircle2 className="w-10 h-10 text-green-500" />
+          </div>
+          <h2 className="text-3xl font-bold text-white mb-4">Message Received!</h2>
+          <p className="text-gray-400 max-w-md mx-auto mb-8">
+            Thanks for reaching out. Our support team (aka the founders in their dorm) will get back to you at <span className="text-white font-bold">{email}</span> soon.
+          </p>
+          <button
+            onClick={() => setSubmitted(false)}
+            className="text-neon hover:underline text-sm font-bold uppercase tracking-widest"
+          >
+            Send Another Message
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+          <div className="space-y-6">
+            <p className="text-lg text-gray-300">
+              Have a question, a bug report, or a success story? We'd love to hear from you.
+            </p>
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-4 p-4 bg-gray-800/50 rounded-xl border border-gray-700">
+                <div className="p-3 bg-neon/10 rounded-lg text-neon"><Mail className="w-6 h-6" /></div>
+                <div>
+                  <h3 className="font-bold text-white">Direct Email</h3>
+                  <a href="mailto:support@otherhalf.app" className="text-sm text-gray-400 hover:text-white transition-colors">support@otherhalf.app</a>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 p-4 bg-gray-800/50 rounded-xl border border-gray-700">
+                <div className="p-3 bg-blue-500/10 rounded-lg text-blue-400"><Shield className="w-6 h-6" /></div>
+                <div>
+                  <h3 className="font-bold text-white">Legal Inquiries</h3>
+                  <a href="mailto:legal@otherhalf.app" className="text-sm text-gray-400 hover:text-white transition-colors">legal@otherhalf.app</a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-800/30 p-6 rounded-2xl border border-gray-700/50">
+            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+              <Send className="w-5 h-5 text-neon" /> Send a Message
+            </h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Category</label>
+                <div className="flex flex-wrap gap-2">
+                  {['Support', 'Bug Report', 'Legal', 'Other'].map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => setCategory(cat)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${category === cat ? 'bg-neon/20 border-neon text-neon' : 'bg-gray-900 border-gray-700 text-gray-400 hover:border-gray-500'}`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Email Address</label>
+                <NeonInput
+                  value={email}
+                  onChange={(e: any) => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Message</label>
+                <textarea
+                  className="w-full bg-gray-900 border border-gray-700 text-white px-4 py-3 rounded-xl outline-none focus:border-neon h-32 resize-none transition-all"
+                  placeholder="How can we help?"
+                  value={message}
+                  onChange={e => setMessage(e.target.value)}
+                />
+              </div>
+
+              <NeonButton onClick={handleSubmit} disabled={isSubmitting} className="w-full py-4 text-sm">
+                {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Send Ticket'}
+              </NeonButton>
+            </div>
+          </div>
+        </div>
+      )}
+    </PageLayout>
+  );
+};
 
 export const Privacy: React.FC = () => (
   <PageLayout title="Privacy Policy" icon={<Lock className="w-8 h-8 text-neon" />}>
@@ -127,7 +249,7 @@ export const Privacy: React.FC = () => (
       <section>
         <h3 className="text-lg font-bold text-white mb-2 uppercase tracking-wide">2. Student Verification</h3>
         <p>
-            We use third-party systems or direct email verification to confirm enrollment. We <strong>do not</strong> access your university's internal systems or student records.
+          We use third-party systems or direct email verification to confirm enrollment. We <strong>do not</strong> access your university's internal systems or student records.
         </p>
       </section>
 
@@ -135,7 +257,7 @@ export const Privacy: React.FC = () => (
         <h3 className="text-lg font-bold text-white mb-2 uppercase tracking-wide">3. Data Sharing</h3>
         <p>Your "Real Name" and "Avatar" are hidden until a mutual match occurs or you voluntarily reveal them. We do not sell, rent, or trade user data to third parties, including universities.</p>
       </section>
-      
+
       <section>
         <h3 className="text-lg font-bold text-white mb-2 uppercase tracking-wide">4. Data Deletion</h3>
         <p>You may request full deletion of your account and data at any time by contacting support.</p>
@@ -150,7 +272,7 @@ export const Terms: React.FC = () => (
       <div className="p-4 border-l-4 border-red-500 bg-red-500/10 mb-6">
         <p className="font-bold text-white">Critical Disclaimer</p>
         <p className="text-gray-400 mt-1">
-            Othrhalff is NOT affiliated with any university. By using this app, you acknowledge this is a private, independent service.
+          Othrhalff is NOT affiliated with any university. By using this app, you acknowledge this is a private, independent service.
         </p>
       </div>
 
@@ -162,7 +284,7 @@ export const Terms: React.FC = () => (
       <section>
         <h3 className="text-lg font-bold text-white mb-2 uppercase tracking-wide">2. Non-Affiliation</h3>
         <p>
-            Othrhalff is an independent entity. References to specific universities, colleges, or mascots are strictly for identification purposes to facilitate student connections. We claim no ownership of university trademarks.
+          Othrhalff is an independent entity. References to specific universities, colleges, or mascots are strictly for identification purposes to facilitate student connections. We claim no ownership of university trademarks.
         </p>
       </section>
 
@@ -182,14 +304,14 @@ export const Terms: React.FC = () => (
         <h3 className="text-lg font-bold text-white mb-2 uppercase tracking-wide">4. Limitation of Liability</h3>
         <p className="uppercase text-xs font-bold text-gray-500 mb-2">Read Carefully</p>
         <p>
-            TO THE MAXIMUM EXTENT PERMITTED BY LAW, OTHRHALFF SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS OR REVENUES, WHETHER INCURRED DIRECTLY OR INDIRECTLY, OR ANY LOSS OF DATA, USE, GOODWILL, OR OTHER INTANGIBLE LOSSES, RESULTING FROM (A) YOUR ACCESS TO OR USE OF OR INABILITY TO ACCESS OR USE THE SERVICE; (B) ANY CONDUCT OR CONTENT OF ANY THIRD PARTY ON THE SERVICE; OR (C) UNAUTHORIZED ACCESS, USE, OR ALTERATION OF YOUR TRANSMISSIONS OR CONTENT.
+          TO THE MAXIMUM EXTENT PERMITTED BY LAW, OTHRHALFF SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS OR REVENUES, WHETHER INCURRED DIRECTLY OR INDIRECTLY, OR ANY LOSS OF DATA, USE, GOODWILL, OR OTHER INTANGIBLE LOSSES, RESULTING FROM (A) YOUR ACCESS TO OR USE OF OR INABILITY TO ACCESS OR USE THE SERVICE; (B) ANY CONDUCT OR CONTENT OF ANY THIRD PARTY ON THE SERVICE; OR (C) UNAUTHORIZED ACCESS, USE, OR ALTERATION OF YOUR TRANSMISSIONS OR CONTENT.
         </p>
       </section>
 
       <section>
         <h3 className="text-lg font-bold text-white mb-2 uppercase tracking-wide">5. Indemnification</h3>
         <p>
-            You agree to indemnify and hold Othrhalff harmless from any claims, disputes, demands, liabilities, damages, losses, and costs and expenses, including, without limitation, reasonable legal and accounting fees arising out of or in any way connected with your access to or use of the Service or your violation of these Terms.
+          You agree to indemnify and hold Othrhalff harmless from any claims, disputes, demands, liabilities, damages, losses, and costs and expenses, including, without limitation, reasonable legal and accounting fees arising out of or in any way connected with your access to or use of the Service or your violation of these Terms.
         </p>
       </section>
     </div>
