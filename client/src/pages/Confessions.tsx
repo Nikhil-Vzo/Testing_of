@@ -147,6 +147,40 @@ export const Confessions: React.FC = () => {
         setIsPosting(true);
 
         try {
+            // 0. CHECK RATE LIMITS
+            const startOfDay = new Date();
+            startOfDay.setHours(0, 0, 0, 0);
+
+            const { data: dailyPosts, error: limitError } = await supabase
+                .from('confessions')
+                .select('type, image_url')
+                .eq('user_id', currentUser.id)
+                .gte('created_at', startOfDay.toISOString());
+
+            if (limitError) throw limitError;
+
+            const totalPosts = dailyPosts?.length || 0;
+            const totalPolls = dailyPosts?.filter(p => p.type === 'poll').length || 0;
+            const totalImages = dailyPosts?.filter(p => p.image_url).length || 0;
+
+            if (totalPosts >= 3) {
+                alert("You've reached your daily limit of 3 confessions!");
+                setIsPosting(false);
+                return;
+            }
+
+            if (isPollMode && totalPolls >= 1) {
+                alert("You can only post 1 poll per day!");
+                setIsPosting(false);
+                return;
+            }
+
+            if (!isPollMode && newImage && totalImages >= 1) {
+                alert("You can only post 1 image per day!");
+                setIsPosting(false);
+                return;
+            }
+
             // 1. Insert Confession
             const { data: post, error } = await supabase
                 .from('confessions')
