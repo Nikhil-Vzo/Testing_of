@@ -15,7 +15,10 @@ const corsOptions = {
   origin: [
     'http://localhost:5173', // Local Vite dev server
     'http://localhost:3000', // Alternative local port
-    'https://testing-of-client.vercel.app', // Production frontend
+    'https://testing-of-client.vercel.app', // Old Production frontend
+    'https://othrhalff.in', // New Domain
+    'https://www.othrhalff.in', // New Domain (www)
+    'https://othrhalff.vercel.app', // New Vercel Domain
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
