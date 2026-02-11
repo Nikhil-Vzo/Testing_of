@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Confession } from '../types'; // Ensure types are updated if needed
 import { NeonButton } from '../components/Common';
-import { ArrowLeft, Image as ImageIcon, Send, Heart, Crown, MessageCircle, X, Loader2, ChevronDown, ChevronUp, ZoomIn, SlidersHorizontal, SmilePlus, Plus, BarChart2 } from 'lucide-react';
+import { ArrowLeft, Image as ImageIcon, Send, Heart, Crown, MessageCircle, X, Loader2, ChevronDown, ChevronUp, ZoomIn, SlidersHorizontal, SmilePlus, Plus, BarChart2, Ghost } from 'lucide-react';
 import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase'; // Use real DB
@@ -18,7 +18,6 @@ export const Confessions: React.FC = () => {
     const [confessions, setConfessions] = useState<Confession[]>([]);
     const [newText, setNewText] = useState('');
     const [newImage, setNewImage] = useState<string | null>(null);
-    const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
     const [isPosting, setIsPosting] = useState(false);
     const [viewImage, setViewImage] = useState<string | null>(null);
 
@@ -277,11 +276,7 @@ export const Confessions: React.FC = () => {
     };
 
     const handleImageClick = () => {
-        if (currentUser?.isPremium) {
-            document.getElementById('confession-image-input')?.click();
-        } else {
-            setIsPremiumModalOpen(true);
-        }
+        document.getElementById('confession-image-input')?.click();
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -295,10 +290,17 @@ export const Confessions: React.FC = () => {
         }
     };
 
-    const buyPremium = () => {
-        setIsPremiumModalOpen(false);
-        updateProfile({ isPremium: true });
-        alert("Welcome to Premium!");
+    // Pinned OthrHalff welcome confession (always shown at top)
+    const othrhalffPost: Confession = {
+        id: 'othrhalff-welcome',
+        userId: 'OthrHalff Team',
+        text: 'Hey, thanks for using our services! 💜 We will be soon expanding into other colleges too. Stay tuned and keep confessing! 🚀',
+        timestamp: Date.now(),
+        likes: 0,
+        reactions: {},
+        comments: [],
+        university: 'OthrHalff',
+        type: 'text'
     };
 
     // Load comments when expanded
@@ -443,6 +445,40 @@ export const Confessions: React.FC = () => {
 
             {/* Feed */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-6 pb-24 md:pb-32">
+                {/* Pinned OthrHalff Welcome Post */}
+                <div className="bg-gradient-to-br from-neon/10 to-purple-900/20 border border-neon/20 rounded-2xl p-5 animate-fade-in-up relative">
+                    <div className="absolute top-3 right-3 text-[10px] font-bold uppercase text-neon/60 bg-neon/10 px-2 py-0.5 rounded-full">📌 Pinned</div>
+                    <div className="flex gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-full bg-neon/20 flex items-center justify-center shrink-0 border border-neon/30">
+                            <Ghost className="w-5 h-5 text-neon" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-bold text-neon">OthrHalff Team</span>
+                            </div>
+                            <p className="text-xs text-gray-500">OthrHalff</p>
+                        </div>
+                    </div>
+                    <p className="text-gray-200 text-sm leading-relaxed mb-4">Hey, thanks for using our services! 💜 We will be soon expanding into other colleges too. Stay tuned and keep confessing! 🚀</p>
+                    <div className="flex flex-col gap-2 border-t border-gray-800/50 pt-2">
+                        <div className="flex items-center gap-4">
+                            <button
+                                onClick={(e) => handleReactionClick(e, othrhalffPost.id)}
+                                className="flex items-center gap-2 text-gray-500 hover:text-neon transition-colors text-xs font-bold group"
+                            >
+                                <SmilePlus className="w-4 h-4 group-hover:text-neon" />
+                                <span>React</span>
+                            </button>
+                            <button
+                                onClick={() => toggleComments(othrhalffPost.id)}
+                                className="flex items-center gap-2 text-gray-500 hover:text-blue-400 transition-colors text-xs font-bold"
+                            >
+                                <MessageCircle className="w-4 h-4" /> Comments
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 {sortedConfessions.length === 0 ? (
                     <div className="text-center py-20 text-gray-600">
                         <p>No confessions yet. Be the first to spill the tea! ☕</p>
@@ -637,7 +673,7 @@ export const Confessions: React.FC = () => {
                                 <BarChart2 className="w-5 h-5" />
                             </button>
                             <button onClick={handleImageClick} disabled={isPollMode} className={`p-2 rounded-full transition-colors hover:bg-gray-800 ${isPollMode ? 'opacity-30 cursor-not-allowed' : ''}`}>
-                                <ImageIcon className={`w-5 h-5 ${currentUser?.isPremium ? 'text-gray-400 hover:text-white' : 'text-yellow-500/70'}`} />
+                                <ImageIcon className="w-5 h-5 text-gray-400 hover:text-white" />
                             </button>
                             <input id="confession-image-input" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                             <button onClick={handlePost} disabled={(isPollMode ? (pollOptions.filter(o => o.trim()).length < 2 || !newText.trim()) : (!newText.trim() && !newImage)) || isPosting} className="p-2 bg-neon rounded-full text-white disabled:opacity-50 disabled:cursor-not-allowed shadow-neon-sm">
@@ -670,26 +706,7 @@ export const Confessions: React.FC = () => {
                 </>
             )}
 
-            {/* ... Premium Modal ... */}
-            {/* ... Image Lightbox ... */}
-            {/* (Keep the rest of the file logic the same) */}
-            {isPremiumModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-                    {/* ... (Existing Premium Modal Code) ... */}
-                    <div className="bg-gray-900 border border-yellow-500/30 rounded-3xl p-8 max-w-sm w-full text-center shadow-[0_0_50px_rgba(234,179,8,0.1)] relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-500 to-transparent"></div>
-                        <div className="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-yellow-500/50">
-                            <Crown className="w-8 h-8 text-yellow-500" />
-                        </div>
-                        <h3 className="text-2xl font-black text-white mb-2">Unlock Premium</h3>
-                        <p className="text-gray-400 text-sm mb-8">Post image confessions, see who liked your profile, and get unlimited swipes.</p>
-                        <div className="space-y-3">
-                            <button onClick={buyPremium} className="w-full py-4 bg-gradient-to-r from-yellow-600 to-yellow-500 rounded-xl font-bold text-black hover:scale-105 transition-transform shadow-lg uppercase tracking-wide">Get Premium - ₹9/week</button>
-                            <button onClick={() => setIsPremiumModalOpen(false)} className="w-full py-3 text-gray-500 hover:text-white text-sm font-medium">Maybe Later</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Premium modal removed - images now free for all */}
             {viewImage && (
                 <div className="fixed inset-0 z-[60] bg-black/95 flex items-center justify-center p-4 animate-fade-in" onClick={() => setViewImage(null)}>
                     <button className="absolute top-6 right-6 p-3 bg-gray-800/50 rounded-full hover:bg-gray-700 text-white transition-colors" onClick={() => setViewImage(null)}>
