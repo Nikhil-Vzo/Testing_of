@@ -631,7 +631,7 @@ export const Chat: React.FC = () => {
       />
 
       {/* 1. Header */}
-      <div className="px-4 py-3 bg-black/95 backdrop-blur-md border-b border-gray-800 flex items-center justify-between z-20 sticky top-0">
+      <div className="flex-none px-4 py-3 bg-black/95 backdrop-blur-md border-b border-gray-800 flex items-center justify-between z-20">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/matches')} className="p-2 -ml-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-800 transition-colors">
             <ArrowLeft className="w-5 h-5" />
@@ -723,7 +723,7 @@ export const Chat: React.FC = () => {
       </div>
 
       {/* 2. Messages Area */}
-      <div ref={chatContainerRef} className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4 select-none" style={{ userSelect: 'none', WebkitUserSelect: 'none' }}>
+      <div ref={chatContainerRef} className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4 select-none min-h-0" style={{ userSelect: 'none', WebkitUserSelect: 'none' }}>
         {/* Privacy Notice - Non-sticky with subtle colors */}
         <div className="mb-4">
           <div className="bg-gradient-to-r from-blue-900/10 to-purple-900/10 border border-blue-800/20 rounded-2xl p-3 backdrop-blur-sm">
@@ -804,7 +804,7 @@ export const Chat: React.FC = () => {
       </div>
 
       {/* 3. Input Area */}
-      <div className="p-4 bg-gray-900/90 backdrop-blur border-t border-gray-800 z-20 relative">
+      <div className="flex-none p-4 bg-gray-900/90 backdrop-blur border-t border-gray-800 z-20 relative">
         {/* Blocked User Overlay */}
         {(isBlocked || isBlockedByThem) && (
           <div className="absolute inset-0 bg-gray-900/95 backdrop-blur-sm flex items-center justify-center z-30 border-t border-gray-800">
