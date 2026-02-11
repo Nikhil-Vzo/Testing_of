@@ -3,7 +3,7 @@ User-agent: *
 Allow: /
 
 # Sitemap location
-Sitemap: https://othrhalff.com/sitemap.xml
+Sitemap: https://www.othrhalff.in/sitemap.xml
 
-# Block sensitive paths (if any)
+# Block sensitive paths
 Disallow: /api/

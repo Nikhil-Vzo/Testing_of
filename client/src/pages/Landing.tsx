@@ -38,7 +38,7 @@ export const Landing: React.FC = () => {
 
   // Scroll-triggered animations for feature cards
   const [featuresVisible, setFeaturesVisible] = useState(false);
-  const featuresRef = useRef<HTMLDivElement>(null);
+  const featuresRef = useRef<HTMLElement>(null);
 
   // Text reveal animation (keep existing for initial load)
   const [textRevealed, setTextRevealed] = useState(false);
@@ -76,7 +76,7 @@ export const Landing: React.FC = () => {
       {/* Subtle noise overlay */}
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay pointer-events-none z-[1]"></div>
 
-      <nav className="relative z-20 px-4 sm:px-6 py-4 sm:py-8 flex justify-between items-center max-w-7xl mx-auto w-full">
+      <nav aria-label="Main navigation" className="relative z-20 px-4 sm:px-6 py-4 sm:py-8 flex justify-between items-center max-w-7xl mx-auto w-full">
         <div className="flex items-center gap-2 cursor-pointer group" onClick={() => navigate('/')}>
           <Ghost className="w-6 h-6 sm:w-8 sm:h-8 text-neon group-hover:scale-110 group-hover:rotate-12 transition-all duration-300" />
           <span className="text-xl sm:text-2xl font-black tracking-tighter">
@@ -166,72 +166,76 @@ export const Landing: React.FC = () => {
           </button>
         </div>
 
-        <div
+        <section
           id="features"
           ref={featuresRef}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 mt-16 sm:mt-32 max-w-6xl mx-auto w-full px-4"
+          className="mt-16 sm:mt-32 max-w-6xl mx-auto w-full px-4"
+          aria-label="Features"
         >
-          {/* Feature Card 1 */}
-          <div
-            className={`group relative bg-gray-900/50 backdrop-blur-sm border border-gray-800 p-8 rounded-3xl transition-all duration-700 cursor-default overflow-hidden ${featuresVisible
-              ? 'opacity-100 translate-y-0'
-              : 'opacity-0 translate-y-12'
-              }`}
-            style={{ transitionDelay: featuresVisible ? '0ms' : '0ms' }}
-          >
-            {/* Hover glow */}
-            <div className="absolute inset-0 bg-gradient-to-br from-neon/0 via-neon/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="absolute inset-0 border border-neon/0 group-hover:border-neon/50 rounded-3xl transition-all duration-500" />
+          <h2 className="sr-only">Why Students Love OthrHalff</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+            {/* Feature Card 1 */}
+            <div
+              className={`group relative bg-gray-900/50 backdrop-blur-sm border border-gray-800 p-8 rounded-3xl transition-all duration-700 cursor-default overflow-hidden ${featuresVisible
+                ? 'opacity-100 translate-y-0'
+                : 'opacity-0 translate-y-12'
+                }`}
+              style={{ transitionDelay: featuresVisible ? '0ms' : '0ms' }}
+            >
+              {/* Hover glow */}
+              <div className="absolute inset-0 bg-gradient-to-br from-neon/0 via-neon/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute inset-0 border border-neon/0 group-hover:border-neon/50 rounded-3xl transition-all duration-500" />
 
-            <div className="relative z-10">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gray-800 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-neon/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                <Shield className="w-6 h-6 sm:w-7 sm:h-7 group-hover:text-neon transition-colors" />
+              <div className="relative z-10">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gray-800 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-neon/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
+                  <Shield className="w-6 h-6 sm:w-7 sm:h-7 group-hover:text-neon transition-colors" />
+                </div>
+                <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 group-hover:text-neon transition-colors">College Students Only</h3>
+                <p className="text-sm sm:text-base text-gray-400 group-hover:text-gray-300 transition-colors">A place where college students connects on vibes. No outsiders allowed.</p>
               </div>
-              <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 group-hover:text-neon transition-colors">College Students Only</h3>
-              <p className="text-sm sm:text-base text-gray-400 group-hover:text-gray-300 transition-colors">A place where college students connects on vibes. No outsiders allowed.</p>
+            </div>
+
+            {/* Feature Card 2 */}
+            <div
+              className={`group relative bg-gray-900/50 backdrop-blur-sm border border-gray-800 p-8 rounded-3xl transition-all duration-700 cursor-default overflow-hidden ${featuresVisible
+                ? 'opacity-100 translate-y-0'
+                : 'opacity-0 translate-y-12'
+                }`}
+              style={{ transitionDelay: featuresVisible ? '150ms' : '0ms' }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 via-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute inset-0 border border-purple-500/0 group-hover:border-purple-500/50 rounded-3xl transition-all duration-500" />
+
+              <div className="relative z-10">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gray-800 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-purple-500/20 group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300">
+                  <Ghost className="w-6 h-6 sm:w-7 sm:h-7 group-hover:text-purple-400 transition-colors" />
+                </div>
+                <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 group-hover:text-purple-400 transition-colors">Total Anonymity</h3>
+                <p className="text-sm sm:text-base text-gray-400 group-hover:text-gray-300 transition-colors">Your photos and name stay hidden. Chat, vibe, and reveal only when you trust them.</p>
+              </div>
+            </div>
+
+            {/* Feature Card 3 */}
+            <div
+              className={`group relative bg-gray-900/50 backdrop-blur-sm border border-gray-800 p-8 rounded-3xl transition-all duration-700 cursor-default overflow-hidden ${featuresVisible
+                ? 'opacity-100 translate-y-0'
+                : 'opacity-0 translate-y-12'
+                }`}
+              style={{ transitionDelay: featuresVisible ? '300ms' : '0ms' }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute inset-0 border border-blue-500/0 group-hover:border-blue-500/50 rounded-3xl transition-all duration-500" />
+
+              <div className="relative z-10">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gray-800 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-blue-500/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
+                  <Heart className="w-6 h-6 sm:w-7 sm:h-7 group-hover:text-blue-400 group-hover:animate-pulse transition-colors" />
+                </div>
+                <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 group-hover:text-blue-400 transition-colors">Vibe-Based Matching</h3>
+                <p className="text-sm sm:text-base text-gray-400 group-hover:text-gray-300 transition-colors">Our AI analyzes your goals and interests to find exactly who you're looking for—whether that's a late-night coder, a gym spotter, or a romantic match.</p>
+              </div>
             </div>
           </div>
-
-          {/* Feature Card 2 */}
-          <div
-            className={`group relative bg-gray-900/50 backdrop-blur-sm border border-gray-800 p-8 rounded-3xl transition-all duration-700 cursor-default overflow-hidden ${featuresVisible
-              ? 'opacity-100 translate-y-0'
-              : 'opacity-0 translate-y-12'
-              }`}
-            style={{ transitionDelay: featuresVisible ? '150ms' : '0ms' }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 via-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="absolute inset-0 border border-purple-500/0 group-hover:border-purple-500/50 rounded-3xl transition-all duration-500" />
-
-            <div className="relative z-10">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gray-800 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-purple-500/20 group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300">
-                <Ghost className="w-6 h-6 sm:w-7 sm:h-7 group-hover:text-purple-400 transition-colors" />
-              </div>
-              <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 group-hover:text-purple-400 transition-colors">Total Anonymity</h3>
-              <p className="text-sm sm:text-base text-gray-400 group-hover:text-gray-300 transition-colors">Your photos and name stay hidden. Chat, vibe, and reveal only when you trust them.</p>
-            </div>
-          </div>
-
-          {/* Feature Card 3 */}
-          <div
-            className={`group relative bg-gray-900/50 backdrop-blur-sm border border-gray-800 p-8 rounded-3xl transition-all duration-700 cursor-default overflow-hidden ${featuresVisible
-              ? 'opacity-100 translate-y-0'
-              : 'opacity-0 translate-y-12'
-              }`}
-            style={{ transitionDelay: featuresVisible ? '300ms' : '0ms' }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="absolute inset-0 border border-blue-500/0 group-hover:border-blue-500/50 rounded-3xl transition-all duration-500" />
-
-            <div className="relative z-10">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gray-800 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-blue-500/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                <Heart className="w-6 h-6 sm:w-7 sm:h-7 group-hover:text-blue-400 group-hover:animate-pulse transition-colors" />
-              </div>
-              <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 group-hover:text-blue-400 transition-colors">Vibe-Based Matching</h3>
-              <p className="text-sm sm:text-base text-gray-400 group-hover:text-gray-300 transition-colors">Our AI analyzes your goals and interests to find exactly who you're looking for—whether that's a late-night coder, a gym spotter, or a romantic match.</p>
-            </div>
-          </div>
-        </div>
+        </section>
       </main>
 
       {/* Footer Section */}

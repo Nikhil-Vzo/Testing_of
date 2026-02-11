@@ -1,8 +1,9 @@
 {
-    "name": "OthrHalff",
+    "name": "OthrHalff – Campus Dating & Connections",
     "short_name": "OthrHalff",
-    "description": "Anonymous campus dating app for university students",
+    "description": "India's exclusive campus dating and connection platform for university students. Find study partners, gym buddies, or your perfect match anonymously and safely.",
     "start_url": "/",
+    "id": "/",
     "display": "standalone",
     "background_color": "#000000",
     "theme_color": "#00FF88",
@@ -23,7 +24,8 @@
     ],
     "categories": [
         "social",
-        "lifestyle"
+        "lifestyle",
+        "dating"
     ],
     "screenshots": [],
     "prefer_related_applications": false
