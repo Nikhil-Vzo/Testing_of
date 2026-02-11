@@ -325,7 +325,7 @@ export const Onboarding: React.FC = () => {
           {/* Personal Details Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Real Name</label>
+              <label className="block text-sm text-gray-400 mb-1">Name(Got a fun nickname? Spill it.)</label>
               <NeonInput
                 value={tempProfile.realName || ''}
                 onChange={e => setTempProfile({ ...tempProfile, realName: e.target.value })}

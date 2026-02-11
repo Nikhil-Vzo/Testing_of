@@ -344,7 +344,7 @@ export const Chat: React.FC = () => {
 
       showConfirm(
         'User Offline',
-        `${isRevealed ? partner.realName : partner.anonymousId} is ${lastSeenText}. Call anyway? They'll receive a missed call notification.`,
+        `${partner.realName || partner.anonymousId} is ${lastSeenText}. Call anyway? They'll receive a missed call notification.`,
         () => proceedWithCallCheck(type),
         false,
         'Call Anyway'
@@ -374,7 +374,7 @@ export const Chat: React.FC = () => {
 
     // Show outgoing call modal
     setOutgoingCall({
-      receiverName: isRevealed ? partner.realName : partner.anonymousId,
+      receiverName: partner.realName || partner.anonymousId,
       receiverAvatar: partner.avatar || 'https://via.placeholder.com/150',
       callType: callType
     });
@@ -426,8 +426,9 @@ export const Chat: React.FC = () => {
               supabase.removeChannel(callChannel);
 
               // Start the call
+              // Start the call
               startCall(
-                isRevealed ? partner.realName : partner.anonymousId,
+                partner.realName || partner.anonymousId,
                 partner.avatar || 'https://via.placeholder.com/150',
                 callSession.app_id,
                 callSession.channel_name,
@@ -504,7 +505,7 @@ export const Chat: React.FC = () => {
       // Unblock
       showConfirm(
         'Unblock User',
-        `Unblock ${isRevealed ? partner.realName : partner.anonymousId}?`,
+        `Unblock ${partner.realName || partner.anonymousId}?`,
         async () => {
           const success = await unblockUser(partner.id);
           if (success) {
@@ -522,7 +523,7 @@ export const Chat: React.FC = () => {
       // Block
       showConfirm(
         'Block User',
-        `Block ${isRevealed ? partner.realName : partner.anonymousId}? You won't be able to message each other.`,
+        `Block ${partner.realName || partner.anonymousId}? You won't be able to message each other.`,
         async () => {
           const success = await blockUser(partner.id);
           if (success) {
@@ -542,7 +543,8 @@ export const Chat: React.FC = () => {
   const handleReport = () => {
     setShowMenu(false);
     // Navigate to contact page with report context
-    navigate('/contact', { state: { reportUserId: partner?.id, reportUserName: isRevealed ? partner?.realName : partner?.anonymousId } });
+    // Navigate to contact page with report context
+    navigate('/contact', { state: { reportUserId: partner?.id, reportUserName: partner?.realName || partner?.anonymousId } });
   };
 
   if (loading) return (
@@ -624,7 +626,7 @@ export const Chat: React.FC = () => {
 
           <div>
             <h3 className="text-sm font-bold text-white leading-tight">
-              {isRevealed ? partner.realName : partner.anonymousId}
+              {partner.realName || partner.anonymousId}
             </h3>
             <span className="text-[10px] flex items-center gap-1">
               {isUserOnline(partner.id) ? (

@@ -282,7 +282,7 @@ export const Matches: React.FC = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-baseline mb-1">
                     <h3 className="font-bold text-base text-gray-200 group-hover:text-white transition-colors truncate">
-                      {session.isRevealed ? match.realName : match.anonymousId}
+                      {match.realName || match.anonymousId}
                     </h3>
                     <span className="text-[10px] font-medium text-gray-600 uppercase tracking-wide">
                       {lastMsg ? new Date(lastMsg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}

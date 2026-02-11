@@ -527,9 +527,7 @@ export const Home: React.FC = () => {
                                 <div className="absolute bottom-0 inset-x-0 p-5 text-white pointer-events-none">
                                     <div className="flex items-center gap-2">
                                         <h1 className="text-2xl md:text-3xl font-bold tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]">
-                                            {currentUser.isVerified && currentProfile.matchPercentage > 80
-                                                ? currentProfile.realName.split(' ')[0]
-                                                : currentProfile.anonymousId}
+                                            {currentProfile.realName ? currentProfile.realName.split(' ')[0] : currentProfile.anonymousId}
                                         </h1>
                                         <span className="text-xl md:text-2xl font-normal text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
                                             {currentProfile.year === '1st Year' ? '18' : '20'}
