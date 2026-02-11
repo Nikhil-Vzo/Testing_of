@@ -275,8 +275,8 @@ export const Profile: React.FC = () => {
                     {/* 2. DETAILS GRID */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
 
-                        {/* Left Col: Bio & Interests (Takes up 2/3 on Desktop) */}
-                        <div className="md:col-span-2 space-y-6">
+                        {/* Left Col: Bio & Interests */}
+                        <div className={`${(isSelf && !isEditing) ? 'md:col-span-2' : 'md:col-span-3'} space-y-6`}>
                             {isEditing ? (
                                 <div className="bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-[2rem] p-6 md:p-8 animate-fade-in shadow-xl">
                                     <div className="flex items-center justify-between mb-8 border-b border-gray-800 pb-4">
@@ -424,29 +424,10 @@ export const Profile: React.FC = () => {
                             )}
                         </div>
 
-                        {/* Right Col: Stats & Support (Takes up 1/3 on Desktop) */}
-                        <div className="space-y-6">
-                            {/* Stats */}
-                            <div className="bg-gray-900/40 border border-gray-800 rounded-[2rem] p-6 backdrop-blur-md">
-                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Profile Stats</h3>
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-center p-3 rounded-xl bg-black/20">
-                                        <span className="text-gray-400 text-sm">Status</span>
-                                        <span className="text-green-500 font-bold text-sm flex items-center gap-2"><span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" /> Online</span>
-                                    </div>
-                                    <div className="flex justify-between items-center p-3 rounded-xl bg-black/20">
-                                        <span className="text-gray-400 text-sm">Match Rate</span>
-                                        <span className="text-neon font-bold text-sm">High</span>
-                                    </div>
-                                    <div className="flex justify-between items-center p-3 rounded-xl bg-black/20">
-                                        <span className="text-gray-400 text-sm">Joined</span>
-                                        <span className="text-white font-bold text-sm">Sep 2025</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Support & Contact (Self Only) */}
-                            {isSelf && !isEditing && (
+                        {/* Right Col: Stats & Support (Conditional) */}
+                        {(isSelf && !isEditing) && (
+                            <div className="space-y-6">
+                                {/* Support & Contact */}
                                 <div className="bg-gray-900/40 border border-gray-800 rounded-[2rem] p-6 backdrop-blur-md space-y-3">
                                     <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Account</h3>
 
@@ -473,8 +454,8 @@ export const Profile: React.FC = () => {
                                         <span className="font-bold text-gray-300 group-hover:text-red-400 text-sm">Log Out</span>
                                     </button>
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
 
                     </div>
                 </div>
