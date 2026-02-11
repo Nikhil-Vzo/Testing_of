@@ -11,6 +11,17 @@ const PROFILES_CACHE_KEY = 'otherhalf_discover_cache';
 const CACHE_EXPIRY_KEY = 'otherhalf_discover_cache_expiry';
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
+// Calculate age from DOB string
+const getAge = (dob?: string): number | null => {
+    if (!dob) return null;
+    const birth = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age;
+};
+
 export const Home: React.FC = () => {
     const { currentUser } = useAuth();
     const [queue, setQueue] = useState<MatchProfile[]>([]);
@@ -529,9 +540,16 @@ export const Home: React.FC = () => {
                                         <h1 className="text-2xl md:text-3xl font-bold tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]">
                                             {currentProfile.realName ? currentProfile.realName.split(' ')[0] : currentProfile.anonymousId}
                                         </h1>
-                                        <span className="text-xl md:text-2xl font-normal text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
-                                            {currentProfile.year === '1st Year' ? '18' : '20'}
-                                        </span>
+                                        {getAge(currentProfile.dob) && (
+                                            <span className="text-xl md:text-2xl font-normal text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                                                {getAge(currentProfile.dob)}
+                                            </span>
+                                        )}
+                                        {currentProfile.gender && (
+                                            <span className="text-xs font-bold uppercase px-2 py-0.5 rounded-full bg-white/15 backdrop-blur-sm text-white/90 drop-shadow-lg">
+                                                {currentProfile.gender}
+                                            </span>
+                                        )}
                                         {currentProfile.isVerified && (
                                             <Sparkles className="w-5 h-5 text-blue-400 drop-shadow-lg" />
                                         )}
@@ -540,15 +558,19 @@ export const Home: React.FC = () => {
                                         <GraduationCap className="w-4 h-4 drop-shadow-lg" />
                                         <span className="drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)]">{currentProfile.university}</span>
                                     </div>
-                                    <div className="flex items-center gap-2 mt-0.5 text-sm text-gray-300">
-                                        <MapPin className="w-4 h-4 drop-shadow-lg" />
-                                        <span className="drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)]">{currentProfile.distance}</span>
-                                    </div>
+                                    {(currentProfile.branch || currentProfile.year) && (
+                                        <div className="flex items-center gap-2 mt-0.5 text-sm text-gray-300">
+                                            <School className="w-4 h-4 drop-shadow-lg" />
+                                            <span className="drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)]">
+                                                {[currentProfile.branch, currentProfile.year].filter(Boolean).join(' • ')}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
                             {/* === ACTION BUTTONS === */}
-                            <div className="absolute bottom-2 inset-x-0 flex justify-center gap-6 z-20 h-20 items-center">
+                            <div className="absolute bottom-0 inset-x-0 flex justify-center gap-6 z-20 h-20 items-center pb-2">
                                 <button
                                     onClick={() => handleSwipe('left')}
                                     className="w-16 h-16 bg-gradient-to-br from-gray-900 to-gray-800 backdrop-blur-xl border border-gray-700 rounded-full flex items-center justify-center text-red-400 hover:text-red-300 hover:scale-110 hover:shadow-[0_0_30px_rgba(239,68,68,0.3)] transition-all duration-300 active:scale-95 shadow-xl"
