@@ -19,15 +19,31 @@ export const Landing: React.FC = () => {
     }
   }, [isAuthenticated, isLoading, navigate]);
 
+  // Dynamic Text State
+  const ROLES = ['OTHRHALFF', 'STUDY PARTNER', 'DUO CODER', 'MOVIE MATE', 'GYM BRO', 'CHILL MATE'];
+  const [currentRoleIndex, setCurrentRoleIndex] = useState(0);
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsAnimatingOut(true);
+      setTimeout(() => {
+        setCurrentRoleIndex((prev) => (prev + 1) % ROLES.length);
+        setIsAnimatingOut(false);
+      }, 500); // match transition duration
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   // Scroll-triggered animations for feature cards
   const [featuresVisible, setFeaturesVisible] = useState(false);
   const featuresRef = useRef<HTMLDivElement>(null);
 
-  // Text reveal animation
+  // Text reveal animation (keep existing for initial load)
   const [textRevealed, setTextRevealed] = useState(false);
 
   useEffect(() => {
-    // Trigger text reveal after mount
     const timer = setTimeout(() => setTextRevealed(true), 100);
     return () => clearTimeout(timer);
   }, []);
@@ -48,29 +64,6 @@ export const Landing: React.FC = () => {
 
     return () => observer.disconnect();
   }, []);
-
-  // Letter-by-letter animation component
-  const AnimatedText = ({ text, delay = 0, className = '', isGradient = false }: { text: string; delay?: number; className?: string; isGradient?: boolean }) => (
-    <span className={className}>
-      {text.split('').map((char, i) => (
-        <span
-          key={i}
-          className={`inline-block transition-all duration-500 ${isGradient
-            ? 'text-transparent bg-clip-text bg-gradient-to-r from-neon via-purple-500 to-blue-500'
-            : ''
-            }`}
-          style={{
-            opacity: textRevealed ? 1 : 0,
-            transform: textRevealed ? 'translateY(0) rotateX(0)' : 'translateY(40px) rotateX(-90deg)',
-            transitionDelay: `${delay + i * 40}ms`,
-            backgroundSize: isGradient ? '200% 200%' : undefined,
-          }}
-        >
-          {char === ' ' ? '\u00A0' : char}
-        </span>
-      ))}
-    </span>
-  );
 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-neon selection:text-white relative overflow-hidden flex flex-col">
@@ -126,12 +119,19 @@ export const Landing: React.FC = () => {
           <Sparkles className="w-3 h-3 text-neon opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
 
-        <h1 className="text-4xl sm:text-6xl md:text-8xl font-black mb-4 sm:mb-6 tracking-tighter leading-none perspective-1000">
-          <AnimatedText text="FIND YOUR" delay={200} />
-          <br />
-          <span className="drop-shadow-[0_0_30px_rgba(255,0,127,0.5)]">
-            <AnimatedText text="OTHRHALFF" delay={600} isGradient />
+        <h1 className="text-4xl sm:text-6xl md:text-8xl font-black mb-4 sm:mb-6 tracking-tighter leading-none perspective-1000 flex flex-col items-center gap-2 sm:gap-4">
+          <span className="block" style={{ opacity: textRevealed ? 1 : 0, transition: 'opacity 0.5s ease-out 0.2s' }}>
+            FIND YOUR
           </span>
+
+          <div className="relative h-[1.2em] overflow-hidden drop-shadow-[0_0_30px_rgba(255,0,127,0.5)]">
+            <span
+              className={`block bg-clip-text text-transparent bg-gradient-to-r from-neon via-purple-500 to-blue-500 bg-[length:200%_200%] transition-all duration-500 ease-in-out ${isAnimatingOut ? 'opacity-0 blur-sm translate-y-8' : 'opacity-100 blur-0 translate-y-0'
+                }`}
+            >
+              {ROLES[currentRoleIndex]}
+            </span>
+          </div>
         </h1>
 
         <p
@@ -142,9 +142,9 @@ export const Landing: React.FC = () => {
             transition: 'all 0.8s ease-out 1.2s',
           }}
         >
-          The anonymous dating experience designed for campus life.
+          The anonymous connection platform designed for campus life.
           <br className="hidden sm:block" />
-          <span className="text-gray-300"> Connect based on vibes, verify with email, reveal when you're ready.</span>
+          <span className="text-gray-300"> Find your vibe—from study partners to late-night dates. Connect safely, verify with .edu, and reveal when you're ready.</span>
         </p>
 
         <div
@@ -187,8 +187,8 @@ export const Landing: React.FC = () => {
               <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gray-800 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-neon/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
                 <Shield className="w-6 h-6 sm:w-7 sm:h-7 group-hover:text-neon transition-colors" />
               </div>
-              <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 group-hover:text-neon transition-colors">Verified Students Only</h3>
-              <p className="text-sm sm:text-base text-gray-400 group-hover:text-gray-300 transition-colors">No bots, no randoms. We verify every user via their official .edu email address.</p>
+              <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 group-hover:text-neon transition-colors">College Students Only</h3>
+              <p className="text-sm sm:text-base text-gray-400 group-hover:text-gray-300 transition-colors">A place where college students connects on vibes. No outsiders allowed.</p>
             </div>
           </div>
 
@@ -227,8 +227,8 @@ export const Landing: React.FC = () => {
               <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gray-800 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-blue-500/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
                 <Heart className="w-6 h-6 sm:w-7 sm:h-7 group-hover:text-blue-400 group-hover:animate-pulse transition-colors" />
               </div>
-              <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 group-hover:text-blue-400 transition-colors">Smart Matching</h3>
-              <p className="text-sm sm:text-base text-gray-400 group-hover:text-gray-300 transition-colors">Our AI analyzes interests and campus vibes to find someone you'll actually click with.</p>
+              <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 group-hover:text-blue-400 transition-colors">Vibe-Based Matching</h3>
+              <p className="text-sm sm:text-base text-gray-400 group-hover:text-gray-300 transition-colors">Our AI analyzes your goals and interests to find exactly who you're looking for—whether that's a late-night coder, a gym spotter, or a romantic match.</p>
             </div>
           </div>
         </div>
