@@ -529,7 +529,6 @@ export const Confessions: React.FC = () => {
                     // But our fetch logic attempts to create/find a real one.
 
                     return (
-                    return (
                         <div className="bg-gray-900/30 backdrop-blur-md border border-gray-800/50 rounded-xl p-4 mb-4 relative shadow-lg">
                             <div className="absolute top-4 right-4 animate-pulse">
                                 <Crown className="w-3 h-3 text-yellow-500" />
