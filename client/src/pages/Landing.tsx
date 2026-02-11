@@ -31,7 +31,7 @@ export const Landing: React.FC = () => {
         setCurrentRoleIndex((prev) => (prev + 1) % ROLES.length);
         setIsAnimatingOut(false);
       }, 500); // match transition duration
-    }, 3000);
+    }, 1500);
 
     return () => clearInterval(interval);
   }, []);
