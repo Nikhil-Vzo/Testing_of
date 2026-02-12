@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Confession } from '../types'; // Ensure types are updated if needed
 import { NeonButton } from '../components/Common';
@@ -43,10 +43,123 @@ export const Confessions: React.FC = () => {
     // Admin Post State
     const [adminPostId, setAdminPostId] = useState<string>('othrhalff-welcome'); // Default to fake ID, update to real UUID if found
 
-    // Fetch Confessions from Supabase
+    // Ref to track expanded comments for realtime handler
+    const expandedCommentsRef = useRef(expandedComments);
+    useEffect(() => { expandedCommentsRef.current = expandedComments; }, [expandedComments]);
+
+    // Fetch Confessions from Supabase + Realtime Subscriptions
     useEffect(() => {
         if (!currentUser || !supabase) return;
         fetchConfessions();
+
+        // --- Supabase Realtime ---
+        const channel = supabase.channel('confessions-realtime')
+            // New confessions from other users
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'confessions'
+            }, (payload) => {
+                const p = payload.new as any;
+                // Skip if it's our own post (we already added it optimistically)
+                if (p.user_id === currentUser.id) return;
+                const newConfession: Confession = {
+                    id: p.id,
+                    userId: 'Anonymous',
+                    text: p.text || '',
+                    imageUrl: p.image_url,
+                    timestamp: new Date(p.created_at).getTime(),
+                    likes: 0,
+                    reactions: {},
+                    comments: [],
+                    university: p.university,
+                    type: p.type as 'text' | 'poll',
+                    pollOptions: [],
+                    userVote: undefined,
+                    userReaction: undefined
+                };
+                setConfessions(prev => [newConfession, ...prev]);
+            })
+            // Reaction changes (insert, update, delete)
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'confession_reactions'
+            }, (payload) => {
+                const event = payload.eventType;
+                const record = (event === 'DELETE' ? payload.old : payload.new) as any;
+                const confessionId = record.confession_id;
+
+                setConfessions(prev => prev.map(c => {
+                    if (c.id !== confessionId) return c;
+                    const newReactions = { ...c.reactions };
+                    let newLikes = c.likes;
+                    let newUserReaction = c.userReaction;
+
+                    if (event === 'INSERT') {
+                        newReactions[record.emoji] = (newReactions[record.emoji] || 0) + 1;
+                        newLikes += 1;
+                        if (record.user_id === currentUser.id) newUserReaction = record.emoji;
+                    } else if (event === 'DELETE') {
+                        newReactions[record.emoji] = Math.max(0, (newReactions[record.emoji] || 1) - 1);
+                        newLikes = Math.max(0, newLikes - 1);
+                        if (record.user_id === currentUser.id) newUserReaction = undefined;
+                    } else if (event === 'UPDATE') {
+                        // Switched emoji: old emoji count decremented, new emoji incremented
+                        const oldEmoji = (payload.old as any)?.emoji;
+                        if (oldEmoji) {
+                            newReactions[oldEmoji] = Math.max(0, (newReactions[oldEmoji] || 1) - 1);
+                        }
+                        newReactions[record.emoji] = (newReactions[record.emoji] || 0) + 1;
+                        if (record.user_id === currentUser.id) newUserReaction = record.emoji;
+                    }
+
+                    return { ...c, reactions: newReactions, likes: newLikes, userReaction: newUserReaction };
+                }));
+            })
+            // New comments
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'confession_comments'
+            }, async (payload) => {
+                const record = payload.new as any;
+                const confessionId = record.confession_id;
+
+                // Update comment count for all posts
+                setConfessions(prev => prev.map(c => {
+                    if (c.id !== confessionId) return c;
+
+                    // If comments are expanded, append the new comment
+                    if (expandedCommentsRef.current[confessionId]) {
+                        // Fetch the anonymous_id for the commenter
+                        const newComment = {
+                            id: record.id,
+                            userId: record.user_id === currentUser.id ? (currentUser as any).anonymousId || 'You' : 'Anonymous',
+                            text: record.text,
+                            timestamp: new Date(record.created_at).getTime()
+                        };
+                        // Avoid duplicates (our own comment may already be there from toggleComments refresh)
+                        const alreadyExists = c.comments?.some(com => com.id === record.id);
+                        if (alreadyExists) return c;
+                        return {
+                            ...c,
+                            comments: [...(c.comments || []), newComment]
+                        };
+                    }
+
+                    // If not expanded, just increment the count indicator
+                    return {
+                        ...c,
+                        comments: [...(c.comments || []), { id: record.id, userId: '', text: '', timestamp: 0 }]
+                    };
+                }));
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [currentUser]);
 
     const fetchConfessions = async () => {
@@ -625,7 +738,7 @@ export const Confessions: React.FC = () => {
                             {/* Comments Section */}
                             {expandedComments[displayPost.id] && (
                                 <div className="mt-3 pt-3 border-t border-gray-900">
-                                    <div className="space-y-2 mb-3 max-h-40 overflow-y-auto custom-scrollbar pr-2">
+                                    <div className="space-y-2 mb-3 max-h-96 overflow-y-auto custom-scrollbar pr-2">
                                         {displayPost.comments && displayPost.comments.length > 0 ? (
                                             displayPost.comments.map(comment => (
                                                 <div key={comment.id} className="bg-gray-900/40 p-2 rounded-lg">
@@ -769,7 +882,7 @@ export const Confessions: React.FC = () => {
                                 {/* Comments Section */}
                                 {expandedComments[conf.id] && (
                                     <div className="mt-3 pt-3 border-t border-gray-900">
-                                        <div className="space-y-2 mb-3 max-h-40 overflow-y-auto custom-scrollbar pr-2">
+                                        <div className="space-y-2 mb-3 max-h-96 overflow-y-auto custom-scrollbar pr-2">
                                             {conf.comments && conf.comments.length > 0 ? (
                                                 conf.comments.map(comment => (
                                                     <div key={comment.id} className="bg-gray-900/40 p-2 rounded-lg">
