@@ -16,7 +16,43 @@ interface PeerStream {
 const StreamVideo = ({ stream, muted = false, mirrored }: { stream: MediaStream, muted?: boolean, mirrored: boolean }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     useEffect(() => {
-        if (videoRef.current && stream) videoRef.current.srcObject = stream;
+        const video = videoRef.current;
+        if (!video || !stream) return;
+
+        video.srcObject = stream;
+
+        // Auto-play recovery (browsers can pause on visibility change)
+        const handlePlayPause = () => {
+            if (video.paused && stream.active) {
+                video.play().catch(() => { /* Ignore autoplay policy errors */ });
+            }
+        };
+
+        // Track ended/mute monitoring to detect frozen streams
+        const tracks = stream.getVideoTracks();
+        const handleTrackEnded = () => {
+            // Re-attach stream if track ended but stream is still active
+            if (stream.active && video) {
+                video.srcObject = null;
+                video.srcObject = stream;
+                video.play().catch(() => { });
+            }
+        };
+
+        tracks.forEach(track => {
+            track.addEventListener('ended', handleTrackEnded);
+            track.addEventListener('mute', handleTrackEnded);
+        });
+
+        document.addEventListener('visibilitychange', handlePlayPause);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handlePlayPause);
+            tracks.forEach(track => {
+                track.removeEventListener('ended', handleTrackEnded);
+                track.removeEventListener('mute', handleTrackEnded);
+            });
+        };
     }, [stream]);
     return (
         <video
@@ -156,7 +192,7 @@ export const CinemaDate: React.FC = () => {
                     } catch (mediaErr: any) {
                         console.warn("Media Access Failed:", mediaErr);
                         stream = createDummyStream();
-                        const wasDenied = mediaErr.name === 'NotAllowedError' || mediaErr.name === 'PermissionDeniedError';
+                        const wasDenied = mediaErr && (mediaErr.name === 'NotAllowedError' || mediaErr.name === 'PermissionDeniedError');
                         setError(wasDenied ? "Camera permission denied." : "Camera unavailable. Joining as Spectator.");
                         setTimeout(() => setError(null), 5000);
                     }

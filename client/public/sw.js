@@ -1,5 +1,5 @@
 // OthrHalff Service Worker for PWA
-const CACHE_NAME = 'othrhalff-v1';
+const CACHE_NAME = 'othrhalff-v2';
 const urlsToCache = [
     '/',
     '/favicon.png',
@@ -33,13 +33,25 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
-    // Skip chrome-extension and other non-http(s) requests
-    if (!event.request.url.startsWith('http')) {
+    const url = new URL(event.request.url);
+
+    // Skip non-http(s) requests
+    if (!url.protocol.startsWith('http')) {
+        return;
+    }
+
+    // IMPORTANT: Skip ALL external/API requests entirely - let the browser handle them
+    // This prevents CORS issues with Supabase, Agora, PeerJS, and other APIs
+    if (url.origin !== self.location.origin) {
+        return;
+    }
+
+    // Skip requests with credentials mode 'include' to avoid CORS conflicts
+    if (event.request.credentials === 'include') {
         return;
     }
 
     // Network-first strategy for navigation requests (HTML pages)
-    // This ensures users always get the latest version of index.html
     if (event.request.mode === 'navigate') {
         event.respondWith(
             fetch(event.request)
@@ -50,17 +62,20 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Stale-while-revalidate for other assets
+    // Cache-first for same-origin static assets only
     event.respondWith(
         caches.match(event.request)
             .then((response) => {
-                // Return cached version or fetch from network
-                return response || fetch(event.request);
+                if (response) {
+                    return response;
+                }
+                // Clone request before fetching (prevents "already used" error)
+                const fetchRequest = event.request.clone();
+                return fetch(fetchRequest);
             })
-            .catch((error) => {
-                // Gracefully handle storage access errors
-                console.log('Fetch failed; returning network response', error);
-                return fetch(event.request);
+            .catch(() => {
+                // If both cache and network fail, return a basic offline response
+                return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
             })
     );
 });
