@@ -56,6 +56,7 @@ export const CinemaDate: React.FC = () => {
     const [newMessage, setNewMessage] = useState('');
     const [hasUnread, setHasUnread] = useState(false);
     const [chatNotification, setChatNotification] = useState<{ user: string, text: string } | null>(null);
+    const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
 
     // Room & Peer State
     const [roomName, setRoomName] = useState('');
@@ -65,6 +66,7 @@ export const CinemaDate: React.FC = () => {
     const [peers, setPeers] = useState<PeerStream[]>([]);
     const [peerNames, setPeerNames] = useState<Record<string, string>>({});
     const [isHost, setIsHost] = useState(false);
+    const [isConnecting, setIsConnecting] = useState(false);
 
     // Profile Info
     const { currentUser } = useAuth();
@@ -265,8 +267,6 @@ export const CinemaDate: React.FC = () => {
                     setError(`System Error: ${err.message || 'Unknown'}`);
                 }
             };
-
-            initPeer();
 
             initPeer();
 
@@ -610,25 +610,52 @@ export const CinemaDate: React.FC = () => {
 
     // --- View Control ---
 
+    // Generate better room codes: ABC-123 format
+    const generateRoomCode = () => {
+        const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // Exclude I, O for clarity
+        const numbers = '0123456789';
+        let code = '';
+
+        // 3 letters
+        for (let i = 0; i < 3; i++) {
+            code += letters.charAt(Math.floor(Math.random() * letters.length));
+        }
+        code += '-';
+
+        // 3 numbers
+        for (let i = 0; i < 3; i++) {
+            code += numbers.charAt(Math.floor(Math.random() * numbers.length));
+        }
+
+        return code;
+    };
+
     const handleCreateRoom = () => {
         if (!roomName.trim()) {
             setError('Please enter a room name');
+            setTimeout(() => setError(null), 3000);
             return;
         }
-        // Generate simple 6-digit code
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        setIsConnecting(true);
+        const code = generateRoomCode();
         setRoomCode(code);
         setIsHost(true);
         setMode('select');
         setError(null);
+        setTimeout(() => setIsConnecting(false), 1000);
     };
 
     const handleJoinRoom = () => {
-        if (joinCode.length !== 6) {
-            setError('Please enter a valid 6-digit code');
+        const formatted = joinCode.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (formatted.length !== 6) {
+            setError('Please enter a valid room code (e.g., ABC-123)');
+            setTimeout(() => setError(null), 3000);
             return;
         }
-        setRoomCode(joinCode);
+        // Format as ABC-123
+        const formattedCode = `${formatted.slice(0, 3)}-${formatted.slice(3, 6)}`;
+        setIsConnecting(true);
+        setRoomCode(formattedCode);
         setRoomName('Joined Room');
         setIsHost(false);
         setMode('viewer');
@@ -791,7 +818,13 @@ export const CinemaDate: React.FC = () => {
     };
 
     const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text);
+        navigator.clipboard.writeText(text).then(() => {
+            setCopyFeedback('Copied!');
+            setTimeout(() => setCopyFeedback(null), 2000);
+        }).catch(() => {
+            setCopyFeedback('Failed to copy');
+            setTimeout(() => setCopyFeedback(null), 2000);
+        });
     };
 
     const handleSendMessage = (e: React.FormEvent) => {
@@ -971,39 +1004,42 @@ export const CinemaDate: React.FC = () => {
     const renderLandingScreen = () => (
         <div className="flex flex-col items-center justify-center min-h-screen w-full animate-fade-in-up bg-black relative overflow-hidden">
             {/* Background Ambience */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-neon/10 rounded-full blur-[120px] pointer-events-none -z-0" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] md:w-[800px] h-[600px] md:h-[800px] bg-neon/10 rounded-full blur-[120px] pointer-events-none -z-0" />
 
             <button
                 onClick={() => navigate('/virtual-date')}
-                className="absolute top-6 left-6 p-3 bg-gray-900/50 hover:bg-gray-800 rounded-full transition-colors z-20 group border border-gray-800"
+                className="absolute top-4 md:top-6 left-4 md:left-6 p-2 md:p-3 bg-gray-900/50 hover:bg-gray-800 rounded-full transition-colors z-20 group border border-gray-800"
             >
-                <ArrowLeft className="w-6 h-6 text-gray-400 group-hover:text-white" />
+                <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 text-gray-400 group-hover:text-white" />
             </button>
 
-            <h2 className="text-4xl md:text-6xl font-black mb-16 text-white text-center tracking-tighter relative z-10">
-                CINEMA <span className="text-neon text-transparent bg-clip-text bg-gradient-to-r from-neon to-purple-500">PARADISO</span>
-            </h2>
+            <div className="text-center mb-8 md:mb-16 px-4">
+                <h2 className="text-3xl md:text-6xl font-black mb-4 text-white tracking-tighter relative z-10">
+                    CINEMA <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon to-purple-500">PARADISO</span>
+                </h2>
+                <p className="text-sm md:text-base text-gray-400 max-w-md mx-auto">Watch together, anywhere. Create a room or join with a code.</p>
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full px-4 max-w-2xl relative z-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 w-full px-4 max-w-2xl relative z-10">
                 <button
                     onClick={() => setMode('create_room')}
-                    className="group flex flex-col items-center justify-center p-10 bg-gray-900/40 backdrop-blur-md hover:bg-gray-800/60 border border-gray-800 hover:border-neon rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-neon/10"
+                    className="group flex flex-col items-center justify-center p-8 md:p-10 bg-gray-900/40 backdrop-blur-md hover:bg-gray-800/60 border-2 border-gray-800 hover:border-neon rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-neon/10"
                 >
-                    <div className="p-6 rounded-full bg-neon/10 text-neon mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-neon/20">
-                        <PlusCircle className="w-12 h-12" />
+                    <div className="p-5 md:p-6 rounded-full bg-neon/10 text-neon mb-4 md:mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-neon/20">
+                        <PlusCircle className="w-10 h-10 md:w-12 md:h-12" />
                     </div>
-                    <h3 className="text-2xl font-bold text-white mb-2">Create Room</h3>
-                    <p className="text-gray-400 text-center text-sm">Host a new session</p>
+                    <h3 className="text-xl md:text-2xl font-bold text-white mb-2">Create Room</h3>
+                    <p className="text-gray-400 text-center text-sm">Host a new movie session</p>
                 </button>
 
                 <button
                     onClick={() => setMode('join_room')}
-                    className="group flex flex-col items-center justify-center p-10 bg-gray-900/40 backdrop-blur-md hover:bg-gray-800/60 border border-gray-800 hover:border-purple-500 rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-purple-500/10"
+                    className="group flex flex-col items-center justify-center p-8 md:p-10 bg-gray-900/40 backdrop-blur-md hover:bg-gray-800/60 border-2 border-gray-800 hover:border-purple-500 rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-purple-500/10"
                 >
-                    <div className="p-6 rounded-full bg-purple-500/10 text-purple-500 mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-purple-500/20">
-                        <LogIn className="w-12 h-12" />
+                    <div className="p-5 md:p-6 rounded-full bg-purple-500/10 text-purple-500 mb-4 md:mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-purple-500/20">
+                        <LogIn className="w-10 h-10 md:w-12 md:h-12" />
                     </div>
-                    <h3 className="text-2xl font-bold text-white mb-2">Join Room</h3>
+                    <h3 className="text-xl md:text-2xl font-bold text-white mb-2">Join Room</h3>
                     <p className="text-gray-400 text-center text-sm">Enter a room code</p>
                 </button>
             </div>
@@ -1011,53 +1047,153 @@ export const CinemaDate: React.FC = () => {
     );
 
     const renderCreateRoomScreen = () => (
-        <div className="flex flex-col items-center justify-center min-h-screen w-full bg-black relative">
-            <div className="bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-3xl p-8 w-full max-w-md shadow-2xl relative z-10">
-                <div className="text-center mb-8">
-                    <h2 className="text-2xl font-bold text-white">Name Your Room</h2>
+        <div className="flex flex-col items-center justify-center min-h-screen w-full bg-black relative overflow-hidden px-4">
+            {/* Background Ambience */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-neon/10 rounded-full blur-[120px] pointer-events-none" />
+
+            <button
+                onClick={() => setMode('landing')}
+                className="absolute top-4 md:top-6 left-4 md:left-6 p-2 md:p-3 bg-gray-900/50 hover:bg-gray-800 rounded-full transition-colors z-20 group border border-gray-800"
+            >
+                <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 text-gray-400 group-hover:text-white" />
+            </button>
+
+            <div className="bg-gray-900/60 backdrop-blur-xl border border-gray-800 rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl relative z-10">
+                <div className="text-center mb-6 md:mb-8">
+                    <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-full bg-neon/10 text-neon mb-4">
+                        <PlusCircle className="w-8 h-8 md:w-10 md:h-10" />
+                    </div>
+                    <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Create Your Room</h2>
+                    <p className="text-sm text-gray-400">Choose a fun name for your movie night</p>
                 </div>
                 <div className="space-y-4">
-                    <input
-                        type="text"
-                        value={roomName}
-                        onChange={(e) => setRoomName(e.target.value)}
-                        placeholder="e.g. Movie Night 🍿"
-                        className="w-full bg-black/50 border border-gray-700 rounded-xl px-4 py-4 text-white placeholder-gray-600 focus:border-neon focus:outline-none transition-colors"
-                    />
+                    <div>
+                        <label className="block text-sm font-medium text-gray-400 mb-2">Room Name</label>
+                        <input
+                            type="text"
+                            value={roomName}
+                            onChange={(e) => setRoomName(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && handleCreateRoom()}
+                            placeholder="e.g., Movie Night 🍿"
+                            maxLength={30}
+                            disabled={isConnecting}
+                            className="w-full bg-black/50 border-2 border-gray-700 rounded-xl px-4 py-3 md:py-4 text-white placeholder-gray-600 focus:border-neon focus:outline-none transition-colors disabled:opacity-50 text-base"
+                            autoFocus
+                        />
+                        <div className="text-xs text-gray-500 mt-1 text-right">{roomName.length}/30</div>
+                    </div>
                     <button
                         onClick={handleCreateRoom}
-                        className="w-full bg-neon hover:bg-neon/90 text-white font-bold py-4 rounded-xl shadow-lg shadow-neon/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        disabled={isConnecting || !roomName.trim()}
+                        className="w-full bg-gradient-to-r from-neon to-purple-500 hover:from-neon/90 hover:to-purple-500/90 text-white font-bold py-3 md:py-4 rounded-xl shadow-lg shadow-neon/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
                     >
-                        Enter Lobby
+                        {isConnecting ? (
+                            <>
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                Creating Room...
+                            </>
+                        ) : (
+                            'Enter Lobby'
+                        )}
                     </button>
-                    <button onClick={() => setMode('landing')} className="w-full text-gray-500 hover:text-white py-2 text-sm">Cancel</button>
+                    <button
+                        onClick={() => setMode('landing')}
+                        disabled={isConnecting}
+                        className="w-full text-gray-500 hover:text-white py-2 text-sm transition-colors disabled:opacity-50"
+                    >
+                        Cancel
+                    </button>
                 </div>
             </div>
         </div>
     );
 
+    const handlePasteCode = async () => {
+        try {
+            const text = await navigator.clipboard.readText();
+            const cleaned = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            setJoinCode(cleaned.slice(0, 6));
+        } catch (err) {
+            setError('Could not paste from clipboard');
+            setTimeout(() => setError(null), 2000);
+        }
+    };
+
     const renderJoinRoomScreen = () => (
-        <div className="flex flex-col items-center justify-center min-h-screen w-full bg-black relative">
-            <div className="bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-3xl p-8 w-full max-w-md shadow-2xl relative z-10">
-                <div className="text-center mb-8">
-                    <h2 className="text-2xl font-bold text-white">Enter Code</h2>
+        <div className="flex flex-col items-center justify-center min-h-screen w-full bg-black relative overflow-hidden px-4">
+            {/* Background Ambience */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-500/10 rounded-full blur-[120px] pointer-events-none" />
+
+            <button
+                onClick={() => setMode('landing')}
+                className="absolute top-4 md:top-6 left-4 md:left-6 p-2 md:p-3 bg-gray-900/50 hover:bg-gray-800 rounded-full transition-colors z-20 group border border-gray-800"
+            >
+                <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 text-gray-400 group-hover:text-white" />
+            </button>
+
+            <div className="bg-gray-900/60 backdrop-blur-xl border border-gray-800 rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl relative z-10">
+                <div className="text-center mb-6 md:mb-8">
+                    <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-full bg-purple-500/10 text-purple-500 mb-4">
+                        <LogIn className="w-8 h-8 md:w-10 md:h-10" />
+                    </div>
+                    <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Join a Room</h2>
+                    <p className="text-sm text-gray-400">Enter the 6-character room code</p>
                 </div>
                 <div className="space-y-4">
-                    <input
-                        type="text"
-                        maxLength={6}
-                        value={joinCode}
-                        onChange={(e) => setJoinCode(e.target.value.replace(/[^0-9]/g, ''))}
-                        placeholder="000000"
-                        className="w-full bg-black/50 border border-gray-700 rounded-xl px-4 py-4 text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none transition-colors font-mono text-center text-2xl tracking-[0.5em]"
-                    />
+                    <div>
+                        <label className="block text-sm font-medium text-gray-400 mb-2">Room Code</label>
+                        <div className="relative">
+                            <input
+                                type="text"
+                                maxLength={7}
+                                value={joinCode}
+                                onChange={(e) => {
+                                    const val = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+                                    // Auto-add hyphen after 3 chars
+                                    if (val.length === 3 && !val.includes('-')) {
+                                        setJoinCode(val + '-');
+                                    } else {
+                                        setJoinCode(val.slice(0, 7));
+                                    }
+                                }}
+                                onKeyPress={(e) => e.key === 'Enter' && handleJoinRoom()}
+                                placeholder="ABC-123"
+                                disabled={isConnecting}
+                                className="w-full bg-black/50 border-2 border-gray-700 rounded-xl px-4 py-3 md:py-4 pr-12 text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none transition-colors font-mono text-center text-xl md:text-2xl tracking-widest disabled:opacity-50"
+                                autoFocus
+                            />
+                            <button
+                                onClick={handlePasteCode}
+                                disabled={isConnecting}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white disabled:opacity-50"
+                                title="Paste code"
+                            >
+                                <Copy className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-2 text-center">Format: ABC-123</div>
+                    </div>
                     <button
                         onClick={handleJoinRoom}
-                        className="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-purple-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        disabled={isConnecting || joinCode.replace('-', '').length !== 6}
+                        className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-bold py-3 md:py-4 rounded-xl shadow-lg shadow-purple-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
                     >
-                        Join Room
+                        {isConnecting ? (
+                            <>
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                Joining...
+                            </>
+                        ) : (
+                            'Join Room'
+                        )}
                     </button>
-                    <button onClick={() => setMode('landing')} className="w-full text-gray-500 hover:text-white py-2 text-sm">Cancel</button>
+                    <button
+                        onClick={() => setMode('landing')}
+                        disabled={isConnecting}
+                        className="w-full text-gray-500 hover:text-white py-2 text-sm transition-colors disabled:opacity-50"
+                    >
+                        Cancel
+                    </button>
                 </div>
             </div>
         </div>
@@ -1118,12 +1254,18 @@ export const CinemaDate: React.FC = () => {
                 {/* Top Bar (Room Info) */}
                 <div className="h-14 md:h-16 border-b border-gray-900/50 flex items-center justify-between px-3 md:px-6 bg-gray-950/30 backdrop-blur-sm z-20">
                     <div className="flex items-center gap-2 md:gap-3 overflow-hidden">
-                        <span className="font-bold text-gray-200 truncate max-w-[80px] md:max-w-none text-sm md:text-base">{roomName}</span>
-                        <div className="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1 bg-gray-900 rounded-full border border-gray-800 shrink-0">
-                            <Hash className="w-2.5 h-2.5 md:w-3 md:h-3 text-gray-500" />
-                            <span className="font-mono text-[10px] md:text-xs text-neon">{roomCode}</span>
-                            <button onClick={() => copyToClipboard(roomCode)} className="hover:text-white text-gray-500"><Copy className="w-2.5 h-2.5 md:w-3 md:h-3" /></button>
+                        <span className="font-bold text-gray-200 truncate max-w-[80px] md:max-w-[200px] text-sm md:text-base">{roomName}</span>
+                        <div className="flex items-center gap-1.5 md:gap-2 px-2.5 md:px-4 py-1.5 md:py-2 bg-gradient-to-r from-neon/10 to-purple-500/10 rounded-full border-2 border-neon/30 shrink-0 group hover:border-neon/50 transition-colors cursor-pointer" onClick={() => copyToClipboard(roomCode)}>
+                            <Hash className="w-3 h-3 md:w-4 md:h-4 text-neon" />
+                            <span className="font-mono text-xs md:text-sm font-bold text-neon tracking-wider">{roomCode}</span>
+                            <Copy className="w-3 h-3 md:w-4 md:h-4 text-neon/70 group-hover:text-neon transition-colors" />
                         </div>
+                        {isHost && (
+                            <div className="hidden md:flex items-center gap-1 px-2 py-1 bg-blue-500/10 text-blue-400 rounded-full border border-blue-500/20 text-[10px] font-semibold">
+                                <Users className="w-3 h-3" />
+                                HOST
+                            </div>
+                        )}
                     </div>
                     <div className="flex items-center gap-2 md:gap-4">
                         <div className="flex items-center gap-1 md:gap-2">
@@ -1388,6 +1530,16 @@ export const CinemaDate: React.FC = () => {
                         <span className="text-xs font-bold text-neon uppercase tracking-wider">{chatNotification.user}</span>
                     </div>
                     <p className="text-sm text-gray-300 line-clamp-2">{chatNotification.text}</p>
+                </div>
+            )}
+
+            {/* Copy Feedback Toast */}
+            {copyFeedback && (
+                <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] animate-fade-in-down">
+                    <div className="bg-neon/90 backdrop-blur-xl text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 font-semibold">
+                        <Copy className="w-4 h-4" />
+                        {copyFeedback}
+                    </div>
                 </div>
             )}
         </div>
