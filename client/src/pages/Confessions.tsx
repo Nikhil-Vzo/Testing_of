@@ -640,17 +640,26 @@ export const Confessions: React.FC = () => {
                 ) : (
                     sortedConfessions
                         .map(conf => (
-                            <div key={conf.id} className="bg-gray-900/30 backdrop-blur-md border border-gray-800/50 rounded-xl p-4 hover:bg-gray-900/40 transition-colors">
+                            <div className={`bg-gray-900/30 backdrop-blur-md border rounded-xl p-4 hover:bg-gray-900/40 transition-colors ${conf.id === '46c46dcc-ad75-487d-b5a4-70b03081c222' ? 'border-neon/50 shadow-[0_0_15px_rgba(255,0,127,0.15)]' : 'border-gray-800/50'}`}>
                                 <div className="flex gap-3 mb-3">
-                                    <div className="w-10 h-10 rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center shrink-0">
-                                        <span className="text-sm font-bold text-gray-500">?</span>
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${conf.id === '46c46dcc-ad75-487d-b5a4-70b03081c222' ? 'bg-neon text-white shadow-[0_0_10px_rgba(255,0,127,0.4)]' : 'bg-gray-900 border border-gray-800'}`}>
+                                        {conf.id === '46c46dcc-ad75-487d-b5a4-70b03081c222' ? <Crown className="w-5 h-5" /> : <span className="text-sm font-bold text-gray-500">?</span>}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-sm font-bold text-gray-300">{conf.userId}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`text-sm font-bold ${conf.id === '46c46dcc-ad75-487d-b5a4-70b03081c222' ? 'text-neon' : 'text-gray-300'}`}>
+                                                {conf.id === '46c46dcc-ad75-487d-b5a4-70b03081c222' ? 'Team Other Half' : conf.userId}
+                                            </span>
+                                            {conf.id === '46c46dcc-ad75-487d-b5a4-70b03081c222' && (
+                                                <div className="bg-neon/20 px-1.5 py-0.5 rounded text-[9px] font-bold text-neon uppercase tracking-wider border border-neon/30">
+                                                    Admin
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center justify-between mt-0.5">
+                                            <p className="text-[10px] text-gray-600 uppercase tracking-wider font-bold truncate">{conf.university}</p>
                                             <span className="text-[10px] text-gray-600 font-mono">{new Date(conf.timestamp).toLocaleDateString()}</span>
                                         </div>
-                                        <p className="text-[10px] text-gray-600 uppercase tracking-wider font-bold mt-0.5 w-full truncate">{conf.university}</p>
                                     </div>
                                 </div>
 
