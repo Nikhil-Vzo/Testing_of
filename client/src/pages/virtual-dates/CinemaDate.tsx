@@ -268,14 +268,17 @@ export const CinemaDate: React.FC = () => {
                         console.log('Receiving call from:', call.peer, 'Metadata:', call.metadata);
                         try {
                             if (call.metadata?.type === 'video') {
+                                console.log('Answering video stream call (no camera back)');
                                 call.answer(); // Video stream doesn't need my camera back
                                 call.on('stream', (stream) => {
-                                    console.log("Received remote video stream");
+                                    console.log("Received remote video stream from", call.peer, stream);
                                     setRemoteVideoStream(stream);
                                 });
                             } else {
+                                console.log('Answering camera call with my stream');
                                 call.answer(stream);
                                 call.on('stream', (remoteStream) => {
+                                    console.log('Received peer camera stream from', call.peer, remoteStream.getTracks());
                                     addPeerStream(call.peer, remoteStream);
                                 });
                                 call.on('close', () => {
@@ -344,6 +347,7 @@ export const CinemaDate: React.FC = () => {
         console.log(`Attempting to connect to Host: ${peerId}`);
 
         // 1. Call for Media
+        console.log('Calling peer with my camera stream...');
         const call = peer.call(peerId, stream, { metadata: { type: 'camera' } });
 
         // 2. Data Connection for Sync
@@ -382,6 +386,7 @@ export const CinemaDate: React.FC = () => {
 
         // Setup Call Events
         call.on('stream', (remoteStream) => {
+            console.log('Received stream from', peerId, remoteStream.getTracks());
             addPeerStream(peerId, remoteStream);
         });
 
@@ -429,6 +434,7 @@ export const CinemaDate: React.FC = () => {
                         'onStateChange': (event: any) => {
                             // If Player Drives State (Host)
                             if (isHost) {
+                                if (event.data === 0) { handleVideoEnded(); } // Video ended
                                 if (event.data === 1) { setIsPlaying(true); handleVideoPlay(); }
                                 if (event.data === 2) { setIsPlaying(false); handleVideoPause(); }
                                 // Buffer
@@ -599,6 +605,15 @@ export const CinemaDate: React.FC = () => {
                 setUrl(data.payload);
                 setMode(data.mode || 'youtube');
             }
+            if (data.action === 'ended') {
+                console.log('Received ended event from host');
+                setIsPlaying(false);
+                if (playerRef.current && typeof playerRef.current.stopVideo === 'function') {
+                    playerRef.current.stopVideo();
+                } else if (playerRef.current && typeof playerRef.current.seekTo === 'function') {
+                    playerRef.current.seekTo(0); // Seek to beginning
+                }
+            }
         } else if (data.type === 'PEER_LIST') {
             // I just joined and host sent me a list or peers
             // Connect to them (Mesh)
@@ -633,8 +648,13 @@ export const CinemaDate: React.FC = () => {
     };
 
     const addPeerStream = (peerId: string, stream: MediaStream) => {
+        console.log(`Adding peer stream for ${peerId}`, stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState })));
         setPeers(prev => {
-            if (prev.find(p => p.peerId === peerId)) return prev;
+            if (prev.find(p => p.peerId === peerId)) {
+                console.log(`Peer ${peerId} stream already exists, skipping`);
+                return prev;
+            }
+            console.log(`Added new peer stream for ${peerId}`);
             return [...prev, { peerId, stream }];
         });
     };
@@ -734,6 +754,12 @@ export const CinemaDate: React.FC = () => {
     const handleVideoPause = () => {
         setIsPlaying(false);
         broadcastSync('pause');
+    };
+
+    const handleVideoEnded = () => {
+        setIsPlaying(false);
+        broadcastSync('ended');
+        console.log('Video ended, broadcasting to peers');
     };
 
     const handleVideoBuffer = () => {
@@ -1464,16 +1490,15 @@ export const CinemaDate: React.FC = () => {
                     </div>
                 </div>
 
-                {/* 3. Bottom Chat Panel - Adaptive for Mobile */}
+                {/* 3. Chat Panel - Right sidebar on desktop, bottom sheet on mobile */}
                 {showChat && (
                     <div className={`
-                        flex flex-col bg-black border-t border-gray-900
-                        fixed md:relative 
-                        inset-x-0 md:inset-x-auto bottom-20 md:bottom-auto
-                        h-[60vh] md:h-auto md:flex-1 md:min-h-0 md:max-h-[500px]
-                        z-50 border-t-2 border-neon/50 shadow-2xl
+                        flex flex-col bg-black border-gray-900
+                        fixed z-50 shadow-2xl border-2 border-neon/50
+                        inset-x-0 bottom-20 h-[60vh]
+                        md:top-0 md:right-0 md:bottom-0 md:left-auto md:w-80 md:h-full md:border-l md:border-t-0 md:border-r-0 md:border-b-0
                     `}>
-                        <div className="h-8 border-b border-gray-900/50 flex items-center justify-between px-4 bg-black">
+                        <div className="h-10 border-b border-gray-900/50 flex items-center justify-between px-4 bg-black shrink-0">
                             <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
                                 <MessageSquare className="w-3 h-3 text-neon" /> Live Chat
                             </h3>
@@ -1483,7 +1508,7 @@ export const CinemaDate: React.FC = () => {
                         </div>
 
                         {/* Messages Area */}
-                        <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
+                        <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar min-h-0">
                             {messages.map((msg, idx) => (
                                 <div key={idx} className={`flex flex-col ${msg.user === 'You' ? 'items-end' : 'items-start'}`}>
                                     <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm ${msg.user === 'You' ? 'bg-neon/10 text-neon border border-neon/20' : 'bg-gray-900 text-gray-300 border border-gray-800'}`}>
@@ -1495,7 +1520,7 @@ export const CinemaDate: React.FC = () => {
                         </div>
 
                         {/* Input Area */}
-                        <div className="p-3 border-t border-gray-900 bg-gray-950">
+                        <div className="p-3 border-t border-gray-900 bg-gray-950 shrink-0">
                             <form onSubmit={handleSendMessage} className="relative">
                                 <input
                                     type="text"
