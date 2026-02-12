@@ -1467,9 +1467,11 @@ export const CinemaDate: React.FC = () => {
                 {/* 3. Bottom Chat Panel - Adaptive for Mobile */}
                 {showChat && (
                     <div className={`
-                        flex-1 flex flex-col bg-black border-t border-gray-900 min-h-0
-                        md:relative md:w-auto md:h-auto
-                        absolute inset-x-0 bottom-0 top-[40%] z-50 border-t-2 border-neon/50 shadow-2xl
+                        flex flex-col bg-black border-t border-gray-900
+                        fixed md:relative 
+                        inset-x-0 md:inset-x-auto bottom-0 md:bottom-auto
+                        h-[60vh] md:h-auto md:flex-1 md:min-h-0 md:max-h-[500px]
+                        z-50 border-t-2 border-neon/50 shadow-2xl
                     `}>
                         <div className="h-8 border-b border-gray-900/50 flex items-center justify-between px-4 bg-black">
                             <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
