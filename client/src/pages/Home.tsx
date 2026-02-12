@@ -160,10 +160,12 @@ export const Home: React.FC = () => {
 
     // Filter locally instead of refetching
     const filteredQueue = queue.filter(p => {
-        if (filterMode === 'campus' && currentUser) {
+        if (!currentUser) return true;
+        if (filterMode === 'campus') {
             return p.university === currentUser.university;
         }
-        return true;
+        // Global: show only students from OTHER universities
+        return p.university !== currentUser.university;
     });
 
     const currentProfile = filteredQueue[currentIndex];

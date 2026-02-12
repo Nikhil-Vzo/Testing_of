@@ -62,9 +62,9 @@ export const authService = {
   },
   /**
    * Compress and resize an image before converting to base64
-   * Max size: 400x400, JPEG quality: 70%
+   * Max size: 600x600, JPEG quality: 82.5%
    */
-  compressImage: (file: File, maxSize: number = 400, quality: number = 0.7): Promise<string> => {
+  compressImage: (file: File, maxSize: number = 600, quality: number = 0.825): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
