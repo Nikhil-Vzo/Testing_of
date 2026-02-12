@@ -40,8 +40,7 @@ export const Confessions: React.FC = () => {
     const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
 
 
-    // Admin Post State
-    const [adminPostId, setAdminPostId] = useState<string>('othrhalff-welcome'); // Default to fake ID, update to real UUID if found
+
 
     // Ref to track expanded comments for realtime handler
     const expandedCommentsRef = useRef(expandedComments);
@@ -181,35 +180,8 @@ export const Confessions: React.FC = () => {
             return;
         }
 
-        // 2. Find or Create Admin Post
-        const ADMIN_TEXT_SIGNATURE = 'Hey, thanks for using our services! 💜 We will be soon expanding into other colleges too!!.You can report bugs via contact support in my profile';
-        const foundAdminPost = posts.find((p: any) => p.text === ADMIN_TEXT_SIGNATURE);
 
-        if (foundAdminPost) {
-            setAdminPostId(foundAdminPost.id);
-        } else {
-            // Auto-create the admin post if it doesn't exist so interactions work
-            // Only do this once to avoid duplicates (race conditions possible but low risk here)
-            // We check local state to ensure we didn't just mistakenly miss it
-            if (posts.length >= 0) { // Simple guard
-                const { data: newAdminPost, error: createError } = await supabase
-                    .from('confessions')
-                    .insert({
-                        user_id: currentUser.id, // Created by current user as proxy for Admin
-                        university: 'OthrHalff',
-                        text: ADMIN_TEXT_SIGNATURE,
-                        type: 'text'
-                    })
-                    .select()
-                    .single();
 
-                if (newAdminPost) {
-                    setAdminPostId(newAdminPost.id);
-                    // Add it to the local list seamlessly
-                    // We will refetch or just add it to 'formatted' below
-                }
-            }
-        }
 
         // 3. Fetch User's Poll Votes (to see if I already voted)
         const { data: myVotes } = await supabase
@@ -230,7 +202,7 @@ export const Confessions: React.FC = () => {
 
             return {
                 id: p.id,
-                userId: p.id === adminPostId || p.text === ADMIN_TEXT_SIGNATURE ? 'OthrHalff Team' : 'Anonymous', // Override name for admin post
+                userId: 'Anonymous',
                 text: p.text || '',
                 imageUrl: p.image_url,
                 timestamp: new Date(p.created_at).getTime(),
@@ -510,18 +482,7 @@ export const Confessions: React.FC = () => {
         }
     };
 
-    // Pinned OthrHalff welcome confession (always shown at top)
-    const othrhalffPost: Confession = {
-        id: 'othrhalff-welcome',
-        userId: 'OthrHalff Team',
-        text: 'Hey, thanks for using our services! 💜 We will be soon expanding into other colleges too. Stay tuned and keep confessing! 🚀',
-        timestamp: Date.now(),
-        likes: 0,
-        reactions: {},
-        comments: [],
-        university: 'OthrHalff',
-        type: 'text'
-    };
+
 
     // Load comments when expanded
     const toggleComments = async (id: string) => {
@@ -666,114 +627,7 @@ export const Confessions: React.FC = () => {
 
             {/* Feed */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4 pb-32 md:pb-24 relative z-10">
-                {/* Admin Post Logic */}
-                {(() => {
-                    // Try to find the REAL admin post in the list by ID or Text
-                    // If not found in list (e.g. first load before creation), use fallback 'othrhalffPost' visual but with 'adminPostId' for interactions
-                    const realAdminPost = confessions.find(c => c.id === adminPostId || c.text.includes('Hey, thanks for using our services!'));
 
-                    // Display details
-                    const displayPost = realAdminPost || { ...othrhalffPost, id: adminPostId };
-
-                    // If we have a real UUID (not the default 'othrhalff-welcome'), interactions will work.
-                    // If we are still using 'othrhalff-welcome', interactions will fail 400.
-                    // But our fetch logic attempts to create/find a real one.
-
-                    return (
-                        <div className="bg-gray-900/40 backdrop-blur-xl border border-gray-800/50 rounded-xl p-4 mb-4 relative shadow-lg">
-                            <div className="absolute top-4 right-4 animate-pulse">
-                                <Crown className="w-3 h-3 text-yellow-500" />
-                            </div>
-                            <div className="flex gap-3 mb-3">
-                                <div className="w-10 h-10 rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center shrink-0">
-                                    <Ghost className="w-5 h-5 text-gray-400" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sm font-bold text-white">OthrHalff Team</span>
-                                        <span className="bg-gray-800 text-gray-500 text-[9px] px-1.5 py-0.5 rounded border border-gray-700 font-bold uppercase tracking-wider">Admin</span>
-                                    </div>
-                                    <p className="text-[10px] text-gray-600 font-mono mt-0.5">Official Announcement</p>
-                                </div>
-                            </div>
-
-                            <p className="text-gray-300 text-sm leading-relaxed mb-4 whitespace-pre-wrap text-left pl-0">{displayPost.text}</p>
-
-                            <div className="flex flex-col gap-2 border-t border-gray-900 pt-3">
-                                {/* Reactions Display */}
-                                {displayPost.reactions && Object.values(displayPost.reactions).some(v => v > 0) && (
-                                    <div className="flex flex-wrap gap-1.5 mb-2">
-                                        {Object.entries(displayPost.reactions).map(([emoji, count]) => (
-                                            (count as number) > 0 && (
-                                                <span key={emoji} className="inline-flex items-center gap-1 bg-gray-900 text-[10px] px-2 py-0.5 rounded-full text-gray-400 border border-gray-800">
-                                                    <span>{emoji}</span>
-                                                    <span className="font-bold">{count as number}</span>
-                                                </span>
-                                            )
-                                        ))}
-                                    </div>
-                                )}
-
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <button
-                                            onClick={(e) => handleReactionClick(e, displayPost.id)}
-                                            className="flex items-center gap-2 text-gray-500 hover:text-white transition-colors text-xs font-medium px-2 py-1 rounded-md hover:bg-gray-900"
-                                        >
-                                            <SmilePlus className="w-4 h-4" />
-                                            <span>React</span>
-                                        </button>
-
-                                        <button
-                                            onClick={() => toggleComments(displayPost.id)}
-                                            className={`flex items-center gap-2 transition-colors text-xs font-medium px-2 py-1 rounded-md ${expandedComments[displayPost.id] ? 'text-blue-400 bg-blue-900/10' : 'text-gray-500 hover:text-blue-400 hover:bg-gray-900'}`}
-                                        >
-                                            <MessageCircle className="w-4 h-4" />
-                                            <span>{displayPost.comments?.length || 0}</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Comments Section */}
-                            {expandedComments[displayPost.id] && (
-                                <div className="mt-3 pt-3 border-t border-gray-900">
-                                    <div className="space-y-2 mb-3 max-h-96 overflow-y-auto custom-scrollbar pr-2">
-                                        {displayPost.comments && displayPost.comments.length > 0 ? (
-                                            displayPost.comments.map(comment => (
-                                                <div key={comment.id} className="bg-gray-900/40 p-2 rounded-lg">
-                                                    <div className="flex justify-between items-center mb-1">
-                                                        <span className="text-[10px] font-bold text-gray-500">{comment.userId}</span>
-                                                        <span className="text-[9px] text-gray-700 font-mono">{new Date(comment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                                    </div>
-                                                    <p className="text-xs text-gray-300">{comment.text}</p>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <p className="text-xs text-center text-gray-600 py-2">No comments yet.</p>
-                                        )}
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <input
-                                            className="flex-1 bg-black border border-gray-800 rounded-lg px-3 py-2 text-xs text-white focus:border-gray-600 outline-none transition-colors placeholder:text-gray-700"
-                                            placeholder="Add a comment..."
-                                            value={commentInputs[displayPost.id] || ''}
-                                            onChange={(e) => setCommentInputs(prev => ({ ...prev, [displayPost.id]: e.target.value }))}
-                                            onKeyDown={(e) => e.key === 'Enter' && handleCommentSubmit(displayPost.id)}
-                                        />
-                                        <button
-                                            onClick={() => handleCommentSubmit(displayPost.id)}
-                                            disabled={!commentInputs[displayPost.id]?.trim()}
-                                            className="p-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-30"
-                                        >
-                                            <Send className="w-3.5 h-3.5" />
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    );
-                })()}
 
                 {sortedConfessions.length === 0 ? (
                     <div className="text-center py-20">
@@ -785,7 +639,6 @@ export const Confessions: React.FC = () => {
                     </div>
                 ) : (
                     sortedConfessions
-                        .filter(c => c.id !== 'othrhalff-welcome' && c.id !== adminPostId) // Don't show admin post in regular feed if it's there
                         .map(conf => (
                             <div key={conf.id} className="bg-gray-900/30 backdrop-blur-md border border-gray-800/50 rounded-xl p-4 hover:bg-gray-900/40 transition-colors">
                                 <div className="flex gap-3 mb-3">
