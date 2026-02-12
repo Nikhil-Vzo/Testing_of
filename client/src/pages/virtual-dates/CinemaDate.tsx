@@ -39,7 +39,9 @@ export const CinemaDate: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [showChat, setShowChat] = useState(false);
     const [isFullScreen, setIsFullScreen] = useState(false);
-    const [camPositions, setCamPositions] = useState<Record<string, { x: number, y: number }>>({ 'YOU': { x: 0, y: 0 } });
+    const [camPositions, setCamPositions] = useState<Record<string, { x: number, y: number }>>(() => ({
+        'YOU': { x: window.innerWidth - 140, y: 20 }
+    }));
     const [camSizes, setCamSizes] = useState<Record<string, { width: number, height: number }>>({ 'YOU': { width: 96, height: 64 } });
     const activeDragId = useRef<string | null>(null);
     const activeResizeId = useRef<string | null>(null);
@@ -171,6 +173,29 @@ export const CinemaDate: React.FC = () => {
                         }
                     });
 
+                    peer.on('error', (err) => {
+                        console.error('Peer error:', err);
+                        // Clean error messages for user
+                        let msg = `Connection Error: ${err.type}`;
+                        if (err.type === 'unavailable-id') {
+                            msg = "Room Code is valid, but the Host ID matches (are you the host?). Try refreshing.";
+                            // This usually happens if you try to join your own room code as a peer with same ID?
+                            // No, host uses roomCode as ID. Joiner uses random ID.
+                            // Wait, if I am trying to become host with roomCode, and it's taken.
+                            if (isHost) {
+                                msg = "Room Name/Code is already taken. Please try another.";
+                                setMode('landing');
+                            }
+                        } else if (err.type === 'peer-unavailable') {
+                            msg = "Room not found. The host may have left or the code is wrong.";
+                            setMode('landing');
+                        } else if (err.type === 'network') {
+                            msg = "Network connection lost.";
+                        }
+                        setError(msg);
+                        setTimeout(() => setError(null), 5000);
+                    });
+
                     peer.on('call', (call) => {
                         console.log('Receiving call from:', call.peer, 'Metadata:', call.metadata);
                         if (call.metadata?.type === 'video') {
@@ -196,13 +221,7 @@ export const CinemaDate: React.FC = () => {
                         setupDataConnection(conn);
                     });
 
-                    peer.on('error', (err) => {
-                        console.error('Peer error:', err);
-                        if (err.type === 'unavailable-id') {
-                            setError("Room Code is taken or invalid.");
-                            setMode('landing');
-                        }
-                    });
+
 
                     peerInstance.current = peer;
 
@@ -239,11 +258,46 @@ export const CinemaDate: React.FC = () => {
 
 
     const connectToPeer = (peerId: string, stream: MediaStream, peer: Peer) => {
+        console.log(`Attempting to connect to Host: ${peerId}`);
+
+        // 1. Call for Media
         const call = peer.call(peerId, stream, { metadata: { type: 'camera' } });
 
-        const conn = peer.connect(peerId);
+        // 2. Data Connection for Sync
+        const conn = peer.connect(peerId, { reliable: true });
+
+        const connectionTimeout = setTimeout(() => {
+            if (!conn.open) {
+                console.warn("Connection timeout - Host unreachable");
+                setError("Host unreachable (Timeout). Check code or try again.");
+                conn.close();
+                setMode('landing');
+            }
+        }, 8000);
+
         setupDataConnection(conn);
 
+        conn.on('open', () => {
+            clearTimeout(connectionTimeout);
+            console.log("Connected to Host Data Channel!");
+        });
+
+        conn.on('error', (err) => {
+            clearTimeout(connectionTimeout);
+            console.error("Data Connection Error:", err);
+            setError("Lost connection to Host.");
+        });
+
+        conn.on('close', () => {
+            clearTimeout(connectionTimeout);
+            console.log("Disconnected from Host");
+            // If we lose host, maybe leave?
+            // setMode('landing'); 
+            // Optional: Don't force leave, just show error
+            setError("Host disconnected.");
+        });
+
+        // Setup Call Events
         call.on('stream', (remoteStream) => {
             addPeerStream(peerId, remoteStream);
         });
@@ -253,7 +307,9 @@ export const CinemaDate: React.FC = () => {
             removePeer(peerId);
         });
 
-        call.on('error', (err) => { console.error("Call error:", err); });
+        call.on('error', (err) => {
+            console.error("Call error:", err);
+        });
     };
 
     // --- YouTube API Integration (Manual) ---
@@ -744,11 +800,24 @@ export const CinemaDate: React.FC = () => {
         const handleMouseMove = (e: MouseEvent) => {
             if (activeDragId.current) {
                 const id = activeDragId.current;
+
+                // Calculate raw new position
+                let newX = e.clientX - dragOffset.current.x;
+                let newY = e.clientY - dragOffset.current.y;
+
+                // Clamp to screen edges
+                const size = camSizes[id] || { width: 96, height: 64 };
+                const maxX = window.innerWidth - size.width;
+                const maxY = window.innerHeight - size.height;
+
+                newX = Math.max(0, Math.min(newX, maxX));
+                newY = Math.max(0, Math.min(newY, maxY));
+
                 setCamPositions(prev => ({
                     ...prev,
                     [id]: {
-                        x: e.clientX - dragOffset.current.x,
-                        y: e.clientY - dragOffset.current.y
+                        x: newX,
+                        y: newY
                     }
                 }));
             } else if (activeResizeId.current) {
@@ -815,6 +884,38 @@ export const CinemaDate: React.FC = () => {
         document.addEventListener('fullscreenchange', handleFullScreenChange);
         return () => document.removeEventListener('fullscreenchange', handleFullScreenChange);
     }, []);
+
+    // --- Window Resize Handler ---
+    useEffect(() => {
+        const handleResize = () => {
+            setCamPositions(prev => {
+                const next = { ...prev };
+                let changed = false;
+                Object.keys(next).forEach(key => {
+                    const pos = next[key];
+                    const size = camSizes[key] || { width: 96, height: 64 };
+                    let newX = pos.x;
+                    let newY = pos.y;
+
+                    if (newX + size.width > window.innerWidth) {
+                        newX = Math.max(0, window.innerWidth - size.width);
+                        changed = true;
+                    }
+                    if (newY + size.height > window.innerHeight) {
+                        newY = Math.max(0, window.innerHeight - size.height);
+                        changed = true;
+                    }
+                    if (changed) {
+                        next[key] = { x: newX, y: newY };
+                    }
+                });
+                return changed ? next : prev;
+            });
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [camSizes]);
 
     // --- Render Helpers ---
 
@@ -1138,9 +1239,13 @@ export const CinemaDate: React.FC = () => {
                     </div>
                 </div>
 
-                {/* 3. Bottom Chat Panel - Clean Vertical Stack */}
+                {/* 3. Bottom Chat Panel - Adaptive for Mobile */}
                 {showChat && (
-                    <div className="flex-1 flex flex-col bg-black border-t border-gray-900 min-h-0">
+                    <div className={`
+                        flex-1 flex flex-col bg-black border-t border-gray-900 min-h-0
+                        md:relative md:w-auto md:h-auto
+                        absolute inset-x-0 bottom-0 top-[40%] z-50 border-t-2 border-neon/50 shadow-2xl
+                    `}>
                         <div className="h-8 border-b border-gray-900/50 flex items-center justify-between px-4 bg-black">
                             <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
                                 <MessageSquare className="w-3 h-3 text-neon" /> Live Chat
