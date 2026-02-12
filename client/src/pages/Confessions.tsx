@@ -182,7 +182,7 @@ export const Confessions: React.FC = () => {
         }
 
         // 2. Find or Create Admin Post
-        const ADMIN_TEXT_SIGNATURE = 'Hey, thanks for using our services! 💜 We will be soon expanding into other colleges too. Stay tuned and keep confessing! 🚀';
+        const ADMIN_TEXT_SIGNATURE = 'Hey, thanks for using our services! 💜 We will be soon expanding into other colleges too!!.You can report bugs via contact support in my profile';
         const foundAdminPost = posts.find((p: any) => p.text === ADMIN_TEXT_SIGNATURE);
 
         if (foundAdminPost) {
