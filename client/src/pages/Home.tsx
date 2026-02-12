@@ -93,23 +93,10 @@ export const Home: React.FC = () => {
             if (showLoading) setIsLoading(true);
 
             try {
-                // Try fetching new (unswiped) profiles first using the ORIGINAL algorithm (Jacuzzi?)
+                // Try fetching new (unswiped) profiles first using the ORIGINAL algorithm
                 let { data, error } = await supabase!.rpc('get_potential_matches', {
                     user_id: currentUser!.id
                 });
-
-                // If no new profiles, try recycling passed profiles (Infinite Loop) using v2
-                if (!error && (!data || data.length === 0)) {
-                    const { data: recycledData, error: recycledError } = await supabase!.rpc('get_potential_matches_v2', {
-                        user_id: currentUser!.id,
-                        recycle_mode: true,
-                        query_limit: 20
-                    });
-
-                    if (!recycledError && recycledData) {
-                        data = recycledData;
-                    }
-                }
 
                 if (error) {
                     console.error('Error fetching matches:', error);
@@ -178,6 +165,19 @@ export const Home: React.FC = () => {
         preloadImages(upcomingProfiles);
     }, [currentIndex, filteredQueue, preloadImages]);
 
+    // Attach non-passive touchmove to card for reliable preventDefault on mobile
+    useEffect(() => {
+        const card = cardRef.current;
+        if (!card) return;
+        const onTouchMove = (e: TouchEvent) => {
+            if (isDragging) {
+                e.preventDefault();
+            }
+        };
+        card.addEventListener('touchmove', onTouchMove, { passive: false });
+        return () => card.removeEventListener('touchmove', onTouchMove);
+    }, [isDragging, currentProfile]);
+
     // Enhanced touch handlers with spring physics feel
     const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
         setIsDragging(true);
@@ -189,6 +189,10 @@ export const Home: React.FC = () => {
 
     const handleTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
         if (!isDragging) return;
+        // Prevent browser scroll/refresh while swiping
+        if ('touches' in e) {
+            e.preventDefault();
+        }
         const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
         const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
 
@@ -293,7 +297,7 @@ export const Home: React.FC = () => {
             }
 
             setIsSwiping(false); // Unlock after swipe is fully processed
-        }, 300);
+        }, 200);
     };
 
     // Calculate 3D transforms
