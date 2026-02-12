@@ -4,6 +4,7 @@ import { ArrowLeft, Link as LinkIcon, AlertCircle, Monitor, FolderOpen, Youtube,
 import { useNavigate, useLocation } from 'react-router-dom';
 import Peer, { DataConnection } from 'peerjs';
 import { useAuth } from '../../context/AuthContext';
+import { analytics } from '../../utils/analytics';
 
 type DateMode = 'landing' | 'create_room' | 'join_room' | 'select' | 'youtube' | 'file' | 'screen' | 'viewer';
 
@@ -179,6 +180,13 @@ export const CinemaDate: React.FC = () => {
                     peer.on('open', (id) => {
                         setMyPeerId(id);
                         console.log('My Peer ID:', id);
+
+                        // Track virtual date start or join
+                        if (isHost) {
+                            analytics.virtualDateStart('Movie Date');
+                        } else {
+                            analytics.virtualDateJoin();
+                        }
 
                         if (!isHost) {
                             connectToPeer(roomCode, stream, peer);

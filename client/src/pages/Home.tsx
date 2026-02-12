@@ -5,6 +5,7 @@ import { MatchProfile } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { Heart, X, MapPin, GraduationCap, Ghost, Sparkles, School, Globe, Bell } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { analytics } from '../utils/analytics';
 
 // Cache key for session storage
 const PROFILES_CACHE_KEY = 'otherhalf_discover_cache';
@@ -234,8 +235,11 @@ export const Home: React.FC = () => {
 
         // Show success burst for likes
         if (direction === 'right') {
+            analytics.swipeRight();
             setShowSuccessBurst(true);
             setTimeout(() => setShowSuccessBurst(false), 600);
+        } else {
+            analytics.swipeLeft();
         }
 
         setTimeout(async () => {

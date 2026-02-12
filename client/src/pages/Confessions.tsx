@@ -6,6 +6,7 @@ import { ArrowLeft, Image as ImageIcon, Send, Heart, Crown, MessageCircle, X, Lo
 import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase'; // Use real DB
+import { analytics } from '../utils/analytics';
 
 type SortOption = 'newest' | 'oldest' | 'popular' | 'discussed';
 
@@ -261,6 +262,8 @@ export const Confessions: React.FC = () => {
             }
 
             // 3. Reset & Refresh
+            const postType = isPollMode ? 'poll' : newImage ? 'image' : 'text';
+            analytics.confessionPost(postType);
             setNewText('');
             setNewImage(null);
             setIsPollMode(false);
@@ -357,6 +360,8 @@ export const Confessions: React.FC = () => {
                     .eq('user_id', currentUser.id);
                 if (error) throw error;
             } else {
+                // Track the reaction
+                analytics.confessionReact(emoji);
                 // Upsert handles both new and switched reactions
                 const { error } = await supabase
                     .from('confession_reactions')

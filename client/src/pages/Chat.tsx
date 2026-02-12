@@ -12,6 +12,7 @@ import { PermissionModal } from '../components/PermissionModal';
 import { blockUser, unblockUser, isUserBlocked, isBlockedBy } from '../services/blockService';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { initiateCall, checkUserBusy } from '../services/callSignaling';
+import { analytics } from '../utils/analytics';
 
 export const Chat: React.FC = () => {
   const { id: matchId } = useParams<{ id: string }>(); // This is the MATCH ID from the URL
@@ -317,6 +318,9 @@ export const Chat: React.FC = () => {
         });
 
       if (error) throw error;
+
+      // Track the message send
+      analytics.messageSent();
 
       // The real-time subscription will:
       // 1. Receive the message from the database with real ID

@@ -3,6 +3,7 @@ import { RotateCcw, Ghost, Mail, ArrowRight, Check, Loader2, X, CheckCircle2, Al
 import { NeonInput, NeonButton } from '../components/Common';
 import { useNavigate, Link } from 'react-router-dom';
 import { authService } from '../services/auth';
+import { analytics } from '../utils/analytics';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -48,6 +49,7 @@ export const Login: React.FC = () => {
     setIsLoading(true);
     try {
       await authService.signInWithMagicLink(email);
+      analytics.login('Email');
       setSuccess('Magic Link sent! Check your email inbox to continue.');
     } catch (error: any) {
       console.error('Login error:', error);
@@ -68,6 +70,7 @@ export const Login: React.FC = () => {
     setIsLoading(true);
     try {
       await authService.signInWithGoogle();
+      analytics.login('Google');
     } catch (error: any) {
       console.error('Google login error:', error);
       setError(error.message || 'Failed to initialize Google login. Please try again.');
