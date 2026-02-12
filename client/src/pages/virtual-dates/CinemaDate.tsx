@@ -1469,7 +1469,7 @@ export const CinemaDate: React.FC = () => {
                     <div className={`
                         flex flex-col bg-black border-t border-gray-900
                         fixed md:relative 
-                        inset-x-0 md:inset-x-auto bottom-0 md:bottom-auto
+                        inset-x-0 md:inset-x-auto bottom-20 md:bottom-auto
                         h-[60vh] md:h-auto md:flex-1 md:min-h-0 md:max-h-[500px]
                         z-50 border-t-2 border-neon/50 shadow-2xl
                     `}>
