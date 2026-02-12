@@ -162,7 +162,19 @@ export const CinemaDate: React.FC = () => {
 
                     // If Host, try to grab the roomCode as ID. If Joiner, random ID.
                     const newPeerId = isHost ? roomCode : undefined;
-                    const peer = newPeerId ? new Peer(newPeerId) : new Peer();
+
+                    // Add config for better reliability
+                    const peerConfig: any = {
+                        debug: 2, // Errors
+                        config: {
+                            iceServers: [
+                                { urls: 'stun:stun.l.google.com:19302' },
+                                { urls: 'stun:global.stun.twilio.com:3478' }
+                            ]
+                        }
+                    };
+
+                    const peer = newPeerId ? new Peer(newPeerId, peerConfig) : new Peer(peerConfig);
 
                     peer.on('open', (id) => {
                         setMyPeerId(id);
@@ -174,45 +186,60 @@ export const CinemaDate: React.FC = () => {
                     });
 
                     peer.on('error', (err) => {
-                        console.error('Peer error:', err);
+                        console.error('Peer error (Full):', err);
                         // Clean error messages for user
-                        let msg = `Connection Error: ${err.type}`;
+                        let msg = `Connection Error: ${err.type || 'Unknown'}`;
+
                         if (err.type === 'unavailable-id') {
-                            msg = "Room Code is valid, but the Host ID matches (are you the host?). Try refreshing.";
-                            // This usually happens if you try to join your own room code as a peer with same ID?
-                            // No, host uses roomCode as ID. Joiner uses random ID.
-                            // Wait, if I am trying to become host with roomCode, and it's taken.
-                            if (isHost) {
-                                msg = "Room Name/Code is already taken. Please try another.";
-                                setMode('landing');
-                            }
+                            msg = isHost
+                                ? "Room Name/Code is already taken. Please try another."
+                                : "Room empty or fully occupied. Try again.";
+                            if (isHost) setMode('landing');
                         } else if (err.type === 'peer-unavailable') {
                             msg = "Room not found. The host may have left or the code is wrong.";
-                            setMode('landing');
+                            // Optional: Don't kick to landing immediately, allow retry
                         } else if (err.type === 'network') {
-                            msg = "Network connection lost.";
+                            msg = "Network connection lost. Reconnecting...";
+                        } else if (err.type === 'server-error') {
+                            msg = "Signaling server error. Please retry.";
+                        } else if (err.type === 'socket-error') {
+                            msg = "Socket error. Check your connection.";
+                        } else if (err.type === 'webrtc') {
+                            msg = "WebRTC Error. Browser may be blocking connections.";
                         }
+
                         setError(msg);
-                        setTimeout(() => setError(null), 5000);
+                        // specific handling for fatal errors
+                        if (['unavailable-id', 'invalid-id', 'invalid-key'].includes(err.type)) {
+                            // Fatal
+                            setTimeout(() => setMode('landing'), 3000);
+                        } else {
+                            setTimeout(() => setError(null), 5000);
+                        }
                     });
 
                     peer.on('call', (call) => {
                         console.log('Receiving call from:', call.peer, 'Metadata:', call.metadata);
-                        if (call.metadata?.type === 'video') {
-                            call.answer(); // Video stream doesn't need my camera back
-                            call.on('stream', (stream) => {
-                                console.log("Received remote video stream");
-                                setRemoteVideoStream(stream);
-                            });
-                        } else {
-                            call.answer(stream);
-                            call.on('stream', (remoteStream) => {
-                                addPeerStream(call.peer, remoteStream);
-                            });
-                            call.on('close', () => {
-                                console.log("Call closed for peer:", call.peer);
-                                removePeer(call.peer);
-                            });
+                        try {
+                            if (call.metadata?.type === 'video') {
+                                call.answer(); // Video stream doesn't need my camera back
+                                call.on('stream', (stream) => {
+                                    console.log("Received remote video stream");
+                                    setRemoteVideoStream(stream);
+                                });
+                            } else {
+                                call.answer(stream);
+                                call.on('stream', (remoteStream) => {
+                                    addPeerStream(call.peer, remoteStream);
+                                });
+                                call.on('close', () => {
+                                    console.log("Call closed for peer:", call.peer);
+                                    removePeer(call.peer);
+                                });
+                                call.on('error', (e) => console.error("Call Error in handler:", e));
+                            }
+                        } catch (e) {
+                            console.error("Failed to answer call:", e);
                         }
                     });
 
@@ -233,12 +260,24 @@ export const CinemaDate: React.FC = () => {
 
             initPeer();
 
+            initPeer();
+
             return () => {
-                // We only destroy if the component unmounts or roomCode actually changes in next effect run
-                // But for safety, keep the cleanup local to this effect run
+                // CLEANUP: Destroy peer when component unmounts or room changes
+                if (peerInstance.current) {
+                    console.log("Cleaning up Peer instance...");
+                    peerInstance.current.destroy();
+                    peerInstance.current = null;
+                }
+                setPeers([]);
+                setMyStream(null); // Stop stream? Maybe not if we want to reuse it, but here we re-init.
+                // Actually, stopping the stream tracks is good practice if we re-acquire them.
+                if (myStream) {
+                    myStream.getTracks().forEach(track => track.stop());
+                }
             };
         }
-    }, [roomCode, isHost]); // Only re-run if room identity changes, NOT on mode changes
+    }, [roomCode, isHost]); // Only re-run if room identity changes
 
     // URL Hash Sync for Sharing
     useEffect(() => {
