@@ -142,6 +142,7 @@ export const Matches: React.FC = () => {
     loadMatches();
 
     const channel = supabase.channel('matches-list-updates')
+      // 1. Listen for NEW messages
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         const newMsg = payload.new;
         setChats(prev => {
@@ -156,10 +157,29 @@ export const Matches: React.FC = () => {
             }
             return chat;
           }).sort((a, b) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
-
           try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch (e) { }
           return updated;
         });
+      })
+      // 2. Listen for READ status updates
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, (payload) => {
+        const updatedMsg = payload.new;
+        // If a message in this chat was marked read by CURRENT USER (meaning they are in Chat.tsx)
+        // or if it was marked read and it was from the partner, we should update.
+        // The most reliable way for "Matches" list is to just decrement if is_read becomes true.
+        if (updatedMsg.is_read) {
+          setChats(prev => {
+            const updated = prev.map(chat => {
+              if (chat.id === updatedMsg.match_id && updatedMsg.sender_id === chat.partner.id) {
+                // If the message was from partner and is now read, unread count for that partner goes down
+                return { ...chat, unreadCount: Math.max(0, chat.unreadCount - 1) };
+              }
+              return chat;
+            });
+            try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch (e) { }
+            return updated;
+          });
+        }
       })
       .subscribe();
 

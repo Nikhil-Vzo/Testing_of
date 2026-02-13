@@ -17,23 +17,19 @@ const MESSAGES_PER_PAGE = 50;
 
 export const Chat: React.FC = () => {
   const { id: matchId } = useParams<{ id: string }>();
-  const cacheKey = `otherhalf_chat_${matchId}_v2`; // NEW KEY
+  const cacheKey = `otherhalf_chat_${matchId}_v2`;
 
   const [partner, setPartner] = useState<MatchProfile | null>(() => {
-    try {
-      const cached = sessionStorage.getItem(cacheKey);
-      return cached ? JSON.parse(cached).partner : null;
-    } catch { return null; }
+    try { const c = sessionStorage.getItem(cacheKey); return c ? JSON.parse(c).partner : null; } catch { return null; }
   });
-
   const [messages, setMessages] = useState<Message[]>(() => {
-    try {
-      const cached = sessionStorage.getItem(cacheKey);
-      return cached ? JSON.parse(cached).messages : [];
-    } catch { return []; }
+    try { const c = sessionStorage.getItem(cacheKey); return c ? JSON.parse(c).messages : []; } catch { return []; }
   });
-
   const [loading, setLoading] = useState(() => !partner || messages.length === 0);
+
+  // FIX: Use ref for partner to avoid re-subscribing when profile loads
+  const partnerRef = useRef(partner);
+  useEffect(() => { partnerRef.current = partner; }, [partner]);
 
   const { currentUser } = useAuth();
   const { startCall, setOutgoingCall, isCallActive } = useCall();
@@ -55,36 +51,21 @@ export const Chat: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // Helper: Modal Controls
   const closeConfirmModal = () => setConfirmModal(prev => ({ ...prev, isOpen: false }));
   const showConfirm = (title: string, message: string, onConfirm: () => void, isDestructive = false, confirmLabel = 'Confirm') => {
     setConfirmModal({ isOpen: true, title, message, confirmLabel, isDestructive, onConfirm: () => { onConfirm(); closeConfirmModal(); } });
   };
 
-  // Screenshot Protection
   useEffect(() => {
     const preventScreenshot = (e: Event) => { e.preventDefault(); return false; };
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'PrintScreen' || (e.metaKey && e.shiftKey && (e.key === '4' || e.key === '5')) || (e.key === 's' && e.shiftKey && e.metaKey)) {
-        e.preventDefault();
-        showToast('Screenshots are disabled', 'warning');
-      }
-    };
+    const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'PrintScreen' || (e.metaKey && e.shiftKey && (e.key === '4' || e.key === '5')) || (e.key === 's' && e.shiftKey && e.metaKey)) { e.preventDefault(); showToast('Screenshots are disabled', 'warning'); } };
     const container = chatContainerRef.current;
-    if (container) {
-      container.addEventListener('contextmenu', preventScreenshot);
-      document.addEventListener('keydown', handleKeyDown);
-      return () => {
-        container.removeEventListener('contextmenu', preventScreenshot);
-        document.removeEventListener('keydown', handleKeyDown);
-      };
-    }
+    if (container) { container.addEventListener('contextmenu', preventScreenshot); document.addEventListener('keydown', handleKeyDown); return () => { container.removeEventListener('contextmenu', preventScreenshot); document.removeEventListener('keydown', handleKeyDown); }; }
   }, []);
 
   // Initial Load
   useEffect(() => {
     if (!currentUser || !matchId || !supabase) return;
-
     if (partner) subscribeToUser(partner.id);
     if (messages.length > 0 && loading) setTimeout(() => messagesEndRef.current?.scrollIntoView(), 0);
 
@@ -92,19 +73,13 @@ export const Chat: React.FC = () => {
       try {
         const { data: matchData, error: matchError } = await supabase.from('matches').select('user_a, user_b').eq('id', matchId).single();
         if (matchError || !matchData) { if (loading) navigate('/matches'); return; }
-
         const partnerId = matchData.user_a === currentUser.id ? matchData.user_b : matchData.user_a;
 
         const [profileRes, blockRes, blockedByRes, messagesRes] = await Promise.all([
           supabase.from('profiles').select('*').eq('id', partnerId).single(),
           isUserBlocked(partnerId),
           isBlockedBy(partnerId),
-          supabase
-            .from('messages')
-            .select('*')
-            .eq('match_id', matchId)
-            .order('created_at', { ascending: false })
-            .limit(MESSAGES_PER_PAGE)
+          supabase.from('messages').select('*').eq('match_id', matchId).order('created_at', { ascending: false }).limit(MESSAGES_PER_PAGE)
         ]);
 
         let newPartner = partner;
@@ -119,9 +94,7 @@ export const Chat: React.FC = () => {
           setPartner(newPartner);
           subscribeToUser(partnerId);
         }
-
-        setIsBlocked(blockRes);
-        setIsBlockedByThem(blockedByRes);
+        setIsBlocked(blockRes); setIsBlockedByThem(blockedByRes);
 
         let newMessages: Message[] = messages;
         if (messagesRes.data) {
@@ -130,46 +103,23 @@ export const Chat: React.FC = () => {
             timestamp: new Date(m.created_at).getTime(),
             isSystem: m.text.startsWith('[SYSTEM]') || m.text.startsWith('📞')
           })).reverse();
-
-          setMessages(newMessages);
-          setHasMoreMessages(messagesRes.data.length === MESSAGES_PER_PAGE);
+          setMessages(newMessages); setHasMoreMessages(messagesRes.data.length === MESSAGES_PER_PAGE);
           if (loading) setTimeout(() => messagesEndRef.current?.scrollIntoView(), 100);
         }
-
-        if (newPartner && newMessages.length > 0) {
-          try { sessionStorage.setItem(cacheKey, JSON.stringify({ partner: newPartner, messages: newMessages })); } catch (e) { }
-        }
-
-      } catch (err) {
-        console.error('Error loading chat:', err);
-      } finally {
-        setLoading(false);
-      }
+        if (newPartner && newMessages.length > 0) try { sessionStorage.setItem(cacheKey, JSON.stringify({ partner: newPartner, messages: newMessages })); } catch (e) { }
+      } catch (err) { console.error('Error loading chat:', err); } finally { setLoading(false); }
     };
-
     loadInitialData();
-
     return () => { if (partner) unsubscribeFromUser(partner.id); };
   }, [matchId, currentUser]);
 
-  // 3. Mark Messages as Read
+  // Mark Read
   useEffect(() => {
     if (!matchId || !currentUser || messages.length === 0) return;
-
     const markRead = async () => {
-      // Only mark if there are unread messages from the OTHER person
       const hasForeignMessages = messages.some(m => m.senderId !== currentUser.id && !m.isSystem);
-
-      if (hasForeignMessages) {
-        await supabase
-          .from('messages')
-          .update({ is_read: true })
-          .eq('match_id', matchId)
-          .neq('sender_id', currentUser.id) // Don't mark my own messages
-          .eq('is_read', false);
-      }
+      if (hasForeignMessages) await supabase.from('messages').update({ is_read: true }).eq('match_id', matchId).neq('sender_id', currentUser.id).eq('is_read', false);
     };
-
     markRead();
   }, [matchId, currentUser, messages.length]);
 
@@ -177,168 +127,75 @@ export const Chat: React.FC = () => {
     if (!hasMoreMessages || isLoadingMore || !matchId) return;
     setIsLoadingMore(true);
     try {
-      const { data: msgData } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('match_id', matchId)
-        .order('created_at', { ascending: false })
-        .range(messages.length, messages.length + MESSAGES_PER_PAGE - 1);
-
+      const { data: msgData } = await supabase.from('messages').select('*').eq('match_id', matchId).order('created_at', { ascending: false }).range(messages.length, messages.length + MESSAGES_PER_PAGE - 1);
       if (msgData && msgData.length > 0) {
-        const formatted = msgData.map((m: any) => ({
-          id: m.id, senderId: m.sender_id, text: m.text.replace('[SYSTEM]', '').trim(),
-          timestamp: new Date(m.created_at).getTime(),
-          isSystem: m.text.startsWith('[SYSTEM]') || m.text.startsWith('📞')
-        })).reverse();
-
-        setMessages(prev => [...formatted, ...prev]);
-        setHasMoreMessages(msgData.length === MESSAGES_PER_PAGE);
-      } else {
-        setHasMoreMessages(false);
-      }
-    } catch (err) { console.error(err); }
-    finally { setIsLoadingMore(false); }
+        const formatted = msgData.map((m: any) => ({ id: m.id, senderId: m.sender_id, text: m.text.replace('[SYSTEM]', '').trim(), timestamp: new Date(m.created_at).getTime(), isSystem: m.text.startsWith('[SYSTEM]') || m.text.startsWith('📞') })).reverse();
+        setMessages(prev => [...formatted, ...prev]); setHasMoreMessages(msgData.length === MESSAGES_PER_PAGE);
+      } else setHasMoreMessages(false);
+    } catch (err) { console.error(err); } finally { setIsLoadingMore(false); }
   };
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     if (e.currentTarget.scrollTop === 0 && hasMoreMessages && !isLoadingMore) {
-      const container = e.currentTarget;
-      const oldScrollHeight = container.scrollHeight;
-      loadMoreMessages().then(() => {
-        requestAnimationFrame(() => { container.scrollTop = container.scrollHeight - oldScrollHeight; });
-      });
+      const container = e.currentTarget; const oldScrollHeight = container.scrollHeight;
+      loadMoreMessages().then(() => { requestAnimationFrame(() => { container.scrollTop = container.scrollHeight - oldScrollHeight; }); });
     }
   };
 
-  // Realtime Subscription (Turbo Mode: No Server Filter)
+  // Realtime
   useEffect(() => {
     if (!matchId || !supabase) return;
-
-    // 1. We subscribe to ALL messages (Faster connection)
+    // FIX: Using matchId in channel name for Turbo mode, but removed partner from deps to prevent re-connects
     const channel = supabase.channel(`chat_turbo:${matchId}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages'
-        // REMOVED FILTER HERE -> Makes connection instant
-      }, (payload) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         const newMsg = payload.new;
-
-        // 2. Client-Side Filter (We check if it belongs to us here)
         if (newMsg.match_id !== matchId) return;
 
-        const incoming: Message = {
-          id: newMsg.id,
-          senderId: newMsg.sender_id,
-          text: newMsg.text.replace('[SYSTEM]', '').trim(),
-          timestamp: new Date(newMsg.created_at).getTime(),
-          isSystem: newMsg.text.startsWith('[SYSTEM]') || newMsg.text.startsWith('📞')
-        };
-
+        const incoming: Message = { id: newMsg.id, senderId: newMsg.sender_id, text: newMsg.text.replace('[SYSTEM]', '').trim(), timestamp: new Date(newMsg.created_at).getTime(), isSystem: newMsg.text.startsWith('[SYSTEM]') || newMsg.text.startsWith('📞') };
         setMessages(prev => {
           if (prev.some(m => m.id === incoming.id)) return prev;
           const hasOptimistic = prev.some(m => m.id.toString().startsWith('temp-') && m.senderId === incoming.senderId && m.text === incoming.text);
           const next = hasOptimistic ? prev.map(m => (m.id.toString().startsWith('temp-') && m.senderId === incoming.senderId && m.text === incoming.text) ? incoming : m) : [...prev, incoming];
 
-          if (partner) {
-            try { sessionStorage.setItem(cacheKey, JSON.stringify({ partner, messages: next })); } catch (e) { }
-          }
+          const currentPartner = partnerRef.current;
+          if (currentPartner) try { sessionStorage.setItem(cacheKey, JSON.stringify({ partner: currentPartner, messages: next })); } catch (e) { }
 
           const container = chatContainerRef.current;
-          if (container && container.scrollHeight - container.scrollTop - container.clientHeight < 100) {
-            setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-          }
+          if (container && container.scrollHeight - container.scrollTop - container.clientHeight < 100) setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
           return next;
         });
       })
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
-  }, [matchId, partner]);
+  }, [matchId]); // FIX: Removed 'partner' from dependency array to stabilize connection
 
   const handleSend = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!newMessage.trim() || !currentUser || !matchId) return;
-    const textToSend = newMessage.trim();
-    setNewMessage('');
+    e?.preventDefault(); if (!newMessage.trim() || !currentUser || !matchId) return;
+    const textToSend = newMessage.trim(); setNewMessage('');
     const optimistic: Message = { id: `temp-${Date.now()}`, senderId: currentUser.id, text: textToSend, timestamp: Date.now(), isSystem: false };
-    setMessages(prev => [...prev, optimistic]);
-    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
-    try {
-      await supabase.from('messages').insert({ match_id: matchId, sender_id: currentUser.id, text: textToSend });
-      analytics.messageSent();
-    } catch (err) {
-      console.error(err); showToast('Failed to send', 'error');
-      setMessages(prev => prev.filter(m => m.id !== optimistic.id));
-    }
+    setMessages(prev => [...prev, optimistic]); setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+    try { await supabase.from('messages').insert({ match_id: matchId, sender_id: currentUser.id, text: textToSend }); analytics.messageSent(); }
+    catch { setMessages(prev => prev.filter(m => m.id !== optimistic.id)); showToast('Failed', 'error'); }
   };
 
-  const startVideoCall = async (type: 'audio' | 'video' = 'video') => {
-    if (!partner || isStartingCall || !matchId || isCallActive) return;
-    if (!isUserOnline(partner.id)) {
-      showConfirm('User Offline', `Call anyway?`, () => proceedWithCallCheck(type), false, 'Call');
-    } else proceedWithCallCheck(type);
-  };
-
-  const proceedWithCallCheck = (type: 'audio' | 'video') => {
-    setPermissionModal({ isOpen: true, type, onGranted: () => { setPermissionModal(prev => ({ ...prev, isOpen: false })); proceedWithCall(type); } });
-  };
-
-  const proceedWithCall = async (callType: 'audio' | 'video') => {
-    if (!partner || !matchId || !currentUser) return;
-    setIsStartingCall(true);
+  const startVideoCall = async (type: 'audio' | 'video' = 'video') => { if (!partner || isStartingCall || !matchId || isCallActive) return; isUserOnline(partner.id) ? proceedWithCallCheck(type) : showConfirm('User Offline', `Call anyway?`, () => proceedWithCallCheck(type), false, 'Call'); };
+  const proceedWithCallCheck = (type: 'audio' | 'video') => setPermissionModal({ isOpen: true, type, onGranted: () => { setPermissionModal(prev => ({ ...prev, isOpen: false })); proceedWithCall(type); } });
+  const proceedWithCall = async (type: 'audio' | 'video') => {
+    if (!partner || !matchId || !currentUser) return; setIsStartingCall(true);
+    try { if (await checkUserBusy(partner.id, currentUser.id)) { showToast(`${partner.realName} busy`, 'info'); setIsStartingCall(false); return; } } catch { }
+    setOutgoingCall({ receiverName: partner.realName, receiverAvatar: partner.avatar || '', callType: type });
     try {
-      // FIXED RETRY LOGIC: Pass currentUser.id to allow retries
-      if (await checkUserBusy(partner.id, currentUser.id)) {
-        showToast(`${partner.realName || partner.anonymousId} is on another call.`, 'info');
-        setIsStartingCall(false); return;
-      }
-    } catch (err) { console.error(err); }
-
-    setOutgoingCall({ receiverName: partner.realName || partner.anonymousId, receiverAvatar: partner.avatar || '', callType });
-
-    try {
-      const session = await initiateCall(partner.id, matchId, { id: currentUser.id, name: currentUser.realName || 'Anonymous', avatar: currentUser.avatar || '', callType });
-      if (!session) throw new Error('Session failed');
-
-      const timeoutId = setTimeout(async () => {
-        setOutgoingCall(null); setIsStartingCall(false); showToast('No answer.', 'info');
-        await insertSystemMessage('📞 Missed Call');
-      }, 30000);
-
-      const ch = supabase.channel(`call:${session.id}`).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'call_sessions', filter: `id=eq.${session.id}` }, async (payload: any) => {
-        if (payload.new.status === 'active') {
-          clearTimeout(timeoutId); supabase.removeChannel(ch);
-          startCall(partner.realName || '', partner.avatar || '', session.app_id, session.channel_name, session.token, callType, session.id);
-          setIsStartingCall(false);
-        } else if (payload.new.status === 'rejected') {
-          clearTimeout(timeoutId); supabase.removeChannel(ch); setOutgoingCall(null); setIsStartingCall(false); showToast('Call declined.', 'info');
-          await insertSystemMessage('📞 Call Declined');
-        }
+      const s = await initiateCall(partner.id, matchId, { id: currentUser.id, name: currentUser.realName, avatar: currentUser.avatar || '', callType: type });
+      if (!s) throw new Error('Fail');
+      const t = setTimeout(async () => { setOutgoingCall(null); setIsStartingCall(false); showToast('No answer', 'info'); await insertSystemMessage('📞 Missed Call'); }, 30000);
+      const ch = supabase.channel(`call:${s.id}`).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'call_sessions', filter: `id=eq.${s.id}` }, async (payload: any) => {
+        if (payload.new.status === 'active') { clearTimeout(t); supabase.removeChannel(ch); startCall(partner.realName, partner.avatar || '', s.app_id, s.channel_name, s.token, type, s.id); setIsStartingCall(false); }
+        else if (payload.new.status === 'rejected') { clearTimeout(t); supabase.removeChannel(ch); setOutgoingCall(null); setIsStartingCall(false); showToast('Declined', 'info'); await insertSystemMessage('📞 Call Declined'); }
       }).subscribe();
-    } catch (err) { console.error(err); showToast('Call failed', 'error'); setOutgoingCall(null); setIsStartingCall(false); }
+    } catch { showToast('Call failed', 'error'); setOutgoingCall(null); setIsStartingCall(false); }
   };
-
-  const insertSystemMessage = async (text: string) => {
-    if (!currentUser || !matchId) return;
-    try { await supabase.from('messages').insert({ match_id: matchId, sender_id: currentUser.id, text: text.startsWith('📞') ? text : `[SYSTEM] ${text}` }); } catch (err) { }
-  };
-
-  const formatLastSeen = (date: Date): string => {
-    const diff = (new Date().getTime() - date.getTime()) / 60000;
-    if (diff < 1) return 'just now'; if (diff < 60) return `${Math.floor(diff)}m ago`;
-    if (diff < 1440) return `${Math.floor(diff / 60)}h ago`; return date.toLocaleDateString();
-  };
-
-  const handleBlockUser = async () => {
-    if (!partner) return;
-    const action = isBlocked ? 'Unblock' : 'Block';
-    showConfirm(`${action} User`, `${action} ${partner.realName}?`, async () => {
-      if (isBlocked ? await unblockUser(partner.id) : await blockUser(partner.id)) {
-        setIsBlocked(!isBlocked); setShowMenu(false); showToast(`User ${action}ed`, 'success');
-      }
-    }, !isBlocked, action);
-  };
+  const insertSystemMessage = async (text: string) => { if (!currentUser || !matchId) return; try { await supabase.from('messages').insert({ match_id: matchId, sender_id: currentUser.id, text: text.startsWith('📞') ? text : `[SYSTEM] ${text}` }); } catch { } };
+  const handleBlockUser = () => { if (!partner) return; showConfirm(isBlocked ? 'Unblock' : 'Block', `Confirm?`, async () => { if (isBlocked ? await unblockUser(partner.id) : await blockUser(partner.id)) { setIsBlocked(!isBlocked); setShowMenu(false); showToast('Success', 'success'); } }, !isBlocked); };
 
   if (loading) return <div className="h-full w-full bg-black flex flex-col items-center justify-center"><Loader2 className="w-8 h-8 text-neon animate-spin mb-4" /><p className="text-gray-500 text-sm">Loading chat...</p></div>;
   if (!partner) return null;
@@ -347,62 +204,18 @@ export const Chat: React.FC = () => {
     <div className="h-full w-full bg-transparent flex flex-col relative">
       <ConfirmationModal isOpen={confirmModal.isOpen} title={confirmModal.title} message={confirmModal.message} confirmLabel={confirmModal.confirmLabel} isDestructive={confirmModal.isDestructive} onConfirm={confirmModal.onConfirm} onCancel={closeConfirmModal} />
       <PermissionModal isOpen={permissionModal.isOpen} onPermissionsGranted={permissionModal.onGranted} onCancel={() => setPermissionModal(prev => ({ ...prev, isOpen: false }))} requiredPermissions={permissionModal.type === 'video' ? ['camera', 'microphone'] : ['microphone']} />
-
-      {/* Header */}
       <div className="flex-none px-4 py-3 bg-black/95 backdrop-blur-md border-b border-gray-800 flex items-center justify-between z-20">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/matches')} className="p-2 -ml-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-800"><ArrowLeft className="w-5 h-5" /></button>
-          <div className="relative"><img src={partner.avatar} className="w-10 h-10 rounded-full border border-gray-700 object-cover" /><div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-black ${isUserOnline(partner.id) ? 'bg-green-500' : 'bg-gray-500'}`}></div></div>
-          <div><h3 className="text-sm font-bold text-white">{partner.realName || partner.anonymousId}</h3><span className="text-[10px] text-gray-500">{isUserOnline(partner.id) ? <span className="text-green-400">Active</span> : (getLastSeen(partner.id) ? formatLastSeen(getLastSeen(partner.id)!) : 'Offline')}</span></div>
-        </div>
-        <div className="flex items-center gap-1">
-          <button onClick={() => startVideoCall('video')} disabled={isStartingCall} className="p-2.5 text-gray-400 hover:text-neon hover:bg-gray-800 rounded-full"><Video className="w-5 h-5" /></button>
-          <button onClick={() => startVideoCall('audio')} disabled={isStartingCall} className="p-2.5 text-gray-400 hover:text-green-400 hover:bg-gray-800 rounded-full"><Phone className="w-5 h-5" /></button>
-          <div className="relative"><button onClick={() => setShowMenu(!showMenu)} className="p-2.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full"><MoreVertical className="w-5 h-5" /></button>
-            {showMenu && <div className="absolute right-0 top-12 z-50 w-48 bg-gray-900 border border-gray-700 rounded-xl shadow-xl overflow-hidden">
-              <button onClick={() => { navigate(`/profile/${partner.id}`); setShowMenu(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-gray-300 hover:bg-gray-800"><User className="w-4 h-4" /> View Profile</button>
-              <button onClick={handleBlockUser} className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-gray-300 hover:bg-gray-800"><Ban className="w-4 h-4" /> {isBlocked ? 'Unblock' : 'Block'}</button>
-              <button onClick={() => { navigate('/contact', { state: { reportUserId: partner.id } }); setShowMenu(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-red-400 hover:bg-gray-800"><AlertTriangle className="w-4 h-4" /> Report</button>
-            </div>}
-          </div>
-        </div>
+        <div className="flex items-center gap-3"><button onClick={() => navigate('/matches')} className="p-2 -ml-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-800"><ArrowLeft className="w-5 h-5" /></button><div className="relative"><img src={partner.avatar} className="w-10 h-10 rounded-full border border-gray-700 object-cover" /><div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-black ${isUserOnline(partner.id) ? 'bg-green-500' : 'bg-gray-500'}`}></div></div><div><h3 className="text-sm font-bold text-white">{partner.realName || partner.anonymousId}</h3><span className="text-[10px] text-gray-500">{isUserOnline(partner.id) ? <span className="text-green-400">Active</span> : (getLastSeen(partner.id) ? (new Date().getTime() - getLastSeen(partner.id)!.getTime() < 60000 ? 'just now' : getLastSeen(partner.id)?.toLocaleDateString()) : 'Offline')}</span></div></div>
+        <div className="flex items-center gap-1"><button onClick={() => startVideoCall('video')} disabled={isStartingCall} className="p-2.5 text-gray-400 hover:text-neon hover:bg-gray-800 rounded-full"><Video className="w-5 h-5" /></button><button onClick={() => startVideoCall('audio')} disabled={isStartingCall} className="p-2.5 text-gray-400 hover:text-green-400 hover:bg-gray-800 rounded-full"><Phone className="w-5 h-5" /></button><div className="relative"><button onClick={() => setShowMenu(!showMenu)} className="p-2.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full"><MoreVertical className="w-5 h-5" /></button>{showMenu && <div className="absolute right-0 top-12 z-50 w-48 bg-gray-900 border border-gray-700 rounded-xl shadow-xl overflow-hidden"><button onClick={() => { navigate(`/profile/${partner.id}`); setShowMenu(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-gray-300 hover:bg-gray-800"><User className="w-4 h-4" /> View Profile</button><button onClick={handleBlockUser} className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-gray-300 hover:bg-gray-800"><Ban className="w-4 h-4" /> {isBlocked ? 'Unblock' : 'Block'}</button><button onClick={() => { navigate('/contact', { state: { reportUserId: partner.id } }); setShowMenu(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-red-400 hover:bg-gray-800"><AlertTriangle className="w-4 h-4" /> Report</button></div>}</div></div>
       </div>
-
-      {/* Messages List */}
       <div ref={chatContainerRef} className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4" onScroll={handleScroll}>
         {isLoadingMore && <div className="flex justify-center"><Loader2 className="w-5 h-5 text-gray-500 animate-spin" /></div>}
-
-        {/* Privacy Banner */}
-        <div className="mb-4 bg-gradient-to-r from-blue-900/10 to-purple-900/10 border border-blue-800/20 rounded-2xl p-3 backdrop-blur-sm flex gap-3">
-          <div className="p-2 bg-blue-600/10 rounded-full h-fit"><Shield className="w-4 h-4 text-blue-400" /></div>
-          <div><h4 className="text-xs font-bold text-blue-400 flex items-center gap-2"><Clock className="w-3 h-3" /> Privacy Active</h4><p className="text-[11px] text-gray-400">Messages deleted after 3 days. Screenshots disabled.</p></div>
-        </div>
-
+        <div className="mb-4 bg-gradient-to-r from-blue-900/10 to-purple-900/10 border border-blue-800/20 rounded-2xl p-3 backdrop-blur-sm flex gap-3"><div className="p-2 bg-blue-600/10 rounded-full h-fit"><Shield className="w-4 h-4 text-blue-400" /></div><div><h4 className="text-xs font-bold text-blue-400 flex items-center gap-2"><Clock className="w-3 h-3" /> Privacy Active</h4><p className="text-[11px] text-gray-400">Messages deleted after 3 days. Screenshots disabled.</p></div></div>
         {messages.length === 0 && <div className="flex flex-col items-center justify-center h-[50vh] opacity-50"><Ghost className="w-10 h-10 text-gray-700 mb-2" /><p className="text-sm text-gray-500">No messages yet.</p></div>}
-
-        {messages.map((msg, i) => {
-          const isMe = msg.senderId === currentUser?.id;
-          if (msg.isSystem) return <div key={msg.id} className="flex justify-center w-full my-4"><span className="text-[10px] uppercase text-gray-500 bg-gray-900/50 px-4 py-1.5 rounded-full border border-gray-800/50 flex items-center gap-2">{msg.text.replace('📞', '').trim()}</span></div>;
-          return (
-            <div key={msg.id} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
-              <div className={`flex max-w-[80%] md:max-w-[60%] gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                {!isMe && <div className="w-8 h-8 flex-shrink-0">{(!messages[i - 1] || messages[i - 1].senderId !== msg.senderId) && <img src={partner.avatar} className="w-8 h-8 rounded-full border border-gray-800 object-cover" />}</div>}
-                <div className={`relative px-4 py-2.5 rounded-2xl text-sm break-words ${isMe ? 'bg-neon text-white rounded-br-none' : 'bg-gray-800 text-gray-100 rounded-bl-none border border-gray-700'}`}>{msg.text}<span className={`text-[9px] block mt-1 opacity-60 text-right ${isMe ? 'text-white' : 'text-gray-400'}`}>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
-              </div>
-            </div>
-          );
-        })}
+        {messages.map((msg, i) => { const isMe = msg.senderId === currentUser?.id; if (msg.isSystem) return <div key={msg.id} className="flex justify-center w-full my-4"><span className="text-[10px] uppercase text-gray-500 bg-gray-900/50 px-4 py-1.5 rounded-full border border-gray-800/50 flex items-center gap-2">{msg.text.replace('📞', '').trim()}</span></div>; return (<div key={msg.id} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}><div className={`flex max-w-[80%] md:max-w-[60%] gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>{!isMe && <div className="w-8 h-8 flex-shrink-0">{(!messages[i - 1] || messages[i - 1].senderId !== msg.senderId) && <img src={partner.avatar} className="w-8 h-8 rounded-full border border-gray-800 object-cover" />}</div>}<div className={`relative px-4 py-2.5 rounded-2xl text-sm break-words ${isMe ? 'bg-neon text-white rounded-br-none' : 'bg-gray-800 text-gray-100 rounded-bl-none border border-gray-700'}`}>{msg.text}<span className={`text-[9px] block mt-1 opacity-60 text-right ${isMe ? 'text-white' : 'text-gray-400'}`}>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div></div></div>); })}
         <div ref={messagesEndRef} />
       </div>
-
-      {/* Input */}
-      <div className="p-3 bg-black/95 backdrop-blur-md border-t border-gray-800 z-20 relative">
-        {(isBlocked || isBlockedByThem) && <div className="absolute inset-0 bg-gray-900/95 flex items-center justify-center z-30"><div className="text-center"><Ban className="w-8 h-8 text-gray-600 mx-auto mb-2" /><p className="text-sm text-gray-400 font-medium">{isBlocked ? 'You blocked this user' : 'User unavailable'}</p>{isBlocked && <button onClick={handleBlockUser} className="mt-3 px-4 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-full">Unblock</button>}</div></div>}
-        <form onSubmit={handleSend} className="max-w-4xl mx-auto flex items-end gap-2 px-2 pb-2">
-          <div className="flex-1 bg-gray-900 border border-gray-800 rounded-2xl flex items-center gap-2 px-3 py-1 shadow-inner focus-within:border-gray-600 transition-colors"><input value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Type a message..." className="flex-1 bg-transparent py-3 text-sm text-white placeholder-gray-500 outline-none min-h-[44px] max-h-32" /></div>
-          <button type="submit" disabled={!newMessage.trim()} className="p-3 rounded-full bg-neon text-white shadow-lg hover:bg-[#d6006b] transition-all disabled:opacity-50"><Send className="w-5 h-5 fill-current" /></button>
-        </form>
-      </div>
+      <div className="p-3 bg-black/95 backdrop-blur-md border-t border-gray-800 z-20 relative">{(isBlocked || isBlockedByThem) && <div className="absolute inset-0 bg-gray-900/95 flex items-center justify-center z-30"><div className="text-center"><Ban className="w-8 h-8 text-gray-600 mx-auto mb-2" /><p className="text-sm text-gray-400 font-medium">{isBlocked ? 'You blocked this user' : 'User unavailable'}</p>{isBlocked && <button onClick={handleBlockUser} className="mt-3 px-4 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-full">Unblock</button>}</div></div>}<form onSubmit={handleSend} className="max-w-4xl mx-auto flex items-end gap-2 px-2 pb-2"><div className="flex-1 bg-gray-900 border border-gray-800 rounded-2xl flex items-center gap-2 px-3 py-1 shadow-inner focus-within:border-gray-600 transition-colors"><input value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Type a message..." className="flex-1 bg-transparent py-3 text-sm text-white placeholder-gray-500 outline-none min-h-[44px] max-h-32" /></div><button type="submit" disabled={!newMessage.trim()} className="p-3 rounded-full bg-neon text-white shadow-lg hover:bg-[#d6006b] transition-all disabled:opacity-50"><Send className="w-5 h-5 fill-current" /></button></form></div>
     </div>
   );
 };
