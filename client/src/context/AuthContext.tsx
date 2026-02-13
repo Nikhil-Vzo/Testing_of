@@ -18,47 +18,68 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load from DB on mount
+  // Load from DB on mount (Optimized: Cache-First)
   useEffect(() => {
     const initializeAuth = async () => {
+      // 1. FAST: Load from LocalStorage immediately to unblock UI
       const localUser = authService.getCurrentUser();
-      if (localUser) setCurrentUser(localUser);
+      if (localUser) {
+        setCurrentUser(localUser);
+        setIsLoading(false); // <--- The App loads instantly here
+      }
 
+      // 2. SLOW (Background): Verify with Supabase for updates/security
       if (supabase) {
-        const { data: { session } } = await supabase.auth.getSession();
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
 
-        if (session?.user) {
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
+          if (session?.user) {
+            // Fetch fresh profile
+            const { data: profile, error } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
 
-          if (profile && !error) {
-            const appUser: UserProfile = {
-              id: profile.id,
-              anonymousId: profile.anonymous_id,
-              realName: profile.real_name,
-              gender: profile.gender,
-              university: profile.university,
-              universityEmail: profile.university_email,
-              branch: profile.branch,
-              year: profile.year,
-              interests: profile.interests || [],
-              lookingFor: profile.looking_for || [],
-              bio: profile.bio,
-              dob: profile.dob,
-              isVerified: profile.is_verified,
-              avatar: profile.avatar,
-              isPremium: profile.is_premium
-            };
+            if (profile && !error) {
+              const appUser: UserProfile = {
+                id: profile.id,
+                anonymousId: profile.anonymous_id,
+                realName: profile.real_name,
+                gender: profile.gender,
+                university: profile.university,
+                universityEmail: profile.university_email,
+                branch: profile.branch,
+                year: profile.year,
+                interests: profile.interests || [],
+                lookingFor: profile.looking_for || [],
+                bio: profile.bio,
+                dob: profile.dob,
+                isVerified: profile.is_verified,
+                avatar: profile.avatar,
+                isPremium: profile.is_premium
+              };
 
-            setCurrentUser(appUser);
-            localStorage.setItem('otherhalf_session', JSON.stringify(appUser));
+              // Only update state if data actually changed (prevents re-renders)
+              if (JSON.stringify(appUser) !== JSON.stringify(localUser)) {
+                console.log('Profile updated from server');
+                setCurrentUser(appUser);
+                localStorage.setItem('otherhalf_session', JSON.stringify(appUser));
+              }
+            }
+          } else if (localUser) {
+            // OPTIONAL: If Supabase says "No Session" but we have Local Data, 
+            // we might want to logout or try to refresh token. 
+            // For now, we trust the cache to allow offline usage, but you can force logout here if strict security is needed.
+            // logout(); 
           }
+        } catch (err) {
+          console.error('Background auth check failed:', err);
         }
       }
-      setIsLoading(false);
+
+      // If we didn't have a local user, we had to wait for Supabase. Now we stop loading.
+      if (!localUser) setIsLoading(false);
     };
 
     initializeAuth();
@@ -66,15 +87,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (user: UserProfile) => {
     setCurrentUser(user);
-    await authService.login(user);
+    // Non-blocking sync
+    authService.login(user).catch(err => console.error("Background sync error:", err));
   };
 
   const logout = () => {
     setCurrentUser(null);
     authService.logout();
-    // Removed dataService.reset() as it is deprecated
 
-    // Clear all cached data
+    // Clear all caches
     sessionStorage.removeItem('otherhalf_discover_cache');
     sessionStorage.removeItem('otherhalf_discover_cache_expiry');
     sessionStorage.removeItem('otherhalf_matches_cache');
@@ -87,7 +108,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!currentUser) return;
     const updatedUser = { ...currentUser, ...updates };
     setCurrentUser(updatedUser);
-    authService.login(updatedUser);
+    // Non-blocking update
+    authService.login(updatedUser).catch(err => console.error("Profile update sync error:", err));
   };
 
   return (
