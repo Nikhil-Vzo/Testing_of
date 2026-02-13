@@ -44,59 +44,99 @@ export const Chat: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // Initial Load
+  // Helper: Modal Controls
+  const closeConfirmModal = () => setConfirmModal(prev => ({ ...prev, isOpen: false }));
+  const showConfirm = (title: string, message: string, onConfirm: () => void, isDestructive = false, confirmLabel = 'Confirm') => {
+    setConfirmModal({ isOpen: true, title, message, confirmLabel, isDestructive, onConfirm: () => { onConfirm(); closeConfirmModal(); } });
+  };
+
+  // Screenshot Protection
+  useEffect(() => {
+    const preventScreenshot = (e: Event) => { e.preventDefault(); return false; };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'PrintScreen' || (e.metaKey && e.shiftKey && (e.key === '4' || e.key === '5')) || (e.key === 's' && e.shiftKey && e.metaKey)) {
+        e.preventDefault();
+        showToast('Screenshots are disabled', 'warning');
+      }
+    };
+    const container = chatContainerRef.current;
+    if (container) {
+      container.addEventListener('contextmenu', preventScreenshot);
+      document.addEventListener('keydown', handleKeyDown);
+      return () => {
+        container.removeEventListener('contextmenu', preventScreenshot);
+        document.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, []);
+
+  // Initial Load - OPTIMIZED: Parallel Fetching
   useEffect(() => {
     if (!currentUser || !matchId || !supabase) return;
 
     const loadInitialData = async () => {
       setLoading(true);
       try {
-        // 1. Fetch Match & Partner Data
-        const { data: matchData, error: matchError } = await supabase.from('matches').select('*').eq('id', matchId).single();
+        console.log('[Chat] 🚀 Starting optimized fetch for:', matchId);
+
+        // 1. Get Match Info (Sequential because we need to know WHO the partner is first)
+        const { data: matchData, error: matchError } = await supabase.from('matches').select('user_a, user_b, is_revealed').eq('id', matchId).single();
         if (matchError || !matchData) { navigate('/matches'); return; }
 
         const partnerId = matchData.user_a === currentUser.id ? matchData.user_b : matchData.user_a;
         setIsRevealed(matchData.is_revealed || false);
 
-        // Fetch Profile
-        const { data: profile } = await supabase.from('profiles').select('*').eq('id', partnerId).single();
-        if (profile) {
+        // 2. Parallel Fetch: Profile + Block Status + Last 50 Messages
+        // fetching everything at once rather than waterfalls
+        const [profileRes, blockRes, blockedByRes, messagesRes] = await Promise.all([
+          supabase.from('profiles').select('*').eq('id', partnerId).single(),
+          isUserBlocked(partnerId),
+          isBlockedBy(partnerId),
+          supabase
+            .from('messages')
+            .select('*')
+            .eq('match_id', matchId)
+            .order('created_at', { ascending: false }) // Newest first
+            .limit(MESSAGES_PER_PAGE)
+        ]);
+
+        // Handle Profile
+        if (profileRes.data) {
           setPartner({
-            id: profile.id, anonymousId: profile.anonymous_id, realName: profile.real_name,
-            gender: profile.gender, university: profile.university, branch: profile.branch,
-            year: profile.year, interests: profile.interests || [], bio: profile.bio,
-            dob: profile.dob, isVerified: profile.is_verified, avatar: profile.avatar,
+            id: profileRes.data.id, anonymousId: profileRes.data.anonymous_id, realName: profileRes.data.real_name,
+            gender: profileRes.data.gender, university: profileRes.data.university, branch: profileRes.data.branch,
+            year: profileRes.data.year, interests: profileRes.data.interests || [], bio: profileRes.data.bio,
+            dob: profileRes.data.dob, isVerified: profileRes.data.is_verified, avatar: profileRes.data.avatar,
             matchPercentage: 0, distance: 'Connected'
           });
           subscribeToUser(partnerId);
-          const [blocked, blockedBy] = await Promise.all([isUserBlocked(partnerId), isBlockedBy(partnerId)]);
-          setIsBlocked(blocked);
-          setIsBlockedByThem(blockedBy);
         }
 
-        // 2. Fetch Last 50 Messages
-        const { data: msgData } = await supabase
-          .from('messages')
-          .select('*')
-          .eq('match_id', matchId)
-          .order('created_at', { ascending: false }) // Get latest first
-          .limit(MESSAGES_PER_PAGE);
+        // Handle Block Status
+        setIsBlocked(blockRes);
+        setIsBlockedByThem(blockedByRes);
 
-        if (msgData) {
-          const formatted = msgData.map((m: any) => ({
+        // Handle Messages
+        if (messagesRes.data) {
+          // We fetched "Newest First". Reverse to display chronologically.
+          const formatted = messagesRes.data.map((m: any) => ({
             id: m.id, senderId: m.sender_id, text: m.text.replace('[SYSTEM]', '').trim(),
             timestamp: new Date(m.created_at).getTime(),
             isSystem: m.text.startsWith('[SYSTEM]') || m.text.startsWith('📞')
-          })).reverse(); // Reverse to chronological order for display
-          setMessages(formatted);
-          setHasMoreMessages(msgData.length === MESSAGES_PER_PAGE);
+          })).reverse();
 
-          // Scroll to bottom on initial load
+          setMessages(formatted);
+
+          // If we got exactly limit messages, there might be more
+          setHasMoreMessages(messagesRes.data.length === MESSAGES_PER_PAGE);
+
+          // Scroll to bottom
           setTimeout(() => messagesEndRef.current?.scrollIntoView(), 100);
         }
 
       } catch (err) {
         console.error('Error loading chat:', err);
+        showToast('Failed to load chat', 'error');
       } finally {
         setLoading(false);
       }
@@ -107,12 +147,12 @@ export const Chat: React.FC = () => {
     return () => { if (partner) unsubscribeFromUser(partner.id); };
   }, [matchId, currentUser]);
 
-  // Fetch More Messages
+  // Fetch More Messages (Pagination Logic - Preserved)
   const loadMoreMessages = async () => {
     if (!hasMoreMessages || isLoadingMore || !matchId) return;
 
     setIsLoadingMore(true);
-    const currentTopInfo = messages[0]; // Remember top message to maintain scroll position
+    // const currentTopMessageId = messages[0]?.id; // removed unused var
 
     try {
       const { data: msgData } = await supabase
@@ -144,12 +184,11 @@ export const Chat: React.FC = () => {
   // Scroll Handler for "Load Previous"
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     if (e.currentTarget.scrollTop === 0 && hasMoreMessages && !isLoadingMore) {
-      // Save current scroll height to restore position after loading
       const container = e.currentTarget;
       const oldScrollHeight = container.scrollHeight;
 
       loadMoreMessages().then(() => {
-        // Restore scroll position
+        // Restore scroll position so user doesn't jump
         requestAnimationFrame(() => {
           container.scrollTop = container.scrollHeight - oldScrollHeight;
         });
@@ -174,14 +213,12 @@ export const Chat: React.FC = () => {
           const exists = prev.some(m => m.id === incoming.id);
           if (exists) return prev;
 
-          // Replace optimistic message
           const hasOptimistic = prev.some(m => m.id.toString().startsWith('temp-') && m.senderId === incoming.senderId && m.text === incoming.text);
           if (hasOptimistic) {
             return prev.map(m => (m.id.toString().startsWith('temp-') && m.senderId === incoming.senderId && m.text === incoming.text) ? incoming : m);
           }
 
           const nextMessages = [...prev, incoming];
-          // Auto-scroll if near bottom
           const container = chatContainerRef.current;
           if (container) {
             const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
@@ -220,15 +257,7 @@ export const Chat: React.FC = () => {
     }
   };
 
-  // ... (Keep existing Call Helpers: startVideoCall, proceedWithCallCheck, proceedWithCall, startAudioCall, etc.)
-  // For brevity, I'm assuming these helper functions (startVideoCall, etc.) are preserved or imported. 
-  // Since I'm essentially rewriting the file, I need to include them.
-
-  const closeConfirmModal = () => setConfirmModal(prev => ({ ...prev, isOpen: false }));
-  const showConfirm = (title: string, message: string, onConfirm: () => void, isDestructive = false, confirmLabel = 'Confirm') => {
-    setConfirmModal({ isOpen: true, title, message, confirmLabel, isDestructive, onConfirm: () => { onConfirm(); closeConfirmModal(); } });
-  };
-
+  // Call Actions
   const startVideoCall = async (type: 'audio' | 'video' = 'video') => {
     if (!partner || isStartingCall || !matchId) return;
     if (isCallActive) { showToast('Already on a call.', 'warning'); return; }
@@ -339,7 +368,10 @@ export const Chat: React.FC = () => {
       <div className="flex-none px-4 py-3 bg-black/95 backdrop-blur-md border-b border-gray-800 flex items-center justify-between z-20">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/matches')} className="p-2 -ml-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-800 transition-colors"><ArrowLeft className="w-5 h-5" /></button>
-          <div className="relative"><img src={partner.avatar} className="w-10 h-10 rounded-full border border-gray-700 object-cover" alt="" /><div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#000000]"></div></div>
+          <div className="relative">
+            <img src={partner.avatar} className="w-10 h-10 rounded-full border border-gray-700 object-cover" alt="" />
+            <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#000000] ${isUserOnline(partner.id) ? 'bg-green-500' : 'bg-gray-500'}`}></div>
+          </div>
           <div>
             <h3 className="text-sm font-bold text-white leading-tight">{partner.realName || partner.anonymousId}</h3>
             <span className="text-[10px] text-gray-500">{isUserOnline(partner.id) ? <span className="text-green-400">Active</span> : (getLastSeen(partner.id) ? formatLastSeen(getLastSeen(partner.id)!) : 'Offline')}</span>
@@ -420,12 +452,21 @@ export const Chat: React.FC = () => {
       </div>
 
       {/* Input */}
-      <div className="p-3 bg-black/95 backdrop-blur-md border-t border-gray-800 z-20">
+      <div className="p-3 bg-black/95 backdrop-blur-md border-t border-gray-800 z-20 relative">
+        {(isBlocked || isBlockedByThem) && (
+          <div className="absolute inset-0 bg-gray-900/95 flex items-center justify-center z-30"><div className="text-center"><Ban className="w-8 h-8 text-gray-600 mx-auto mb-2" /><p className="text-sm text-gray-400 font-medium">{isBlocked ? 'You blocked this user' : 'User unavailable'}</p>{isBlocked && <button onClick={handleBlockUser} className="mt-3 px-4 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-full">Unblock</button>}</div></div>
+        )}
         <form onSubmit={handleSend} className="max-w-4xl mx-auto flex items-end gap-2 px-2 pb-2">
           <div className="flex-1 bg-gray-900 border border-gray-800 rounded-2xl flex items-center gap-2 px-3 py-1 shadow-inner focus-within:border-gray-600 transition-colors">
-            <input value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Type a message..." className="flex-1 bg-transparent py-3 text-sm text-white placeholder-gray-500 outline-none min-h-[44px] max-h-32" />
+            <input
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Type a message..."
+              disabled={isBlocked || isBlockedByThem}
+              className="flex-1 bg-transparent py-3 text-sm text-white placeholder-gray-500 outline-none min-h-[44px] max-h-32 disabled:opacity-50 disabled:cursor-not-allowed"
+            />
           </div>
-          <button type="submit" disabled={!newMessage.trim()} className="p-3 rounded-full bg-neon text-white shadow-lg hover:bg-[#d6006b] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"><Send className="w-5 h-5 fill-current" /></button>
+          <button type="submit" disabled={!newMessage.trim() || isBlocked || isBlockedByThem} className="p-3 rounded-full bg-neon text-white shadow-lg hover:bg-[#d6006b] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"><Send className="w-5 h-5 fill-current" /></button>
         </form>
       </div>
     </div>
