@@ -152,6 +152,27 @@ export const Chat: React.FC = () => {
     return () => { if (partner) unsubscribeFromUser(partner.id); };
   }, [matchId, currentUser]);
 
+  // 3. Mark Messages as Read
+  useEffect(() => {
+    if (!matchId || !currentUser || messages.length === 0) return;
+
+    const markRead = async () => {
+      // Only mark if there are unread messages from the OTHER person
+      const hasForeignMessages = messages.some(m => m.senderId !== currentUser.id && !m.isSystem);
+
+      if (hasForeignMessages) {
+        await supabase
+          .from('messages')
+          .update({ is_read: true })
+          .eq('match_id', matchId)
+          .neq('sender_id', currentUser.id) // Don't mark my own messages
+          .eq('is_read', false);
+      }
+    };
+
+    markRead();
+  }, [matchId, currentUser, messages.length]);
+
   const loadMoreMessages = async () => {
     if (!hasMoreMessages || isLoadingMore || !matchId) return;
     setIsLoadingMore(true);
