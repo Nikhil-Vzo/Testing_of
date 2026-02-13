@@ -79,3 +79,66 @@ self.addEventListener('fetch', (event) => {
             })
     );
 });
+
+
+// Listener for receiving a push notification
+self.addEventListener('push', (event) => {
+    let data = { title: 'New Notification', body: 'You have a new update.' };
+
+    if (event.data) {
+        data = event.data.json();
+    }
+
+    const options = {
+        body: data.body,
+        icon: '/favicon.png',
+        badge: '/favicon.png',
+        data: data.metadata, // Pass IDs (like requestId) here
+        actions: [
+            { action: 'accept', title: 'Accept' },
+            { action: 'reject', title: 'Reject' }
+        ]
+    };
+
+    event.waitUntil(
+        self.registration.showNotification(data.title, options)
+    );
+});
+
+
+// Listener for clicking the buttons on the notification
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close(); // Immediately hide the notification
+
+    if (event.action === 'accept') {
+        const payload = event.notification.data; // This comes from 'data.metadata' above
+
+        event.waitUntil(
+            // REPLACE THIS URL with your actual "Accept" API endpoint
+            fetch('https://your-api.com/accept-request', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: payload.requestId })
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('API Fail');
+                // Optional: Show a confirmation toast/notification
+                return self.registration.showNotification('Accepted', {
+                    body: 'Request processed successfully.',
+                    icon: '/favicon.png'
+                });
+            })
+            .catch(err => {
+                console.error('Mobile background fetch failed:', err);
+                return self.registration.showNotification('Error', {
+                    body: 'Something went wrong. Please open the app.',
+                });
+            })
+        );
+    } else {
+        // If they click the notification itself (not the button), open the app
+        event.waitUntil(
+            clients.openWindow('/')
+        );
+    }
+});
