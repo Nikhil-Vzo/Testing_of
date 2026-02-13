@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import http from 'http';
 import pkg from 'agora-access-token';
 const { RtcTokenBuilder, RtcRole } = pkg;
+import { createClient } from '@supabase/supabase-js';
 
 dotenv.config();
 
@@ -118,6 +119,44 @@ app.post('/api/initiate-call', async (req, res) => {
     });
   } catch (error) {
     console.error('Error initiating call:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Accept Match API (for Service Worker)
+app.post('/api/accept-match', async (req, res) => {
+  try {
+    const { myId, targetId } = req.body;
+
+    if (!myId || !targetId) {
+      return res.status(400).json({ error: 'Missing myId or targetId' });
+    }
+
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY; // Using Anon key as this is a public action (authenticated by ID only for now - ideally use Service Role in backend but we keep it simple for now)
+
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Supabase credentials missing in server env');
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // 1. Insert 'like' swipe
+    const { error: swipeError } = await supabase.from('swipes').upsert({
+      liker_id: myId,
+      target_id: targetId,
+      action: 'like'
+    });
+
+    if (swipeError) throw swipeError;
+
+    // 2. Wait a moment not needed here as triggers handle it, but we can verify match creation if we want.
+    // We just return success.
+
+    res.json({ success: true, message: 'Match accepted' });
+
+  } catch (error) {
+    console.error('Error accepting match:', error);
     res.status(500).json({ error: error.message });
   }
 });

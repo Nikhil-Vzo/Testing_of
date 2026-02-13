@@ -111,29 +111,35 @@ self.addEventListener('notificationclick', (event) => {
     event.notification.close(); // Immediately hide the notification
 
     if (event.action === 'accept') {
-        const payload = event.notification.data; // This comes from 'data.metadata' above
+        const payload = event.notification.data; // Expected: { targetId: "...", myId: "..." }
+
+        if (!payload || !payload.targetId || !payload.myId) {
+            console.error('Missing payload data for accept action');
+            return;
+        }
+
+        const apiUrl = 'https://othrhalff.onrender.com'; // Production URL
 
         event.waitUntil(
-            // REPLACE THIS URL with your actual "Accept" API endpoint
-            fetch('https://your-api.com/accept-request', {
+            fetch(`${apiUrl}/api/accept-match`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: payload.requestId })
+                body: JSON.stringify({ myId: payload.myId, targetId: payload.targetId })
             })
-            .then(response => {
-                if (!response.ok) throw new Error('API Fail');
-                // Optional: Show a confirmation toast/notification
-                return self.registration.showNotification('Accepted', {
-                    body: 'Request processed successfully.',
-                    icon: '/favicon.png'
-                });
-            })
-            .catch(err => {
-                console.error('Mobile background fetch failed:', err);
-                return self.registration.showNotification('Error', {
-                    body: 'Something went wrong. Please open the app.',
-                });
-            })
+                .then(response => {
+                    if (!response.ok) throw new Error('API Fail');
+                    // Optional: Show a confirmation toast/notification
+                    return self.registration.showNotification('It\'s a Match! 🎉', {
+                        body: 'You can now chat with them.',
+                        icon: '/favicon.png'
+                    });
+                })
+                .catch(err => {
+                    console.error('Mobile background fetch failed:', err);
+                    return self.registration.showNotification('Error', {
+                        body: 'Could not accept. Please open the app.',
+                    });
+                })
         );
     } else {
         // If they click the notification itself (not the button), open the app
