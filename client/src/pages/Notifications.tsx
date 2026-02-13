@@ -6,8 +6,6 @@ import { Bell, Heart, MessageCircle, Zap, Check, X, Ghost, Loader2, Eye } from '
 import { supabase } from '../lib/supabase';
 import { ProfilePreviewModal } from '../components/ProfilePreviewModal';
 
-// Cache keys (Removed as Context handles caching/state)
-
 interface NotificationItem {
   id: string;
   title: string;
@@ -28,8 +26,6 @@ export const Notifications: React.FC = () => {
   const { currentUser } = useAuth();
   const { notifications, loading, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
   const navigate = useNavigate();
-  // const [notifications, setNotifications] = useState<NotificationItem[]>([]); // From Context
-  // const [loading, setLoading] = useState(true); // From Context
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [selectedProfile, setSelectedProfile] = useState<any | null>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -40,9 +36,6 @@ export const Notifications: React.FC = () => {
       Notification.requestPermission();
     }
   }, []);
-
-  // Fetching logic moved to Context
-
 
   const handleMessageClick = async (notif: NotificationItem) => {
     if (!currentUser || !supabase || !notif.fromUserId) return;
@@ -75,10 +68,6 @@ export const Notifications: React.FC = () => {
     if (processingId === notif.id) return;
     setProcessingId(notif.id);
 
-    // Optimistic UI update - remove notification immediately
-    // handled by deleteNotification
-    // setNotifications(prev => prev.filter(n => n.id !== notif.id));
-
     try {
       // 0. CHECK EXISTING MATCH FIRST (Bidirectional)
       const { data: existingMatch } = await supabase
@@ -91,6 +80,7 @@ export const Notifications: React.FC = () => {
         // Match exists, just delete notification and navigate
         await deleteNotification(notif.id);
         navigate(`/chat/${existingMatch.id}`);
+        setProcessingId(null);
         return;
       }
 
@@ -99,35 +89,57 @@ export const Notifications: React.FC = () => {
         liker_id: currentUser.id,
         target_id: notif.fromUserId,
         action: 'like'
-      });
+      }, { onConflict: 'liker_id,target_id' });
 
-      if (swipeError) throw swipeError;
-
-      // 2. Wait a moment for trigger to create match
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // 3. Delete the Notification (Cleanup)
-      await deleteNotification(notif.id);
-
-      // 4. Find the match created by the trigger
-      const { data: matchData } = await supabase
-        .from('matches')
-        .select('id')
-        .or(`and(user_a.eq.${notif.fromUserId},user_b.eq.${currentUser.id}),and(user_a.eq.${currentUser.id},user_b.eq.${notif.fromUserId})`)
-        .single();
-
-      // 5. Navigate to chat
-      if (matchData?.id) {
-        navigate(`/chat/${matchData.id}`);
-      } else {
-        // Fallback if trigger was slow or failed (should be rare)
-        console.warn("Match not found immediately after swipe");
-        // alert("Match created! Check your matches tab.");
+      if (swipeError) {
+        console.error('Swipe error:', swipeError);
+        throw new Error('Failed to create like. Please check your connection.');
       }
-    } catch (err) {
+
+      // 2. Wait for trigger with RETRY LOGIC (mobile-friendly)
+      let matchData = null;
+      let attempts = 0;
+      const maxAttempts = 10; // Try for 5 seconds
+
+      while (!matchData && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        const { data, error: matchError } = await supabase
+          .from('matches')
+          .select('id')
+          .or(`and(user_a.eq.${notif.fromUserId},user_b.eq.${currentUser.id}),and(user_a.eq.${currentUser.id},user_b.eq.${notif.fromUserId})`)
+          .maybeSingle(); // Use maybeSingle to avoid errors
+
+        if (matchError) {
+          console.error('Match check error:', matchError);
+        }
+
+        if (data) {
+          matchData = data;
+          break;
+        }
+
+        attempts++;
+        console.log(`Waiting for match... ${attempts}/${maxAttempts}`);
+      }
+
+      if (!matchData) {
+        throw new Error('Taking longer than expected. Check your Matches tab in a moment.');
+      }
+
+      // 3. Delete notification
+      try {
+        await deleteNotification(notif.id);
+      } catch (delErr) {
+        console.warn('Failed to delete notification:', delErr);
+      }
+
+      // 4. Navigate to chat
+      navigate(`/chat/${matchData.id}`);
+
+    } catch (err: any) {
       console.error('Accept error:', err);
-      // Restore notification on error (Not easily possible with context yet, but rare)
-      // await fetchNotifications(false);
+      alert(err.message || 'Something went wrong. Please check your connection and try again.');
     } finally {
       setProcessingId(null);
     }
@@ -145,7 +157,7 @@ export const Notifications: React.FC = () => {
     }
   };
 
-  const markAllReadClick = async () => { // Renamed to avoid name clash if needed, but using context method directly in render is fine too
+  const markAllReadClick = async () => {
     await markAllAsRead();
   };
 
@@ -184,7 +196,7 @@ export const Notifications: React.FC = () => {
     setShowProfileModal(true);
   };
 
-  // Like Back from Modal
+  // Like Back from Modal - FIXED VERSION
   const handleLikeBackFromModal = async (notificationId: string, userId: string) => {
     if (!currentUser || !supabase) return;
 
@@ -192,47 +204,62 @@ export const Notifications: React.FC = () => {
     if (processingId === notificationId) return;
     setProcessingId(notificationId);
 
-    // Optimistic UI update
-    // setNotifications(prev => prev.filter(n => n.id !== notificationId)); // Context handles this
+    // Close modal
     setShowProfileModal(false);
     setSelectedProfile(null);
 
     try {
-      // 1. Insert 'like' swipe (Trigger will handle match creation & notifications)
+      // 1. Insert 'like' swipe
       const { error: swipeError } = await supabase.from('swipes').upsert({
         liker_id: currentUser.id,
         target_id: userId,
         action: 'like'
-      });
+      }, { onConflict: 'liker_id,target_id' });
 
-      if (swipeError) throw swipeError;
+      if (swipeError) {
+        console.error('Like back error:', swipeError);
+        throw new Error('Failed to like back. Please check your connection.');
+      }
 
-      // 2. Wait a moment for trigger to create match
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // 2. Wait for trigger with RETRY LOGIC
+      let matchData = null;
+      let attempts = 0;
+      const maxAttempts = 10;
+
+      while (!matchData && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        const { data } = await supabase
+          .from('matches')
+          .select('id')
+          .or(`and(user_a.eq.${userId},user_b.eq.${currentUser.id}),and(user_a.eq.${currentUser.id},user_b.eq.${userId})`)
+          .maybeSingle();
+
+        if (data) {
+          matchData = data;
+          break;
+        }
+
+        attempts++;
+      }
+
+      if (!matchData) {
+        throw new Error('Taking longer than expected. Check your Matches tab.');
+      }
 
       // 3. Remove notification
       await deleteNotification(notificationId);
 
-      // 4. Find the match created by the trigger
-      const { data: matchData } = await supabase
-        .from('matches')
-        .select('id')
-        .or(`and(user_a.eq.${userId},user_b.eq.${currentUser.id}),and(user_a.eq.${currentUser.id},user_b.eq.${userId})`)
-        .single();
+      // 4. Navigate to chat
+      navigate(`/chat/${matchData.id}`);
 
-      // 5. Navigate to chat
-      if (matchData?.id) {
-        navigate(`/chat/${matchData.id}`);
-      } else {
-        // Fallback
-        // alert("Match created! Check your matches tab.");
-      }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Like back error:', err);
-      alert('Something went wrong. Please try again.');
-      // Restore UI on error
-      // await fetchNotifications(false);
-      setShowProfileModal(true);
+      alert(err.message || 'Something went wrong. Please try again.');
+      // Re-open modal on error
+      if (selectedProfile) {
+        setShowProfileModal(true);
+      }
     } finally {
       setProcessingId(null);
     }
@@ -338,7 +365,8 @@ export const Notifications: React.FC = () => {
                       {/* View Profile Button */}
                       <button
                         onClick={() => handleViewProfile(notif)}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-800/50 text-white rounded-xl font-bold text-sm hover:bg-gray-800 border border-gray-700 hover:border-neon/50 transition-all active:scale-95"
+                        disabled={processingId !== null}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-800/50 text-white rounded-xl font-bold text-sm hover:bg-gray-800 border border-gray-700 hover:border-neon/50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Eye className="w-4 h-4" />
                         View Profile
@@ -348,16 +376,16 @@ export const Notifications: React.FC = () => {
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleAccept(notif)}
-                          disabled={processingId === notif.id}
-                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-neon text-white rounded-xl font-bold text-sm hover:bg-neon/80 transition-all shadow-lg hover:shadow-neon/30 active:scale-95 disabled:opacity-50"
+                          disabled={processingId !== null}
+                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-neon text-white rounded-xl font-bold text-sm hover:bg-neon/80 transition-all shadow-lg hover:shadow-neon/30 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {processingId === notif.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                           Accept
                         </button>
                         <button
                           onClick={() => handleIgnore(notif)}
-                          disabled={processingId === notif.id}
-                          className="flex-1 flex items-center gap-2 justify-center px-4 py-2 bg-gray-800 text-gray-300 rounded-xl font-bold text-sm hover:bg-gray-700 transition-all active:scale-95 disabled:opacity-50"
+                          disabled={processingId !== null}
+                          className="flex-1 flex items-center gap-2 justify-center px-4 py-2 bg-gray-800 text-gray-300 rounded-xl font-bold text-sm hover:bg-gray-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <X className="w-4 h-4" />
                           Ignore
