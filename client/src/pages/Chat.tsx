@@ -16,17 +16,34 @@ import { analytics } from '../utils/analytics';
 const MESSAGES_PER_PAGE = 50;
 
 export const Chat: React.FC = () => {
+  // 1. READ PARAMS IMMEDIATELY
   const { id: matchId } = useParams<{ id: string }>();
+
+  // 1. INSTANT LOAD: Read cache
+  const [partner, setPartner] = useState<MatchProfile | null>(() => {
+    try {
+      const cached = sessionStorage.getItem(`otherhalf_chat_${matchId}`);
+      return cached ? JSON.parse(cached).partner : null;
+    } catch { return null; }
+  });
+
+  const [messages, setMessages] = useState<Message[]>(() => {
+    try {
+      const cached = sessionStorage.getItem(`otherhalf_chat_${matchId}`);
+      return cached ? JSON.parse(cached).messages : [];
+    } catch { return []; }
+  });
+
+  // Only show loader if NO cache found
+  const [loading, setLoading] = useState(() => !partner || messages.length === 0);
+
   const { currentUser } = useAuth();
   const { startCall, setOutgoingCall, isCallActive } = useCall();
   const { subscribeToUser, unsubscribeFromUser, isUserOnline, getLastSeen } = usePresence();
   const { showToast } = useToast();
   const navigate = useNavigate();
 
-  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [partner, setPartner] = useState<MatchProfile | null>(null);
-  const [loading, setLoading] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
   const [isStartingCall, setIsStartingCall] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
@@ -68,46 +85,28 @@ export const Chat: React.FC = () => {
     }
   }, []);
 
-  // Initial Load - OPTIMIZED: Cache-First + Parallel Fetching
+  // Initial Load - OPTIMIZED: Parallel Fetching
   useEffect(() => {
     if (!currentUser || !matchId || !supabase) return;
 
     const cacheKey = `otherhalf_chat_${matchId}`;
 
+    // If we have cached partner, subscribe immediately
+    if (partner) subscribeToUser(partner.id);
+
+    // Scroll to bottom immediately if we have messages
+    if (messages.length > 0) setTimeout(() => messagesEndRef.current?.scrollIntoView(), 0);
+
     const loadInitialData = async () => {
-      let cachedPartner = null;
+      // FIX: DO NOT SET LOADING TRUE HERE. 
+      // If we have cache, we stay interactive. If not, loading is already true from useState.
 
-      // 1. CACHE FIRST: Load immediately if available
       try {
-        const cached = sessionStorage.getItem(cacheKey);
-        if (cached) {
-          const { partner: cPartner, messages: cMessages } = JSON.parse(cached);
-          if (cPartner && cMessages) {
-            setPartner(cPartner);
-            setMessages(cMessages);
-            setLoading(false); // Show content instantly
-            subscribeToUser(cPartner.id); // Subscribe immediately using cached ID
-            cachedPartner = cPartner;
-            // Scroll to bottom immediately
-            setTimeout(() => messagesEndRef.current?.scrollIntoView(), 0);
-          }
-        }
-      } catch (e) { console.error('Cache read error', e); }
-
-      // 2. NETWORK: Fetch fresh data in background
-      try {
-        // If we didn't have cache, show loading. If we did, keep showing content (silent update)
-        // However, the original code had a separate 'loading' state. 
-        // We'll trust the cache effectively 'stops' the visual loading.
-
-        // Get Match Info (Sequential because we need to know WHO the partner is first)
-        // Note: The original code got match info first.
         const { data: matchData, error: matchError } = await supabase.from('matches').select('user_a, user_b').eq('id', matchId).single();
         if (matchError || !matchData) { if (loading) navigate('/matches'); return; }
 
         const partnerId = matchData.user_a === currentUser.id ? matchData.user_b : matchData.user_a;
 
-        // Parallel Fetch
         const [profileRes, blockRes, blockedByRes, messagesRes] = await Promise.all([
           supabase.from('profiles').select('*').eq('id', partnerId).single(),
           isUserBlocked(partnerId),
@@ -116,11 +115,11 @@ export const Chat: React.FC = () => {
             .from('messages')
             .select('*')
             .eq('match_id', matchId)
-            .order('created_at', { ascending: false }) // Newest first
+            .order('created_at', { ascending: false })
             .limit(MESSAGES_PER_PAGE)
         ]);
 
-        let newPartner = partner || cachedPartner; // Default to current state or cache
+        let newPartner = partner;
         if (profileRes.data) {
           newPartner = {
             id: profileRes.data.id, anonymousId: profileRes.data.anonymous_id, realName: profileRes.data.real_name,
@@ -147,23 +146,18 @@ export const Chat: React.FC = () => {
           setMessages(newMessages);
           setHasMoreMessages(messagesRes.data.length === MESSAGES_PER_PAGE);
 
-          // Scroll to bottom if we just loaded fresh data and (loading was true OR we are at bottom)
-          // If loading was true, user hasn't scrolled yet.
+          // Scroll if initial load
           if (loading) setTimeout(() => messagesEndRef.current?.scrollIntoView(), 100);
         }
 
-        // 3. UPDATE CACHE
         if (newPartner && newMessages.length > 0) {
-          try {
-            sessionStorage.setItem(cacheKey, JSON.stringify({ partner: newPartner, messages: newMessages }));
-          } catch (e) { /* Ignore quota limits */ }
+          try { sessionStorage.setItem(cacheKey, JSON.stringify({ partner: newPartner, messages: newMessages })); } catch (e) { }
         }
 
       } catch (err) {
         console.error('Error loading chat:', err);
-        if (loading) showToast('Failed to load chat', 'error');
       } finally {
-        setLoading(false);
+        setLoading(false); // Stop loading spinner if it was running
       }
     };
 

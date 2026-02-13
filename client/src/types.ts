@@ -7,6 +7,7 @@ export interface UserProfile {
   universityEmail: string;
   branch: string;
   year: string;
+  batch?: number; // Added batch field
   interests: string[];
   lookingFor?: string[];
   bio: string;

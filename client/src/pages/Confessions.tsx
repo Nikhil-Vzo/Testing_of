@@ -42,8 +42,16 @@ export const Confessions: React.FC = () => {
     const { currentUser } = useAuth();
     const navigate = useNavigate();
 
-    const [confessions, setConfessions] = useState<Confession[]>([]);
-    const [isLoading, setIsLoading] = useState(true); // Initial load state
+    // 1. ZERO-FLICKER INIT: Read cache synchronously
+    const [confessions, setConfessions] = useState<Confession[]>(() => {
+        try {
+            const cached = sessionStorage.getItem(CACHE_KEY);
+            return cached ? JSON.parse(cached) : [];
+        } catch { return []; }
+    });
+
+    const [isLoading, setIsLoading] = useState(() => confessions.length === 0);
+
     const [newText, setNewText] = useState('');
     const [newImage, setNewImage] = useState<string | null>(null);
     const [isPosting, setIsPosting] = useState(false);
@@ -72,21 +80,11 @@ export const Confessions: React.FC = () => {
     const expandedCommentsRef = useRef(expandedComments);
     useEffect(() => { expandedCommentsRef.current = expandedComments; }, [expandedComments]);
 
-    // 1. Initial Load (Cache First + Network)
+    // 2. NETWORK SYNC: Fetch fresh data
     useEffect(() => {
         if (!currentUser || !supabase) return;
 
         const init = async () => {
-            // A. CACHE FIRST: Load from Session Storage immediately
-            try {
-                const cached = sessionStorage.getItem(CACHE_KEY);
-                if (cached) {
-                    setConfessions(JSON.parse(cached));
-                    setIsLoading(false); // Show content instantly
-                }
-            } catch (e) { console.error('Cache read error', e); }
-
-            // B. NETWORK: Fetch fresh data
             // Reset page and hasMore for fresh fetch
             setPage(0);
             setHasMore(true);
@@ -100,70 +98,67 @@ export const Confessions: React.FC = () => {
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'confessions' }, (payload) => {
                 const p = payload.new as any;
                 if (p.user_id === currentUser.id) return; // Ignore own posts
-
                 const newConfession: Confession = {
-                    id: p.id,
-                    userId: 'Anonymous',
-                    text: p.text || '',
-                    imageUrl: p.image_url,
-                    timestamp: new Date(p.created_at).getTime(),
-                    likes: 0,
-                    reactions: {},
-                    comments: [],
-                    university: p.university,
-                    type: p.type as 'text' | 'poll',
-                    pollOptions: [],
-                    userVote: undefined,
-                    userReaction: undefined
+                    id: p.id, userId: 'Anonymous', text: p.text || '', imageUrl: p.image_url,
+                    timestamp: new Date(p.created_at).getTime(), likes: 0, reactions: {}, comments: [],
+                    university: p.university, type: p.type as 'text' | 'poll', pollOptions: [],
+                    userVote: undefined, userReaction: undefined
                 };
-                setConfessions(prev => [newConfession, ...prev]);
+                setConfessions(prev => {
+                    const updated = [newConfession, ...prev];
+                    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch { }
+                    return updated;
+                });
             })
-            // ... (Other handlers kept same as before) ...
+            // ... (Other handlers kept same) ...
             .on('postgres_changes', { event: '*', schema: 'public', table: 'confession_reactions' }, (payload) => {
                 const event = payload.eventType;
                 const record = (event === 'DELETE' ? payload.old : payload.new) as any;
                 const confessionId = record.confession_id;
 
-                setConfessions(prev => prev.map(c => {
-                    if (c.id !== confessionId) return c;
-                    const newReactions = { ...c.reactions };
-                    let newLikes = c.likes;
-                    let newUserReaction = c.userReaction;
+                setConfessions(prev => {
+                    const updated = prev.map(c => {
+                        if (c.id !== confessionId) return c;
+                        const newReactions = { ...c.reactions };
+                        let newLikes = c.likes;
+                        let newUserReaction = c.userReaction;
 
-                    if (event === 'INSERT') {
-                        newReactions[record.emoji] = (newReactions[record.emoji] || 0) + 1;
-                        newLikes += 1;
-                        if (record.user_id === currentUser.id) newUserReaction = record.emoji;
-                    } else if (event === 'DELETE') {
-                        newReactions[record.emoji] = Math.max(0, (newReactions[record.emoji] || 1) - 1);
-                        newLikes = Math.max(0, newLikes - 1);
-                        if (record.user_id === currentUser.id) newUserReaction = undefined;
-                    } else if (event === 'UPDATE') {
-                        const oldEmoji = (payload.old as any)?.emoji;
-                        if (oldEmoji) newReactions[oldEmoji] = Math.max(0, (newReactions[oldEmoji] || 1) - 1);
-                        newReactions[record.emoji] = (newReactions[record.emoji] || 0) + 1;
-                        if (record.user_id === currentUser.id) newUserReaction = record.emoji;
-                    }
-                    return { ...c, reactions: newReactions, likes: newLikes, userReaction: newUserReaction };
-                }));
+                        if (event === 'INSERT') {
+                            newReactions[record.emoji] = (newReactions[record.emoji] || 0) + 1;
+                            newLikes += 1;
+                            if (record.user_id === currentUser.id) newUserReaction = record.emoji;
+                        } else if (event === 'DELETE') {
+                            newReactions[record.emoji] = Math.max(0, (newReactions[record.emoji] || 1) - 1);
+                            newLikes = Math.max(0, newLikes - 1);
+                            if (record.user_id === currentUser.id) newUserReaction = undefined;
+                        } else if (event === 'UPDATE') {
+                            const oldEmoji = (payload.old as any)?.emoji;
+                            if (oldEmoji) newReactions[oldEmoji] = Math.max(0, (newReactions[oldEmoji] || 1) - 1);
+                            newReactions[record.emoji] = (newReactions[record.emoji] || 0) + 1;
+                            if (record.user_id === currentUser.id) newUserReaction = record.emoji;
+                        }
+                        return { ...c, reactions: newReactions, likes: newLikes, userReaction: newUserReaction };
+                    });
+                    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch { }
+                    return updated;
+                });
             })
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'confession_comments' }, async (payload) => {
                 const record = payload.new as any;
                 const confessionId = record.confession_id;
-                setConfessions(prev => prev.map(c => {
-                    if (c.id !== confessionId) return c;
-                    if (expandedCommentsRef.current[confessionId]) {
-                        const newComment = {
-                            id: record.id,
-                            userId: record.user_id === currentUser.id ? 'You' : 'Anonymous',
-                            text: record.text,
-                            timestamp: new Date(record.created_at).getTime()
-                        };
-                        if (c.comments?.some(com => com.id === record.id)) return c;
-                        return { ...c, comments: [...(c.comments || []), newComment] };
-                    }
-                    return { ...c, comments: [...(c.comments || []), { id: record.id, userId: '', text: '', timestamp: 0 }] };
-                }));
+                setConfessions(prev => {
+                    const updated = prev.map(c => {
+                        if (c.id !== confessionId) return c;
+                        if (expandedCommentsRef.current[confessionId]) {
+                            const newComment = { id: record.id, userId: record.user_id === currentUser.id ? 'You' : 'Anonymous', text: record.text, timestamp: new Date(record.created_at).getTime() };
+                            if (c.comments?.some(com => com.id === record.id)) return c;
+                            return { ...c, comments: [...(c.comments || []), newComment] };
+                        }
+                        return { ...c, comments: [...(c.comments || []), { id: record.id, userId: '', text: '', timestamp: 0 }] };
+                    });
+                    // Only update session storage if meaningful change? Maybe skip for comments to avoid thrashing
+                    return updated;
+                });
             })
             .subscribe();
 
@@ -171,7 +166,7 @@ export const Confessions: React.FC = () => {
     }, [currentUser, sortType]);
 
 
-    // 2. Fetch Logic
+    // 3. Fetch Logic
     const fetchConfessions = async (pageIndex: number, reset = false) => {
         if (!currentUser || !supabase) return;
         if (pageIndex > 0) setIsLoadingMore(true);
@@ -179,8 +174,7 @@ export const Confessions: React.FC = () => {
         const from = pageIndex * POSTS_PER_PAGE;
         const to = from + POSTS_PER_PAGE - 1;
 
-        let query = supabase
-            .from('confessions')
+        let query = supabase.from('confessions')
             .select(`*, poll_options (*), confession_reactions (emoji, user_id), confession_comments (id)`)
             .range(from, to);
 
@@ -228,13 +222,14 @@ export const Confessions: React.FC = () => {
         } else {
             setConfessions(prev => {
                 const existing = new Set(prev.map(c => c.id));
-                return [...prev, ...formatted.filter(c => !existing.has(c.id))];
+                const updated = [...prev, ...formatted.filter(c => !existing.has(c.id))];
+                return updated;
             });
         }
         setIsLoadingMore(false);
     };
 
-    // 3. Infinite Scroll
+    // 4. Infinite Scroll
     useEffect(() => {
         const observer = new IntersectionObserver(entries => {
             if (entries[0].isIntersecting && hasMore && !isLoadingMore && !isLoading) {
@@ -248,7 +243,7 @@ export const Confessions: React.FC = () => {
     }, [hasMore, isLoadingMore, isLoading, page]);
 
 
-    // --- Handlers (Preserved from existing file) ---
+    // --- Handlers (Preserved) ---
 
     const handleReactionClick = (e: React.MouseEvent, id: string) => {
         if (activeReactionMenu === id) { setActiveReactionMenu(null); setMenuPosition(null); }
