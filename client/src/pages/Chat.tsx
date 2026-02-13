@@ -210,21 +210,40 @@ export const Chat: React.FC = () => {
     }
   };
 
+  // Realtime Subscription (Turbo Mode: No Server Filter)
   useEffect(() => {
     if (!matchId || !supabase) return;
-    const channel = supabase.channel(`chat:${matchId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `match_id=eq.${matchId}` }, (payload) => {
+
+    // 1. We subscribe to ALL messages (Faster connection)
+    const channel = supabase.channel(`chat_turbo:${matchId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages'
+        // REMOVED FILTER HERE -> Makes connection instant
+      }, (payload) => {
         const newMsg = payload.new;
+
+        // 2. Client-Side Filter (We check if it belongs to us here)
+        if (newMsg.match_id !== matchId) return;
+
         const incoming: Message = {
-          id: newMsg.id, senderId: newMsg.sender_id, text: newMsg.text.replace('[SYSTEM]', '').trim(),
+          id: newMsg.id,
+          senderId: newMsg.sender_id,
+          text: newMsg.text.replace('[SYSTEM]', '').trim(),
           timestamp: new Date(newMsg.created_at).getTime(),
           isSystem: newMsg.text.startsWith('[SYSTEM]') || newMsg.text.startsWith('📞')
         };
+
         setMessages(prev => {
           if (prev.some(m => m.id === incoming.id)) return prev;
           const hasOptimistic = prev.some(m => m.id.toString().startsWith('temp-') && m.senderId === incoming.senderId && m.text === incoming.text);
           const next = hasOptimistic ? prev.map(m => (m.id.toString().startsWith('temp-') && m.senderId === incoming.senderId && m.text === incoming.text) ? incoming : m) : [...prev, incoming];
-          if (partner) { try { sessionStorage.setItem(cacheKey, JSON.stringify({ partner, messages: next })); } catch (e) { } }
+
+          if (partner) {
+            try { sessionStorage.setItem(cacheKey, JSON.stringify({ partner, messages: next })); } catch (e) { }
+          }
+
           const container = chatContainerRef.current;
           if (container && container.scrollHeight - container.scrollTop - container.clientHeight < 100) {
             setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
@@ -233,6 +252,7 @@ export const Chat: React.FC = () => {
         });
       })
       .subscribe();
+
     return () => { supabase.removeChannel(channel); };
   }, [matchId, partner]);
 
