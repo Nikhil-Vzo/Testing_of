@@ -133,12 +133,14 @@ app.post('/api/accept-match', async (req, res) => {
     }
 
     const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY; // Using Anon key as this is a public action (authenticated by ID only for now - ideally use Service Role in backend but we keep it simple for now)
+    // FIX: Use the Service Role Key to bypass RLS for background actions
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Supabase credentials missing in server env');
+      throw new Error('Supabase credentials missing in server env (Check SUPABASE_SERVICE_ROLE_KEY)');
     }
 
+    // Initialize with Service Role Key
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // 1. Insert 'like' swipe
