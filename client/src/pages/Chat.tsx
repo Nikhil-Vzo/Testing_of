@@ -16,25 +16,23 @@ import { analytics } from '../utils/analytics';
 const MESSAGES_PER_PAGE = 50;
 
 export const Chat: React.FC = () => {
-  // 1. READ PARAMS IMMEDIATELY
   const { id: matchId } = useParams<{ id: string }>();
+  const cacheKey = `otherhalf_chat_${matchId}_v2`; // NEW KEY
 
-  // 1. INSTANT LOAD: Read cache
   const [partner, setPartner] = useState<MatchProfile | null>(() => {
     try {
-      const cached = sessionStorage.getItem(`otherhalf_chat_${matchId}`);
+      const cached = sessionStorage.getItem(cacheKey);
       return cached ? JSON.parse(cached).partner : null;
     } catch { return null; }
   });
 
   const [messages, setMessages] = useState<Message[]>(() => {
     try {
-      const cached = sessionStorage.getItem(`otherhalf_chat_${matchId}`);
+      const cached = sessionStorage.getItem(cacheKey);
       return cached ? JSON.parse(cached).messages : [];
     } catch { return []; }
   });
 
-  // Only show loader if NO cache found
   const [loading, setLoading] = useState(() => !partner || messages.length === 0);
 
   const { currentUser } = useAuth();
@@ -48,14 +46,12 @@ export const Chat: React.FC = () => {
   const [isStartingCall, setIsStartingCall] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [isBlockedByThem, setIsBlockedByThem] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  // Modal State
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', confirmLabel: 'Confirm', isDestructive: false, onConfirm: () => { } });
   const [permissionModal, setPermissionModal] = useState({ isOpen: false, type: 'video' as 'audio' | 'video', onGranted: () => { } });
 
-  // Pagination State
-  const [hasMoreMessages, setHasMoreMessages] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -85,22 +81,14 @@ export const Chat: React.FC = () => {
     }
   }, []);
 
-  // Initial Load - OPTIMIZED: Parallel Fetching
+  // Initial Load
   useEffect(() => {
     if (!currentUser || !matchId || !supabase) return;
 
-    const cacheKey = `otherhalf_chat_${matchId}`;
-
-    // If we have cached partner, subscribe immediately
     if (partner) subscribeToUser(partner.id);
-
-    // Scroll to bottom immediately if we have messages
-    if (messages.length > 0) setTimeout(() => messagesEndRef.current?.scrollIntoView(), 0);
+    if (messages.length > 0 && loading) setTimeout(() => messagesEndRef.current?.scrollIntoView(), 0);
 
     const loadInitialData = async () => {
-      // FIX: DO NOT SET LOADING TRUE HERE. 
-      // If we have cache, we stay interactive. If not, loading is already true from useState.
-
       try {
         const { data: matchData, error: matchError } = await supabase.from('matches').select('user_a, user_b').eq('id', matchId).single();
         if (matchError || !matchData) { if (loading) navigate('/matches'); return; }
@@ -140,13 +128,11 @@ export const Chat: React.FC = () => {
           newMessages = messagesRes.data.map((m: any) => ({
             id: m.id, senderId: m.sender_id, text: m.text.replace('[SYSTEM]', '').trim(),
             timestamp: new Date(m.created_at).getTime(),
-            isSystem: m.text.startsWith('[SYSTEM]') || m.text.startsWith('📞')
+            isSystem: m.text.startsWith('[SYSTEM]') || m.text.startsWith('📞') // FIXED EMOJI
           })).reverse();
 
           setMessages(newMessages);
           setHasMoreMessages(messagesRes.data.length === MESSAGES_PER_PAGE);
-
-          // Scroll if initial load
           if (loading) setTimeout(() => messagesEndRef.current?.scrollIntoView(), 100);
         }
 
@@ -157,16 +143,15 @@ export const Chat: React.FC = () => {
       } catch (err) {
         console.error('Error loading chat:', err);
       } finally {
-        setLoading(false); // Stop loading spinner if it was running
+        setLoading(false);
       }
     };
 
     loadInitialData();
 
     return () => { if (partner) unsubscribeFromUser(partner.id); };
-  }, [matchId, currentUser]); // Removed partner from dependency array to avoid loop, handled inside
+  }, [matchId, currentUser]);
 
-  // Fetch More Messages (Pagination)
   const loadMoreMessages = async () => {
     if (!hasMoreMessages || isLoadingMore || !matchId) return;
     setIsLoadingMore(true);
@@ -182,7 +167,7 @@ export const Chat: React.FC = () => {
         const formatted = msgData.map((m: any) => ({
           id: m.id, senderId: m.sender_id, text: m.text.replace('[SYSTEM]', '').trim(),
           timestamp: new Date(m.created_at).getTime(),
-          isSystem: m.text.startsWith('[SYSTEM]') || m.text.startsWith('📞')
+          isSystem: m.text.startsWith('[SYSTEM]') || m.text.startsWith('📞') // FIXED EMOJI
         })).reverse();
 
         setMessages(prev => [...formatted, ...prev]);
@@ -204,7 +189,6 @@ export const Chat: React.FC = () => {
     }
   };
 
-  // Realtime Subscription
   useEffect(() => {
     if (!matchId || !supabase) return;
     const channel = supabase.channel(`chat:${matchId}`)
@@ -213,18 +197,13 @@ export const Chat: React.FC = () => {
         const incoming: Message = {
           id: newMsg.id, senderId: newMsg.sender_id, text: newMsg.text.replace('[SYSTEM]', '').trim(),
           timestamp: new Date(newMsg.created_at).getTime(),
-          isSystem: newMsg.text.startsWith('[SYSTEM]') || newMsg.text.startsWith('📞')
+          isSystem: newMsg.text.startsWith('[SYSTEM]') || newMsg.text.startsWith('📞') // FIXED EMOJI
         };
         setMessages(prev => {
           if (prev.some(m => m.id === incoming.id)) return prev;
           const hasOptimistic = prev.some(m => m.id.toString().startsWith('temp-') && m.senderId === incoming.senderId && m.text === incoming.text);
           const next = hasOptimistic ? prev.map(m => (m.id.toString().startsWith('temp-') && m.senderId === incoming.senderId && m.text === incoming.text) ? incoming : m) : [...prev, incoming];
-
-          // Update Cache on new message
-          if (partner) {
-            try { sessionStorage.setItem(`otherhalf_chat_${matchId}`, JSON.stringify({ partner, messages: next })); } catch (e) { }
-          }
-
+          if (partner) { try { sessionStorage.setItem(cacheKey, JSON.stringify({ partner, messages: next })); } catch (e) { } }
           const container = chatContainerRef.current;
           if (container && container.scrollHeight - container.scrollTop - container.clientHeight < 100) {
             setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
@@ -234,18 +213,16 @@ export const Chat: React.FC = () => {
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [matchId, partner]); // Partner dependency needed for cache update
+  }, [matchId, partner]);
 
   const handleSend = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!newMessage.trim() || !currentUser || !matchId) return;
     const textToSend = newMessage.trim();
     setNewMessage('');
-
     const optimistic: Message = { id: `temp-${Date.now()}`, senderId: currentUser.id, text: textToSend, timestamp: Date.now(), isSystem: false };
     setMessages(prev => [...prev, optimistic]);
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
-
     try {
       await supabase.from('messages').insert({ match_id: matchId, sender_id: currentUser.id, text: textToSend });
       analytics.messageSent();
@@ -270,7 +247,10 @@ export const Chat: React.FC = () => {
     if (!partner || !matchId || !currentUser) return;
     setIsStartingCall(true);
     try {
-      if (await checkUserBusy(partner.id, currentUser.id)) { // Pass currentUser.id for retry logic
+      // FIXED RETRY LOGIC: Pass currentUser.id to allow retries
+      if (await checkUserBusy(partner.id, currentUser.id)) {
+        showToast(`${partner.realName || partner.anonymousId} is on another call.`, 'info');
+        setIsStartingCall(false); return;
       }
     } catch (err) { console.error(err); }
 
@@ -282,7 +262,7 @@ export const Chat: React.FC = () => {
 
       const timeoutId = setTimeout(async () => {
         setOutgoingCall(null); setIsStartingCall(false); showToast('No answer.', 'info');
-        await insertSystemMessage('📞 Missed Call');
+        await insertSystemMessage('📞 Missed Call'); // FIXED EMOJI
       }, 30000);
 
       const ch = supabase.channel(`call:${session.id}`).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'call_sessions', filter: `id=eq.${session.id}` }, async (payload: any) => {
@@ -292,7 +272,7 @@ export const Chat: React.FC = () => {
           setIsStartingCall(false);
         } else if (payload.new.status === 'rejected') {
           clearTimeout(timeoutId); supabase.removeChannel(ch); setOutgoingCall(null); setIsStartingCall(false); showToast('Call declined.', 'info');
-          await insertSystemMessage('📞 Call Declined');
+          await insertSystemMessage('📞 Call Declined'); // FIXED EMOJI
         }
       }).subscribe();
     } catch (err) { console.error(err); showToast('Call failed', 'error'); setOutgoingCall(null); setIsStartingCall(false); }
@@ -300,7 +280,7 @@ export const Chat: React.FC = () => {
 
   const insertSystemMessage = async (text: string) => {
     if (!currentUser || !matchId) return;
-    try { await supabase.from('messages').insert({ match_id: matchId, sender_id: currentUser.id, text: text.startsWith('📞') ? text : `[SYSTEM] ${text}` }); } catch (err) { }
+    try { await supabase.from('messages').insert({ match_id: matchId, sender_id: currentUser.id, text: text.startsWith('📞') ? text : `[SYSTEM] ${text}` }); } catch (err) { } // FIXED EMOJI
   };
 
   const formatLastSeen = (date: Date): string => {
@@ -361,7 +341,7 @@ export const Chat: React.FC = () => {
 
         {messages.map((msg, i) => {
           const isMe = msg.senderId === currentUser?.id;
-          if (msg.isSystem) return <div key={msg.id} className="flex justify-center w-full my-4"><span className="text-[10px] uppercase text-gray-500 bg-gray-900/50 px-4 py-1.5 rounded-full border border-gray-800/50 flex items-center gap-2">{msg.text.replace('📞', '').trim()}</span></div>;
+          if (msg.isSystem) return <div key={msg.id} className="flex justify-center w-full my-4"><span className="text-[10px] uppercase text-gray-500 bg-gray-900/50 px-4 py-1.5 rounded-full border border-gray-800/50 flex items-center gap-2">{msg.text.replace('📞', '').trim()}</span></div>; // FIXED EMOJI
           return (
             <div key={msg.id} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
               <div className={`flex max-w-[80%] md:max-w-[60%] gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>

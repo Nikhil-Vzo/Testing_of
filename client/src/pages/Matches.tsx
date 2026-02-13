@@ -8,14 +8,15 @@ import { Search, Ghost } from 'lucide-react';
 import { getBlockList, isBlockedBy } from '../services/blockService';
 
 interface ChatPreview {
-  id: string; // Match ID
+  id: string;
   partner: MatchProfile;
   lastMessage: string | null;
   lastMessageTime: number | null;
   unreadCount: number;
 }
 
-const CACHE_KEY = 'otherhalf_matches_cache';
+// v2 Key forces a fresh start for all users
+const CACHE_KEY = 'otherhalf_matches_cache_v2';
 
 const MatchSkeleton = () => (
   <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-900/30 border border-gray-800/50 animate-pulse">
@@ -32,7 +33,7 @@ export const Matches: React.FC = () => {
   const { isUserOnline } = usePresence();
   const navigate = useNavigate();
 
-  // 1. INSTANT LOAD: Read cache synchronously
+  // 1. INSTANT LOAD
   const [chats, setChats] = useState<ChatPreview[]>(() => {
     try {
       const cached = sessionStorage.getItem(CACHE_KEY);
@@ -48,8 +49,8 @@ export const Matches: React.FC = () => {
     if (!currentUser || !supabase) return;
 
     const loadMatches = async () => {
-      // NOTE: We do NOT set loading(true) here. 
-      // If we have cache, we show it. Background fetch updates it silently.
+      // NOTE: We rely on initial state for loading. 
+      // If cache exists, user sees data immediately.
 
       try {
         const { data: matchesData, error } = await supabase
@@ -74,27 +75,22 @@ export const Matches: React.FC = () => {
         }
 
         const { data: profiles } = await supabase.from('profiles').select('*').in('id', validPartnerIds);
-
         const formatted: ChatPreview[] = [];
 
-        // Parallel fetch for details
         await Promise.all(matchesData.map(async (match) => {
           const partnerId = match.user_a === currentUser.id ? match.user_b : match.user_a;
-          if (blockedUsers.includes(partnerId)) return;
-          if (await isBlockedBy(partnerId)) return; // Check if they blocked us
+          if (blockedUsers.includes(partnerId) || await isBlockedBy(partnerId)) return;
 
           const profile = profiles?.find(p => p.id === partnerId);
           if (!profile) return;
 
-          // CRITICAL FIX: Use .maybeSingle() instead of .single()
-          // .single() crashes if 0 rows (new match). .maybeSingle() returns null (safe).
           const { data: msg } = await supabase
             .from('messages')
             .select('text, created_at, sender_id, is_read')
             .eq('match_id', match.id)
             .order('created_at', { ascending: false })
             .limit(1)
-            .maybeSingle();
+            .maybeSingle(); // Safe query
 
           const { count } = await supabase
             .from('messages')
@@ -112,7 +108,7 @@ export const Matches: React.FC = () => {
               year: profile.year || '', bio: profile.bio || '', dob: profile.dob || '', interests: profile.interests || [],
               matchPercentage: 0, distance: 'Connected'
             },
-            lastMessage: msg?.text?.replace('[SYSTEM]', '') || 'New Match! Say hello.',
+            lastMessage: msg?.text?.replace('[SYSTEM]', '') || 'New Match!',
             lastMessageTime: msg ? new Date(msg.created_at).getTime() : new Date(match.created_at).getTime(),
             unreadCount: count || 0
           });
@@ -120,11 +116,17 @@ export const Matches: React.FC = () => {
 
         formatted.sort((a, b) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
 
-        // Only update state if data actually changed to prevent re-render flicker
         setChats(prev => {
           const isDifferent = JSON.stringify(prev) !== JSON.stringify(formatted);
           if (isDifferent) {
-            try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(formatted)); } catch (e) { }
+            // SAFE SAVE: If storage is full, clear old junk and try again
+            try {
+              sessionStorage.setItem(CACHE_KEY, JSON.stringify(formatted));
+            } catch (e) {
+              console.warn('Storage full, clearing old cache...');
+              sessionStorage.clear(); // Nuclear option to ensure Matches save
+              try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(formatted)); } catch (e2) { }
+            }
             return formatted;
           }
           return prev;
@@ -139,7 +141,6 @@ export const Matches: React.FC = () => {
 
     loadMatches();
 
-    // Realtime listener for list updates
     const channel = supabase.channel('matches-list-updates')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         const newMsg = payload.new;
@@ -183,7 +184,6 @@ export const Matches: React.FC = () => {
 
   return (
     <div className="h-full w-full bg-transparent text-white flex flex-col font-sans">
-      {/* Header */}
       <div className="p-5 border-b border-gray-800/50 bg-black/20 backdrop-blur-md sticky top-0 z-20">
         <h1 className="text-2xl font-black tracking-tight mb-4 flex items-center gap-2">Matches <span className="bg-neon/10 text-neon text-xs px-2 py-1 rounded-full border border-neon/20">{chats.length}</span></h1>
         <div className="relative group">
@@ -192,14 +192,12 @@ export const Matches: React.FC = () => {
         </div>
       </div>
 
-      {/* Filter Tabs */}
       <div className="px-5 py-3 flex gap-2 overflow-x-auto no-scrollbar">
         {(['all', 'unread', 'online'] as const).map(f => (
           <button key={f} onClick={() => setFilter(f)} className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all ${filter === f ? 'bg-white text-black border-white' : 'bg-transparent text-gray-500 border-gray-800 hover:border-gray-600'}`}>{f.charAt(0).toUpperCase() + f.slice(1)}</button>
         ))}
       </div>
 
-      {/* List */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-3">
         {filteredChats.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 opacity-50">
