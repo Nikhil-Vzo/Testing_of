@@ -4,13 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import { usePresence } from '../context/PresenceContext';
 import { useNotifications } from '../context/NotificationContext';
 import { MatchProfile, ChatSession } from '../types';
-import { Ghost, Search, ChevronRight } from 'lucide-react';
+import { Ghost, Search, ChevronRight, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
-// Cache keys for session storage
-const MATCHES_CACHE_KEY = 'otherhalf_matches_cache';
-const MATCHES_CACHE_EXPIRY_KEY = 'otherhalf_matches_cache_expiry';
-const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes (shorter since matches update more frequently)
+// Removed client-side caching to prevent QuotaExceededError
 
 export const Matches: React.FC = () => {
   const { currentUser } = useAuth();
@@ -52,14 +49,20 @@ export const Matches: React.FC = () => {
         .select('*')
         .in('id', partnerIds);
 
-      // 4. BATCHED: Fetch last message for ALL matches in ONE query
-      // Using a clever approach: get latest messages grouped by match_id
-      const matchIds = matchesData.map(m => m.id);
-      const { data: allMessages } = await supabase
-        .from('messages')
-        .select('*')
-        .in('match_id', matchIds)
-        .order('created_at', { ascending: false });
+      // 4. BATCHED: Fetch ONLY the last message for EACH match in PARALLEL
+      // This avoids fetching thousands of messages and hitting storage limits.
+      const lastMessages = await Promise.all(
+        matchesData.map(async (match) => {
+          const { data } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('match_id', match.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(); // Use maybeSingle to avoid errors if no messages exist
+          return { matchId: match.id, message: data };
+        })
+      );
 
       // 4b. Use NotificationContext for unread status (Real-time & Optimistic)
       // Filter for unread message notifications
@@ -71,14 +74,9 @@ export const Matches: React.FC = () => {
 
       // Create lookup maps for O(1) access
       const profileMap = new Map(profilesData?.map(p => [p.id, p]) || []);
-
-      // Get last message per match
-      const lastMessageMap = new Map<string, any>();
-      allMessages?.forEach(msg => {
-        if (!lastMessageMap.has(msg.match_id)) {
-          lastMessageMap.set(msg.match_id, msg);
-        }
-      });
+      const lastMessageMap = new Map<string, any>(
+        lastMessages.map(item => [item.matchId, item.message])
+      );
 
       // 5. Build sessions with O(1) lookups
       const loadedSessions = matchesData.map(matchRecord => {
@@ -120,13 +118,6 @@ export const Matches: React.FC = () => {
           }] : []
         };
 
-        // Attach unread status to the session object or handle it in map below?
-        // We can just use the Set in the render, but we need to trigger re-render if it changes.
-        // It's cleaner to return it here if we want to sort by unread?
-        // But `ChatSession` type doesn't have isUnread.
-        // The `isUnread` logic is currently in the render map:
-        // const isUnread = lastMsg && lastMsg.senderId !== currentUser?.id && false;
-
         return { match: matchProfile, session, hasUnread: unreadMap.has(partnerId) };
       }).filter(Boolean) as { match: MatchProfile; session: ChatSession; hasUnread: boolean }[];
 
@@ -141,10 +132,6 @@ export const Matches: React.FC = () => {
         return true;
       });
 
-      // Cache the results
-      sessionStorage.setItem(MATCHES_CACHE_KEY, JSON.stringify(uniqueSessions));
-      sessionStorage.setItem(MATCHES_CACHE_EXPIRY_KEY, (Date.now() + CACHE_DURATION).toString());
-
       setSessions(uniqueSessions);
     } catch (err) {
       console.error('Error loading matches:', err);
@@ -155,20 +142,7 @@ export const Matches: React.FC = () => {
 
   useEffect(() => {
     if (!currentUser || !supabase) return;
-
-    // Try cache first
-    const cachedData = sessionStorage.getItem(MATCHES_CACHE_KEY);
-    const cacheExpiry = sessionStorage.getItem(MATCHES_CACHE_EXPIRY_KEY);
-
-    if (cachedData && cacheExpiry && Date.now() < parseInt(cacheExpiry)) {
-      setSessions(JSON.parse(cachedData));
-      setLoading(false);
-      // Refresh in background
-      fetchMatchesOptimized(false);
-      return;
-    }
-
-    // No cache, fetch fresh
+    // Always fetch fresh data, caching removed
     fetchMatchesOptimized(true);
   }, [currentUser, fetchMatchesOptimized]);
 
