@@ -128,7 +128,7 @@ export const Chat: React.FC = () => {
           newMessages = messagesRes.data.map((m: any) => ({
             id: m.id, senderId: m.sender_id, text: m.text.replace('[SYSTEM]', '').trim(),
             timestamp: new Date(m.created_at).getTime(),
-            isSystem: m.text.startsWith('[SYSTEM]') || m.text.startsWith('📞') // FIXED EMOJI
+            isSystem: m.text.startsWith('[SYSTEM]') || m.text.startsWith('📞')
           })).reverse();
 
           setMessages(newMessages);
@@ -188,7 +188,7 @@ export const Chat: React.FC = () => {
         const formatted = msgData.map((m: any) => ({
           id: m.id, senderId: m.sender_id, text: m.text.replace('[SYSTEM]', '').trim(),
           timestamp: new Date(m.created_at).getTime(),
-          isSystem: m.text.startsWith('[SYSTEM]') || m.text.startsWith('📞') // FIXED EMOJI
+          isSystem: m.text.startsWith('[SYSTEM]') || m.text.startsWith('📞')
         })).reverse();
 
         setMessages(prev => [...formatted, ...prev]);
@@ -218,7 +218,7 @@ export const Chat: React.FC = () => {
         const incoming: Message = {
           id: newMsg.id, senderId: newMsg.sender_id, text: newMsg.text.replace('[SYSTEM]', '').trim(),
           timestamp: new Date(newMsg.created_at).getTime(),
-          isSystem: newMsg.text.startsWith('[SYSTEM]') || newMsg.text.startsWith('📞') // FIXED EMOJI
+          isSystem: newMsg.text.startsWith('[SYSTEM]') || newMsg.text.startsWith('📞')
         };
         setMessages(prev => {
           if (prev.some(m => m.id === incoming.id)) return prev;
@@ -283,7 +283,7 @@ export const Chat: React.FC = () => {
 
       const timeoutId = setTimeout(async () => {
         setOutgoingCall(null); setIsStartingCall(false); showToast('No answer.', 'info');
-        await insertSystemMessage('📞 Missed Call'); // FIXED EMOJI
+        await insertSystemMessage('📞 Missed Call');
       }, 30000);
 
       const ch = supabase.channel(`call:${session.id}`).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'call_sessions', filter: `id=eq.${session.id}` }, async (payload: any) => {
@@ -293,7 +293,7 @@ export const Chat: React.FC = () => {
           setIsStartingCall(false);
         } else if (payload.new.status === 'rejected') {
           clearTimeout(timeoutId); supabase.removeChannel(ch); setOutgoingCall(null); setIsStartingCall(false); showToast('Call declined.', 'info');
-          await insertSystemMessage('📞 Call Declined'); // FIXED EMOJI
+          await insertSystemMessage('📞 Call Declined');
         }
       }).subscribe();
     } catch (err) { console.error(err); showToast('Call failed', 'error'); setOutgoingCall(null); setIsStartingCall(false); }
@@ -301,7 +301,7 @@ export const Chat: React.FC = () => {
 
   const insertSystemMessage = async (text: string) => {
     if (!currentUser || !matchId) return;
-    try { await supabase.from('messages').insert({ match_id: matchId, sender_id: currentUser.id, text: text.startsWith('📞') ? text : `[SYSTEM] ${text}` }); } catch (err) { } // FIXED EMOJI
+    try { await supabase.from('messages').insert({ match_id: matchId, sender_id: currentUser.id, text: text.startsWith('📞') ? text : `[SYSTEM] ${text}` }); } catch (err) { }
   };
 
   const formatLastSeen = (date: Date): string => {
@@ -362,7 +362,7 @@ export const Chat: React.FC = () => {
 
         {messages.map((msg, i) => {
           const isMe = msg.senderId === currentUser?.id;
-          if (msg.isSystem) return <div key={msg.id} className="flex justify-center w-full my-4"><span className="text-[10px] uppercase text-gray-500 bg-gray-900/50 px-4 py-1.5 rounded-full border border-gray-800/50 flex items-center gap-2">{msg.text.replace('📞', '').trim()}</span></div>; // FIXED EMOJI
+          if (msg.isSystem) return <div key={msg.id} className="flex justify-center w-full my-4"><span className="text-[10px] uppercase text-gray-500 bg-gray-900/50 px-4 py-1.5 rounded-full border border-gray-800/50 flex items-center gap-2">{msg.text.replace('📞', '').trim()}</span></div>;
           return (
             <div key={msg.id} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
               <div className={`flex max-w-[80%] md:max-w-[60%] gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
