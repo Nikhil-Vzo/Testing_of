@@ -494,7 +494,7 @@ export const Confessions: React.FC = () => {
                             </div>
                             <p className="text-gray-300 text-sm leading-relaxed mb-4 whitespace-pre-wrap">{conf.text}</p>
                             {conf.imageUrl && (
-                                <div className="mb-4 rounded-lg overflow-hidden border border-gray-900 aspect-video bg-black" onClick={() => setViewImage(conf.imageUrl)}>
+                                <div className="mb-4 rounded-lg overflow-hidden border border-gray-900 aspect-video bg-black" onClick={() => setViewImage(conf.imageUrl || null)}>
                                     <img src={conf.imageUrl} alt="Confession" className="w-full h-full object-cover" />
                                 </div>
                             )}
