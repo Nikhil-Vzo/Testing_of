@@ -7,7 +7,7 @@ import { MatchProfile, ChatSession } from '../types';
 import { Ghost, Search, ChevronRight, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
-// Removed client-side caching to prevent QuotaExceededError
+const CACHE_KEY = 'otherhalf_matches_cache';
 
 export const Matches: React.FC = () => {
   const { currentUser } = useAuth();
@@ -34,6 +34,7 @@ export const Matches: React.FC = () => {
       if (error) throw error;
       if (!matchesData || matchesData.length === 0) {
         setSessions([]);
+        try { sessionStorage.removeItem(CACHE_KEY); } catch (e) { }
         if (showLoading) setLoading(false);
         return;
       }
@@ -50,7 +51,6 @@ export const Matches: React.FC = () => {
         .in('id', partnerIds);
 
       // 4. BATCHED: Fetch ONLY the last message for EACH match in PARALLEL
-      // This avoids fetching thousands of messages and hitting storage limits.
       const lastMessages = await Promise.all(
         matchesData.map(async (match) => {
           const { data } = await supabase
@@ -59,13 +59,12 @@ export const Matches: React.FC = () => {
             .eq('match_id', match.id)
             .order('created_at', { ascending: false })
             .limit(1)
-            .maybeSingle(); // Use maybeSingle to avoid errors if no messages exist
+            .maybeSingle();
           return { matchId: match.id, message: data };
         })
       );
 
-      // 4b. Use NotificationContext for unread status (Real-time & Optimistic)
-      // Filter for unread message notifications
+      // 4b. Use NotificationContext for unread status
       const unreadMap = new Set(
         notifications
           .filter(n => n.type === 'message' && !n.read && n.fromUserId)
@@ -78,7 +77,7 @@ export const Matches: React.FC = () => {
         lastMessages.map(item => [item.matchId, item.message])
       );
 
-      // 5. Build sessions with O(1) lookups
+      // 5. Build sessions
       const loadedSessions = matchesData.map(matchRecord => {
         const partnerId = matchRecord.user_a === currentUser.id ? matchRecord.user_b : matchRecord.user_a;
         const profileData = profileMap.get(partnerId);
@@ -124,7 +123,7 @@ export const Matches: React.FC = () => {
       // Sort by latest activity
       loadedSessions.sort((a, b) => b.session.lastUpdated - a.session.lastUpdated);
 
-      // Deduplicate by partner ID (keep the most active one)
+      // Deduplicate
       const seenPartners = new Set<string>();
       const uniqueSessions = loadedSessions.filter(item => {
         if (seenPartners.has(item.match.id)) return false;
@@ -133,35 +132,49 @@ export const Matches: React.FC = () => {
       });
 
       setSessions(uniqueSessions);
+
+      // CACHE WRITE (Safe)
+      try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(uniqueSessions)); } catch (e) { /* Ignore quota errors */ }
+
     } catch (err) {
       console.error('Error loading matches:', err);
     } finally {
       if (showLoading) setLoading(false);
     }
-  }, [currentUser, notifications]); // Re-run when notifications change (e.g. mark as read)
+  }, [currentUser, notifications]);
 
   useEffect(() => {
     if (!currentUser || !supabase) return;
-    // Always fetch fresh data, caching removed
-    fetchMatchesOptimized(true);
+
+    // CACHE READ (Instant Load)
+    try {
+      const cached = sessionStorage.getItem(CACHE_KEY);
+      if (cached) {
+        setSessions(JSON.parse(cached));
+        setLoading(false);
+      }
+    } catch (e) { /* mismatch */ }
+
+    // NETWORK FETCH (Background update)
+    // We pass 'false' for showLoading if we have cache, but the logic 
+    // inside fetchMatchesOptimized sets loading to true if passed true.
+    // Let's decide: if we have cache, we don't want to show spinner again?
+    // Actually, 'fetchMatchesOptimized' sets loading=true if arg is true.
+    // We should call it with fetchMatchesOptimized(!cached) or similar, 
+    // but 'cached' variable isn't available here. 
+    // Simplest: Check cache existence synchronously or just pass false if we want silent update.
+    // However, we want to update the data. Let's pass 'false' to avoid flickering spinner if data exists.
+    const hasCache = !!sessionStorage.getItem(CACHE_KEY);
+    fetchMatchesOptimized(!hasCache);
+
   }, [currentUser, fetchMatchesOptimized]);
 
-  // Subscribe to presence for all matched users
+  // Subscribe to presence
   useEffect(() => {
     if (sessions.length === 0) return;
-
-    // Subscribe to each user's presence
-    sessions.forEach(({ match }) => {
-      subscribeToUser(match.id);
-    });
-
-    return () => {
-      // Cleanup: unsubscribe from all
-      sessions.forEach(({ match }) => {
-        unsubscribeFromUser(match.id);
-      });
-    };
-  }, [sessions.length]); // Only re-run when number of sessions changes
+    sessions.forEach(({ match }) => { subscribeToUser(match.id); });
+    return () => { sessions.forEach(({ match }) => { unsubscribeFromUser(match.id); }); };
+  }, [sessions.length]);
 
   const filtered = sessions.filter(s =>
     s.match.anonymousId.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -191,31 +204,19 @@ export const Matches: React.FC = () => {
         {/* Search Bar */}
         <div className="relative group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-neon transition-colors" />
-          <input
-            type="text"
-            placeholder="Search matches..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-gray-900/50 border border-gray-800 rounded-2xl py-3.5 pl-11 pr-4 text-sm focus:outline-none focus:border-neon/50 focus:bg-gray-900 transition-all placeholder:text-gray-600"
-          />
+          <input type="text" placeholder="Search matches..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-gray-900/50 border border-gray-800 rounded-2xl py-3.5 pl-11 pr-4 text-sm focus:outline-none focus:border-neon/50 focus:bg-gray-900 transition-all placeholder:text-gray-600" />
         </div>
       </div>
 
       {/* Match List */}
       <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-24 md:pb-4 space-y-2 z-10">
         {loading ? (
-          /* Skeleton Loading State */
           <div className="space-y-2">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="p-4 rounded-2xl border border-gray-800/50 flex items-center gap-4 animate-pulse">
-                {/* Avatar Skeleton */}
                 <div className="w-14 h-14 rounded-full bg-gray-800" />
-                {/* Info Skeleton */}
                 <div className="flex-1 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <div className="h-5 w-28 bg-gray-800 rounded" />
-                    <div className="h-3 w-12 bg-gray-800 rounded" />
-                  </div>
+                  <div className="flex justify-between items-center"><div className="h-5 w-28 bg-gray-800 rounded" /><div className="h-3 w-12 bg-gray-800 rounded" /></div>
                   <div className="h-4 w-48 bg-gray-800/60 rounded" />
                 </div>
               </div>
@@ -228,59 +229,33 @@ export const Matches: React.FC = () => {
           </div>
         ) : (
           filtered.map(({ match, session, hasUnread }) => {
-            const lastMsg = session.messages[0]; // We only fetched one
+            const lastMsg = session.messages[0];
             const isUnread = hasUnread;
 
             return (
-              <div
-                key={match.id}
-                // Navigate using the MATCH ID from the session, not the user profile ID
-                onClick={() => navigate(`/chat/${session.matchId}`)}
-                className="group relative p-4 rounded-2xl hover:bg-gray-900/40 border border-transparent hover:border-gray-800 transition-all cursor-pointer flex items-center gap-4 active:scale-[0.99]"
-              >
-                {/* Avatar with Status Ring */}
+              <div key={match.id} onClick={() => navigate(`/chat/${session.matchId}`)} className="group relative p-4 rounded-2xl hover:bg-gray-900/40 border border-transparent hover:border-gray-800 transition-all cursor-pointer flex items-center gap-4 active:scale-[0.99]">
                 <div className="relative">
                   <div className="w-14 h-14 rounded-full p-0.5 bg-gradient-to-tr from-gray-800 to-gray-700 group-hover:from-neon group-hover:to-purple-600 transition-all duration-500">
                     <img src={match.avatar} className="w-full h-full rounded-full object-cover border-2 border-[#000000]" alt="Avatar" />
                   </div>
-                  {/* Real-time Online/Offline Indicator */}
                   <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-black rounded-full flex items-center justify-center">
-                    <div className={`w-2.5 h-2.5 rounded-full ${isUserOnline(match.id)
-                      ? 'bg-green-500 animate-pulse'
-                      : 'bg-gray-600'
-                      }`}></div>
+                    <div className={`w-2.5 h-2.5 rounded-full ${isUserOnline(match.id) ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`}></div>
                   </div>
                 </div>
 
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-baseline mb-1">
-                    <h3 className="font-bold text-base text-gray-200 group-hover:text-white transition-colors truncate">
-                      {match.realName || match.anonymousId}
-                    </h3>
-                    <span className="text-[10px] font-medium text-gray-600 uppercase tracking-wide">
-                      {lastMsg ? new Date(lastMsg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                    </span>
+                    <h3 className="font-bold text-base text-gray-200 group-hover:text-white transition-colors truncate">{match.realName || match.anonymousId}</h3>
+                    <span className="text-[10px] font-medium text-gray-600 uppercase tracking-wide">{lastMsg ? new Date(lastMsg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                   </div>
 
                   <div className="flex items-center justify-between">
                     <p className={`text-sm truncate pr-4 ${isUnread ? 'text-white font-medium' : 'text-gray-500 group-hover:text-gray-400'}`}>
-                      {lastMsg ? (
-                        <>
-                          {lastMsg.senderId === currentUser?.id && <span className="text-neon mr-1">You:</span>}
-                          {lastMsg.text}
-                        </>
-                      ) : (
-                        <span className="text-neon italic">New match! Say hello 👋</span>
-                      )}
+                      {lastMsg ? <>{lastMsg.senderId === currentUser?.id && <span className="text-neon mr-1">You:</span>}{lastMsg.text}</> : <span className="text-neon italic">New match! Say hello 👋</span>}
                     </p>
-                    {isUnread && (
-                      <div className="w-2 h-2 bg-neon rounded-full shadow-[0_0_10px_#ff007f]"></div>
-                    )}
+                    {isUnread && <div className="w-2 h-2 bg-neon rounded-full shadow-[0_0_10px_#ff007f]"></div>}
                   </div>
                 </div>
-
-                {/* Hover Arrow (Desktop) */}
                 <ChevronRight className="w-5 h-5 text-gray-700 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 hidden md:block" />
               </div>
             );
