@@ -99,7 +99,7 @@ export const Notifications: React.FC = () => {
       // 2. Wait for trigger with RETRY LOGIC (mobile-friendly)
       let matchData = null;
       let attempts = 0;
-      const maxAttempts = 10; // Try for 5 seconds
+      const maxAttempts = 20; // Increased to 20 (10 seconds total) for slow triggers
 
       while (!matchData && attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -123,18 +123,22 @@ export const Notifications: React.FC = () => {
         console.log(`Waiting for match... ${attempts}/${maxAttempts}`);
       }
 
-      if (!matchData) {
-        throw new Error('Taking longer than expected. Check your Matches tab in a moment.');
-      }
-
-      // 3. Delete notification
+      // 3. Delete notification regardless of outcome (if we got this far, we swiped like)
       try {
         await deleteNotification(notif.id);
       } catch (delErr) {
         console.warn('Failed to delete notification:', delErr);
       }
 
-      // 4. Navigate to chat
+      if (!matchData) {
+        // TIMEOUT FALLBACK: Navigate to matches anyway so user isn't stuck
+        console.warn('Match creation timed out, redirecting to matches tab.');
+        alert('Match is being created in the background. Check your Matches tab momentarily.');
+        navigate('/matches');
+        return;
+      }
+
+      // 4. Navigate to chat if match found
       navigate(`/chat/${matchData.id}`);
 
     } catch (err: any) {
@@ -224,7 +228,7 @@ export const Notifications: React.FC = () => {
       // 2. Wait for trigger with RETRY LOGIC
       let matchData = null;
       let attempts = 0;
-      const maxAttempts = 10;
+      const maxAttempts = 20; // Increased to 20 for slow triggers
 
       while (!matchData && attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -243,12 +247,16 @@ export const Notifications: React.FC = () => {
         attempts++;
       }
 
-      if (!matchData) {
-        throw new Error('Taking longer than expected. Check your Matches tab.');
-      }
-
       // 3. Remove notification
       await deleteNotification(notificationId);
+
+      if (!matchData) {
+        // Timeout Fallback
+        console.warn('Match creation timed out, redirecting to matches tab.');
+        alert('Match is being created. Check your Matches tab.');
+        navigate('/matches');
+        return;
+      }
 
       // 4. Navigate to chat
       navigate(`/chat/${matchData.id}`);

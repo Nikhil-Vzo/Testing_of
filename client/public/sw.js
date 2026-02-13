@@ -295,7 +295,7 @@ self.addEventListener('notificationclick', (event) => {
             return;
         }
 
-        const apiUrl = 'https://othrhalff.onrender.com'; // Production URL
+        const apiUrl = 'https://testing-of.onrender.com'; // Testing Of Production URL
 
         event.waitUntil(
             fetch(`${apiUrl}/api/accept-match`, {
