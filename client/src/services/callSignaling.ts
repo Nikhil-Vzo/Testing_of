@@ -77,7 +77,7 @@ export const initiateCall = async (
                 call_type: callerInfo.callType,
                 status: 'ringing'
             })
-            .select() // Select to get the created record with ID
+            .select()
             .single();
 
         if (error) throw error;
@@ -91,209 +91,107 @@ export const initiateCall = async (
     }
 };
 
-/**
- * Answer an incoming call
- */
 export const answerCall = async (callSessionId: string): Promise<boolean> => {
     if (!supabase) return false;
-
     try {
-        const { error } = await supabase
-            .from('call_sessions')
-            .update({
-                status: 'active',
-                answered_at: new Date().toISOString()
-            })
-            .eq('id', callSessionId);
-
-        if (error) throw error;
-        return true;
-    } catch (error) {
-        console.error('Error answering call:', error);
-        return false;
-    }
+        const { error } = await supabase.from('call_sessions').update({ status: 'active', answered_at: new Date().toISOString() }).eq('id', callSessionId);
+        if (error) throw error; return true;
+    } catch (error) { console.error(error); return false; }
 };
 
-/**
- * Reject an incoming call
- */
 export const rejectCall = async (callSessionId: string): Promise<boolean> => {
     if (!supabase) return false;
-
     try {
-        const { error } = await supabase
-            .from('call_sessions')
-            .update({
-                status: 'rejected',
-                ended_at: new Date().toISOString()
-            })
-            .eq('id', callSessionId);
-
-        if (error) throw error;
-        return true;
-    } catch (error) {
-        console.error('Error rejecting call:', error);
-        return false;
-    }
+        const { error } = await supabase.from('call_sessions').update({ status: 'rejected', ended_at: new Date().toISOString() }).eq('id', callSessionId);
+        if (error) throw error; return true;
+    } catch (error) { console.error(error); return false; }
 };
 
-/**
- * End an active call
- */
 export const endCall = async (callSessionId: string): Promise<boolean> => {
     if (!supabase) return false;
-
     try {
-        const { error } = await supabase
-            .from('call_sessions')
-            .update({
-                status: 'ended',
-                ended_at: new Date().toISOString()
-            })
-            .eq('id', callSessionId);
-
-        if (error) throw error;
-        return true;
-    } catch (error) {
-        console.error('Error ending call:', error);
-        return false;
-    }
+        const { error } = await supabase.from('call_sessions').update({ status: 'ended', ended_at: new Date().toISOString() }).eq('id', callSessionId);
+        if (error) throw error; return true;
+    } catch (error) { console.error(error); return false; }
 };
 
-/**
- * Get a call session by ID
- */
 export const getCallSession = async (callSessionId: string): Promise<CallSession | null> => {
     if (!supabase) return null;
-
     try {
-        const { data, error } = await supabase
-            .from('call_sessions')
-            .select('*')
-            .eq('id', callSessionId)
-            .single();
-
-        if (error) throw error;
-        return data as CallSession;
-    } catch (error) {
-        console.error('Error getting call session:', error);
-        return null;
-    }
+        const { data, error } = await supabase.from('call_sessions').select('*').eq('id', callSessionId).single();
+        if (error) throw error; return data as CallSession;
+    } catch (error) { console.error(error); return null; }
 };
 
-/**
- * Send a broadcast signal for immediate feedback (optimistic UI)
- */
 export const sendCallSignal = async (receiverId: string, payload: any) => {
     if (!supabase) return;
-
-    // We broadcast to the receiver's channel
     const channel = supabase.channel(`incoming_calls:${receiverId}`);
-
     channel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-            await channel.send({
-                type: 'broadcast',
-                event: 'incoming_call_signal',
-                payload: payload
-            });
-            // Cleanup after sending
+            await channel.send({ type: 'broadcast', event: 'incoming_call_signal', payload: payload });
             supabase.removeChannel(channel);
         }
     });
 };
 
 /**
- * Check if a user is currently busy (on an active call or has a ringing call)
- * FIXED: Ignores stale sessions (older than 1 minute for ringing, 2 hours for active)
+ * Check if a user is busy.
+ * @param targetUserId The user we want to call.
+ * @param ignoreCallerId (Optional) The ID of the current user. If provided, we ignore "ringing" calls initiated by THIS user (retries).
  */
-export const checkUserBusy = async (userId: string): Promise<boolean> => {
+export const checkUserBusy = async (targetUserId: string, ignoreCallerId?: string): Promise<boolean> => {
     if (!supabase) return false;
 
     try {
-        // Fetch any potential busy sessions
         const { data, error } = await supabase
             .from('call_sessions')
-            .select('id, status, created_at')
-            .or(`caller_id.eq.${userId},receiver_id.eq.${userId}`)
+            .select('id, status, created_at, caller_id')
+            .or(`caller_id.eq.${targetUserId},receiver_id.eq.${targetUserId}`)
             .in('status', ['ringing', 'active']);
 
         if (error) throw error;
-
         if (!data || data.length === 0) return false;
 
-        // Filter out stale sessions in memory
         const now = Date.now();
         const validSessions = data.filter(session => {
+            // 1. Filter out stale sessions
             const createdTime = new Date(session.created_at).getTime();
             const diffMs = now - createdTime;
 
-            if (session.status === 'ringing') {
-                // If it's been ringing for more than 60 seconds, it's a stale/stuck call. Ignore it.
-                return diffMs < 60000;
-            } else if (session.status === 'active') {
-                // If it's been active for more than 2 hours, assume it's stuck/abandoned. Ignore it.
-                return diffMs < 2 * 60 * 60 * 1000;
+            if (session.status === 'ringing' && diffMs >= 45000) return false; // Ignore ringing > 45s
+            if (session.status === 'active' && diffMs >= 2 * 60 * 60 * 1000) return false; // Ignore active > 2h
+
+            // 2. Filter out "Self-Blocking" sessions (Retry Logic)
+            // If I am calling User B, and there is already a 'ringing' session where I am the caller,
+            // that is likely my PREVIOUS failed attempt. Ignore it so I can try again.
+            if (ignoreCallerId && session.status === 'ringing' && session.caller_id === ignoreCallerId) {
+                return false;
             }
-            return false;
+
+            return true;
         });
 
-        // If we found stale sessions, we could optionally clean them up here, 
-        // but simply returning false allows the new call to proceed.
         return validSessions.length > 0;
 
     } catch (error) {
         console.error('Error checking user busy status:', error);
-        // Default to false (allow call) if check fails, to prevent permanent blocking
         return false;
     }
 };
 
-/**
- * Subscribe to incoming calls for the current user
- */
-export const subscribeToIncomingCalls = (
-    userId: string,
-    onIncomingCall: (call: CallSession | any) => void
-) => {
+export const subscribeToIncomingCalls = (userId: string, onIncomingCall: (call: CallSession | any) => void) => {
     if (!supabase) return () => { };
-
-    const channel = supabase
-        .channel(`incoming_calls:${userId}`)
-        .on(
-            'broadcast',
-            { event: 'incoming_call_signal' },
-            (payload) => {
-                console.log(`[CallSignaling] Broadcast received at ${new Date().toISOString()}`, payload);
-                onIncomingCall({
-                    isBroadcast: true,
-                    ...payload.payload
-                });
+    const channel = supabase.channel(`incoming_calls:${userId}`)
+        .on('broadcast', { event: 'incoming_call_signal' }, (payload) => {
+            onIncomingCall({ isBroadcast: true, ...payload.payload });
+        })
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'call_sessions', filter: `receiver_id=eq.${userId}` }, (payload) => {
+            const callSession = payload.new as CallSession;
+            const isFresh = (Date.now() - new Date(callSession.created_at).getTime()) < 30000;
+            if (callSession.status === 'ringing' && isFresh) {
+                onIncomingCall(callSession);
             }
-        )
-        .on(
-            'postgres_changes',
-            {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'call_sessions',
-                filter: `receiver_id=eq.${userId}`
-            },
-            (payload) => {
-                const callSession = payload.new as CallSession;
-                // Only trigger if it's a fresh call (created within last 30 seconds)
-                const createdTime = new Date(callSession.created_at).getTime();
-                const isFresh = (Date.now() - createdTime) < 30000;
-
-                if (callSession.status === 'ringing' && isFresh) {
-                    console.log(`[CallSignaling] DB Insert received for session ${callSession.id}`);
-                    onIncomingCall(callSession);
-                }
-            }
-        )
+        })
         .subscribe();
-
-    return () => {
-        supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
 };

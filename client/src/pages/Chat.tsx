@@ -270,9 +270,7 @@ export const Chat: React.FC = () => {
     if (!partner || !matchId || !currentUser) return;
     setIsStartingCall(true);
     try {
-      if (await checkUserBusy(partner.id)) { // Pass currentUser.id if API allows, but checkUserBusy sig is (userId)
-        showToast(`${partner.realName || partner.anonymousId} is on another call.`, 'info');
-        setIsStartingCall(false); return;
+      if (await checkUserBusy(partner.id, currentUser.id)) { // Pass currentUser.id for retry logic
       }
     } catch (err) { console.error(err); }
 
