@@ -32,6 +32,17 @@ export const initiateCall = async (
     callerInfo: { id: string; name: string; avatar: string; callType: 'audio' | 'video' }
 ): Promise<CallSession | null> => {
     try {
+        // 0. CLEANUP: Cancel any existing 'ringing' calls from ME to THEM.
+        // This prevents the "User Busy" error if you refresh the page while calling.
+        if (supabase) {
+            await supabase
+                .from('call_sessions')
+                .update({ status: 'missed', ended_at: new Date().toISOString() })
+                .eq('caller_id', callerInfo.id)
+                .eq('receiver_id', receiverId)
+                .eq('status', 'ringing');
+        }
+
         // 1. Send immediate broadcast signal (Optimistic UI)
         await sendCallSignal(receiverId, {
             ...callerInfo,
