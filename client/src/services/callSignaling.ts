@@ -171,9 +171,6 @@ export const getCallSession = async (callSessionId: string): Promise<CallSession
 };
 
 /**
- * Subscribe to incoming calls for the current user
- */
-/**
  * Send a broadcast signal for immediate feedback (optimistic UI)
  */
 export const sendCallSignal = async (receiverId: string, payload: any) => {
@@ -197,22 +194,46 @@ export const sendCallSignal = async (receiverId: string, payload: any) => {
 
 /**
  * Check if a user is currently busy (on an active call or has a ringing call)
+ * FIXED: Ignores stale sessions (older than 1 minute for ringing, 2 hours for active)
  */
 export const checkUserBusy = async (userId: string): Promise<boolean> => {
     if (!supabase) return false;
 
     try {
+        // Fetch any potential busy sessions
         const { data, error } = await supabase
             .from('call_sessions')
-            .select('id')
+            .select('id, status, created_at')
             .or(`caller_id.eq.${userId},receiver_id.eq.${userId}`)
-            .in('status', ['ringing', 'active'])
-            .limit(1);
+            .in('status', ['ringing', 'active']);
 
         if (error) throw error;
-        return (data && data.length > 0) || false;
+
+        if (!data || data.length === 0) return false;
+
+        // Filter out stale sessions in memory
+        const now = Date.now();
+        const validSessions = data.filter(session => {
+            const createdTime = new Date(session.created_at).getTime();
+            const diffMs = now - createdTime;
+
+            if (session.status === 'ringing') {
+                // If it's been ringing for more than 60 seconds, it's a stale/stuck call. Ignore it.
+                return diffMs < 60000;
+            } else if (session.status === 'active') {
+                // If it's been active for more than 2 hours, assume it's stuck/abandoned. Ignore it.
+                return diffMs < 2 * 60 * 60 * 1000;
+            }
+            return false;
+        });
+
+        // If we found stale sessions, we could optionally clean them up here, 
+        // but simply returning false allows the new call to proceed.
+        return validSessions.length > 0;
+
     } catch (error) {
         console.error('Error checking user busy status:', error);
+        // Default to false (allow call) if check fails, to prevent permanent blocking
         return false;
     }
 };
@@ -233,8 +254,6 @@ export const subscribeToIncomingCalls = (
             { event: 'incoming_call_signal' },
             (payload) => {
                 console.log(`[CallSignaling] Broadcast received at ${new Date().toISOString()}`, payload);
-                // Pass broadcast payload immediately
-                // We construct a partial session-like object for the UI
                 onIncomingCall({
                     isBroadcast: true,
                     ...payload.payload
@@ -251,8 +270,12 @@ export const subscribeToIncomingCalls = (
             },
             (payload) => {
                 const callSession = payload.new as CallSession;
-                if (callSession.status === 'ringing') {
-                    console.log(`[CallSignaling] DB Insert received at ${new Date().toISOString()} for session ${callSession.id}`);
+                // Only trigger if it's a fresh call (created within last 30 seconds)
+                const createdTime = new Date(callSession.created_at).getTime();
+                const isFresh = (Date.now() - createdTime) < 30000;
+
+                if (callSession.status === 'ringing' && isFresh) {
+                    console.log(`[CallSignaling] DB Insert received for session ${callSession.id}`);
                     onIncomingCall(callSession);
                 }
             }
