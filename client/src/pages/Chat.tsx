@@ -114,15 +114,22 @@ export const Chat: React.FC = () => {
     return () => { if (partner) unsubscribeFromUser(partner.id); };
   }, [matchId, currentUser]);
 
-  // Mark Read
+  // Mark Read — runs once on mount, and again whenever a new incoming message arrives
+  const markMessagesRead = async () => {
+    if (!matchId || !currentUser) return;
+    await supabase
+      .from('messages')
+      .update({ is_read: true })
+      .eq('match_id', matchId)
+      .neq('sender_id', currentUser.id)
+      .eq('is_read', false);
+  };
+
   useEffect(() => {
-    if (!matchId || !currentUser || messages.length === 0) return;
-    const markRead = async () => {
-      const hasForeignMessages = messages.some(m => m.senderId !== currentUser.id && !m.isSystem);
-      if (hasForeignMessages) await supabase.from('messages').update({ is_read: true }).eq('match_id', matchId).neq('sender_id', currentUser.id).eq('is_read', false);
-    };
-    markRead();
-  }, [matchId, currentUser, messages.length]);
+    if (!matchId || !currentUser) return;
+    // Mark all unread partner messages as read as soon as the chat opens
+    markMessagesRead();
+  }, [matchId, currentUser?.id]);
 
   const loadMoreMessages = async () => {
     if (!hasMoreMessages || isLoadingMore || !matchId) return;
@@ -158,6 +165,12 @@ export const Chat: React.FC = () => {
         // No need for manual check, server guarantees match
 
         const incoming: Message = { id: newMsg.id, senderId: newMsg.sender_id, text: newMsg.text.replace('[SYSTEM]', '').trim(), timestamp: new Date(newMsg.created_at).getTime(), isSystem: newMsg.text.startsWith('[SYSTEM]') || newMsg.text.startsWith('📞') };
+
+        // If the incoming message is from the partner, mark it read immediately
+        if (newMsg.sender_id !== currentUser?.id) {
+          markMessagesRead();
+        }
+
         setMessages(prev => {
           if (prev.some(m => m.id === incoming.id)) return prev;
           const hasOptimistic = prev.some(m => m.id.toString().startsWith('temp-') && m.senderId === incoming.senderId && m.text === incoming.text);
