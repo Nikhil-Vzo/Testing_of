@@ -77,7 +77,7 @@ export const Chat: React.FC = () => {
         const partnerId = matchData.user_a === currentUser.id ? matchData.user_b : matchData.user_a;
 
         const [profileRes, blockRes, blockedByRes, messagesRes] = await Promise.all([
-          supabase.from('profiles').select('*').eq('id', partnerId).single(),
+          supabase.from('profiles').select('id, real_name, anonymous_id, avatar, is_verified').eq('id', partnerId).single(),
           isUserBlocked(partnerId),
           isBlockedBy(partnerId),
           supabase.from('messages').select('*').eq('match_id', matchId).order('created_at', { ascending: false }).limit(MESSAGES_PER_PAGE)
@@ -87,9 +87,9 @@ export const Chat: React.FC = () => {
         if (profileRes.data) {
           newPartner = {
             id: profileRes.data.id, anonymousId: profileRes.data.anonymous_id, realName: profileRes.data.real_name,
-            gender: profileRes.data.gender, university: profileRes.data.university, branch: profileRes.data.branch,
-            year: profileRes.data.year, interests: profileRes.data.interests || [], bio: profileRes.data.bio,
-            dob: profileRes.data.dob, isVerified: profileRes.data.is_verified, avatar: profileRes.data.avatar,
+            gender: '', university: '', branch: '',
+            year: '', interests: [], bio: '',
+            dob: '', isVerified: profileRes.data.is_verified, avatar: profileRes.data.avatar,
             matchPercentage: 0, distance: 'Connected'
           };
           setPartner(newPartner);
