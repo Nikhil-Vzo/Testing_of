@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { usePresence } from '../context/PresenceContext';
 import { supabase } from '../lib/supabase';
 import { MatchProfile } from '../types';
 import { useNavigate } from 'react-router-dom';
-import { Search, Ghost } from 'lucide-react';
+import { Search, Ghost, Loader2 } from 'lucide-react';
 import { getBlockList, isBlockedBy } from '../services/blockService';
 import { getOptimizedUrl } from '../utils/image';
 
@@ -16,8 +16,8 @@ interface ChatPreview {
   unreadCount: number;
 }
 
-// v2 Key forces a fresh start for all users
-const CACHE_KEY = 'otherhalf_matches_cache_v2';
+// v3 Key to force cache clear for the new logic
+const CACHE_KEY = 'otherhalf_matches_cache_v3';
 
 const MatchSkeleton = () => (
   <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-900/30 border border-gray-800/50 animate-pulse">
@@ -34,7 +34,7 @@ export const Matches: React.FC = () => {
   const { isUserOnline } = usePresence();
   const navigate = useNavigate();
 
-  // 1. INSTANT LOAD
+  // 1. Load from Cache initially for speed
   const [chats, setChats] = useState<ChatPreview[]>(() => {
     try {
       const cached = sessionStorage.getItem(CACHE_KEY);
@@ -46,157 +46,131 @@ export const Matches: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'unread' | 'online'>('all');
 
-  useEffect(() => {
+  // Ref to debounce refreshes
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 2. The Core Loading Function
+  const loadMatches = useCallback(async (isBackground = false) => {
     if (!currentUser || !supabase) return;
+    if (!isBackground && chats.length === 0) setLoading(true);
 
-    const loadMatches = async () => {
-      // NOTE: We rely on initial state for loading. 
-      // If cache exists, user sees data immediately.
+    try {
+      const blockedUsers = await getBlockList();
 
-      try {
-        const blockedUsers = await getBlockList();
+      // Fetches Matches + Profiles + Messages (for count) in 1 query
+      const { data: matchesData, error } = await supabase
+        .from('matches')
+        .select(`
+          id, user_a, user_b, created_at,
+          user_a_profile:profiles!fk_matches_user_a(id, real_name, anonymous_id, avatar, is_verified, university, gender, branch, year, bio, dob, interests),
+          user_b_profile:profiles!fk_matches_user_b(id, real_name, anonymous_id, avatar, is_verified, university, gender, branch, year, bio, dob, interests),
+          messages!fk_messages_match(text, created_at, sender_id, is_read)
+        `)
+        .or(`user_a.eq.${currentUser.id},user_b.eq.${currentUser.id}`)
+        .order('created_at', { ascending: false });
 
-        // Optimized Query: Fetches Matches + Profiles + Messages in 1 go
-        // Reduces 20+ requests to 1.
-        const { data: matchesData, error } = await supabase
-          .from('matches')
-          .select(`
-            id, user_a, user_b, created_at,
-            user_a_profile:profiles!fk_matches_user_a(id, real_name, anonymous_id, avatar, is_verified, university, gender, branch, year, bio, dob, interests),
-            user_b_profile:profiles!fk_matches_user_b(id, real_name, anonymous_id, avatar, is_verified, university, gender, branch, year, bio, dob, interests),
-            messages!fk_messages_match(text, created_at, sender_id, is_read)
-          `)
-          .or(`user_a.eq.${currentUser.id},user_b.eq.${currentUser.id}`)
-          .order('created_at', { ascending: false });
+      if (error) throw error;
 
-        if (error) throw error;
-        if (!matchesData || matchesData.length === 0) {
-          setChats([]);
-          setLoading(false);
-          sessionStorage.removeItem(CACHE_KEY);
-          return;
-        }
-
-        const formatted: ChatPreview[] = [];
-
-        for (const match of matchesData) {
-          const partnerId = match.user_a === currentUser.id ? match.user_b : match.user_a;
-          if (blockedUsers.includes(partnerId) || await isBlockedBy(partnerId)) continue;
-
-          // Determine which profile object is the partner
-          // @ts-ignore
-          const rawProfile = match.user_a === currentUser.id ? match.user_b_profile : match.user_a_profile;
-          const partnerProfile: any = Array.isArray(rawProfile) ? rawProfile[0] : rawProfile;
-
-          if (!partnerProfile) continue;
-
-          // Handle messages locally since we fetched them
-          // Note: In a production app with huge history, we'd want a .limit(1) on the inner query 
-          // or a separate RPC, but for now this solves the N+1 latency freeze.
-          // @ts-ignore
-          const matchMessages = match.messages || [];
-          // Sort messages desc by time to find latest
-          // @ts-ignore
-          matchMessages.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-          const lastMsg = matchMessages[0];
-          const unreadCount = matchMessages.filter((m: any) => m.sender_id === partnerId && !m.is_read).length;
-
-          formatted.push({
-            id: match.id,
-            partner: {
-              id: partnerProfile.id,
-              anonymousId: partnerProfile.anonymous_id,
-              realName: partnerProfile.real_name,
-              avatar: partnerProfile.avatar,
-              isVerified: partnerProfile.is_verified,
-              university: partnerProfile.university,
-              gender: partnerProfile.gender,
-              branch: partnerProfile.branch || '',
-              year: partnerProfile.year || '',
-              bio: partnerProfile.bio || '',
-              dob: partnerProfile.dob || '',
-              interests: partnerProfile.interests || [],
-              matchPercentage: 0,
-              distance: 'Connected'
-            },
-            lastMessage: lastMsg?.text?.replace('[SYSTEM]', '') || 'New Match!',
-            lastMessageTime: lastMsg ? new Date(lastMsg.created_at).getTime() : new Date(match.created_at).getTime(),
-            unreadCount: unreadCount || 0
-          });
-        }
-
-        formatted.sort((a, b) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
-
-        setChats(prev => {
-          const isDifferent = JSON.stringify(prev) !== JSON.stringify(formatted);
-          if (isDifferent) {
-            // SAFE SAVE: If storage is full, clear old junk and try again
-            try {
-              sessionStorage.setItem(CACHE_KEY, JSON.stringify(formatted));
-            } catch (e) {
-              console.warn('Storage full, clearing old cache...');
-              sessionStorage.clear(); // Nuclear option to ensure Matches save
-              try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(formatted)); } catch (e2) { }
-            }
-            return formatted;
-          }
-          return prev;
-        });
-
-      } catch (err) {
-        console.error("Matches load error", err);
-      } finally {
+      if (!matchesData || matchesData.length === 0) {
+        setChats([]);
         setLoading(false);
+        sessionStorage.removeItem(CACHE_KEY);
+        return;
       }
-    };
 
+      const formatted: ChatPreview[] = [];
+
+      for (const match of matchesData) {
+        const partnerId = match.user_a === currentUser.id ? match.user_b : match.user_a;
+        if (blockedUsers.includes(partnerId) || await isBlockedBy(partnerId)) continue;
+
+        // @ts-ignore
+        const rawProfile = match.user_a === currentUser.id ? match.user_b_profile : match.user_a_profile;
+        const partnerProfile: any = Array.isArray(rawProfile) ? rawProfile[0] : rawProfile;
+
+        if (!partnerProfile) continue;
+
+        // @ts-ignore
+        const matchMessages = match.messages || [];
+        // Sort to find latest
+        matchMessages.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+        const lastMsg = matchMessages[0];
+
+        // CALCULATION: This is the source of truth. We count what the DB says.
+        const unreadCount = matchMessages.filter((m: any) => m.sender_id === partnerId && !m.is_read).length;
+
+        formatted.push({
+          id: match.id,
+          partner: {
+            id: partnerProfile.id,
+            anonymousId: partnerProfile.anonymous_id,
+            realName: partnerProfile.real_name,
+            avatar: partnerProfile.avatar,
+            isVerified: partnerProfile.is_verified,
+            university: partnerProfile.university,
+            gender: partnerProfile.gender,
+            branch: partnerProfile.branch || '',
+            year: partnerProfile.year || '',
+            bio: partnerProfile.bio || '',
+            dob: partnerProfile.dob || '',
+            interests: partnerProfile.interests || [],
+            matchPercentage: 0,
+            distance: 'Connected'
+          },
+          lastMessage: lastMsg?.text?.replace('[SYSTEM]', '') || 'New Match!',
+          lastMessageTime: lastMsg ? new Date(lastMsg.created_at).getTime() : new Date(match.created_at).getTime(),
+          unreadCount: unreadCount || 0
+        });
+      }
+
+      formatted.sort((a, b) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
+
+      setChats(prev => {
+        const isDifferent = JSON.stringify(prev) !== JSON.stringify(formatted);
+        if (isDifferent) {
+          try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(formatted)); } catch (e) { sessionStorage.clear(); }
+          return formatted;
+        }
+        return prev;
+      });
+
+    } catch (err) {
+      console.error("Matches load error", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUser]);
+
+  // 3. Debounced Refresh (Prevents flicker/spam)
+  const refreshMatches = useCallback(() => {
+    if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
+    refreshTimeoutRef.current = setTimeout(() => {
+      console.log("⚡ Refreshing Matches (Realtime)");
+      loadMatches(true);
+    }, 1000); // Wait 1s for database to settle
+  }, [loadMatches]);
+
+  // 4. Initial Load & Realtime
+  useEffect(() => {
     loadMatches();
 
     const channel = supabase.channel('matches-list-updates')
-      // 1. Listen for NEW messages
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
-        const newMsg = payload.new;
-        setChats(prev => {
-          const updated = prev.map(chat => {
-            if (chat.id === newMsg.match_id) {
-              return {
-                ...chat,
-                lastMessage: newMsg.text.replace('[SYSTEM]', ''),
-                lastMessageTime: new Date(newMsg.created_at).getTime(),
-                unreadCount: newMsg.sender_id !== currentUser.id ? chat.unreadCount + 1 : chat.unreadCount
-              };
-            }
-            return chat;
-          }).sort((a, b) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
-          try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch (e) { }
-          return updated;
-        });
-      })
-      // 2. Listen for READ status updates
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, (payload) => {
-        const updatedMsg = payload.new;
-        // If a message in this chat was marked read by CURRENT USER (meaning they are in Chat.tsx)
-        // or if it was marked read and it was from the partner, we should update.
-        // The most reliable way for "Matches" list is to just decrement if is_read becomes true.
-        if (updatedMsg.is_read) {
-          setChats(prev => {
-            const updated = prev.map(chat => {
-              if (chat.id === updatedMsg.match_id && updatedMsg.sender_id === chat.partner.id) {
-                // If the message was from partner and is now read, unread count for that partner goes down
-                return { ...chat, unreadCount: Math.max(0, chat.unreadCount - 1) };
-              }
-              return chat;
-            });
-            try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch (e) { }
-            return updated;
-          });
-        }
+      // Listen for ANY message change (New OR Read)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => {
+        // Optimization: Only refresh if it involves one of our matches? 
+        // For now, refreshing on any message event associated with user is safer.
+        // Since we can't easily filter by "my matches" in the subscription filter without a list,
+        // we rely on the debounced fetch to handle the load.
+        refreshMatches();
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [currentUser]);
+    return () => {
+      supabase.removeChannel(channel);
+      if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
+    };
+  }, [currentUser, loadMatches, refreshMatches]);
 
   const filteredChats = chats.filter(chat => {
     const matchesSearch = (chat.partner.realName || chat.partner.anonymousId).toLowerCase().includes(searchTerm.toLowerCase());
