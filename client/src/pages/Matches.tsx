@@ -62,8 +62,8 @@ export const Matches: React.FC = () => {
           .from('matches')
           .select(`
             id, user_a, user_b, created_at,
-            user_a_profile:profiles!user_a(id, real_name, anonymous_id, avatar, is_verified, university, gender, branch, year, bio, dob, interests),
-            user_b_profile:profiles!user_b(id, real_name, anonymous_id, avatar, is_verified, university, gender, branch, year, bio, dob, interests),
+            user_a_profile:profiles!fk_matches_user_a(id, real_name, anonymous_id, avatar, is_verified, university, gender, branch, year, bio, dob, interests),
+            user_b_profile:profiles!fk_matches_user_b(id, real_name, anonymous_id, avatar, is_verified, university, gender, branch, year, bio, dob, interests),
             messages(text, created_at, sender_id, is_read)
           `)
           .or(`user_a.eq.${currentUser.id},user_b.eq.${currentUser.id}`)
