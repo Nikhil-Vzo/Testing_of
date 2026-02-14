@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 
@@ -34,7 +34,10 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     const { currentUser } = useAuth();
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
-    const [loading, setLoading] = useState(false); // Initial load only
+    const [loading, setLoading] = useState(false);
+
+    // Debounce Ref to prevent "Thundering Herd" of fetches
+    const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const fetchNotifications = useCallback(async (isBackground = false) => {
         if (!currentUser || !supabase) return;
@@ -46,10 +49,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 .select(`
           *,
           fromUser:profiles!notifications_from_user_id_fkey (
-            id,
-            anonymous_id,
-            avatar,
-            university
+            id, anonymous_id, avatar, university
           )
         `)
                 .eq('user_id', currentUser.id)
@@ -73,30 +73,24 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 } : undefined
             }));
 
-            // Deduplicate: Keep only the most recent notification per user for 'like' and 'match' types
+            // Deduplicate Logic
             const uniqueNotifications: NotificationItem[] = [];
             const seenMap = new Set<string>();
 
             for (const notif of mapped) {
-                // Determine uniqueness key
-                let uniqueKey = notif.id; // Default: uniqueness by ID
-
-                if (notif.type === 'like' || notif.type === 'match') {
-                    // For social interactions, dedupe by Sender + Type
-                    // This prevents "User X liked you" appearing twice
-                    if (notif.fromUserId) {
-                        uniqueKey = `${notif.type}-${notif.fromUserId}`;
-                    }
+                let uniqueKey = notif.id;
+                // Group social notifications so "User A liked you" doesn't show 5 times
+                if ((notif.type === 'like' || notif.type === 'match') && notif.fromUserId) {
+                    uniqueKey = `${notif.type}-${notif.fromUserId}`;
                 }
-
                 if (!seenMap.has(uniqueKey)) {
                     seenMap.add(uniqueKey);
                     uniqueNotifications.push(notif);
                 }
             }
 
-            console.log('Fetched notifications:', uniqueNotifications.length, 'Unread:', uniqueNotifications.filter(n => !n.read).length);
             setNotifications(uniqueNotifications);
+            // Count unread items based on the DEDUPLICATED list
             setUnreadCount(uniqueNotifications.filter(n => !n.read).length);
         } catch (err) {
             console.error('Error fetching notifications:', err);
@@ -105,13 +99,18 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         }
     }, [currentUser]);
 
-    // Initial Load & Realtime Subscription
+    // Debounced Fetcher for Realtime
+    const debouncedFetch = useCallback(() => {
+        if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+        fetchTimeoutRef.current = setTimeout(() => {
+            console.log("⚡ Refreshing Notifications (Debounced)");
+            fetchNotifications(true);
+        }, 1000); // Wait 1 second for all updates to settle
+    }, [fetchNotifications]);
+
+    // Realtime Subscription
     useEffect(() => {
-        if (!currentUser) {
-            setNotifications([]);
-            setUnreadCount(0);
-            return;
-        }
+        if (!currentUser) return;
 
         fetchNotifications();
 
@@ -119,67 +118,82 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             .on('postgres_changes',
                 { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
                 (payload) => {
-                    console.log('Notification verification update:', payload);
-                    fetchNotifications(true);
+                    // When DB changes, wait a moment then fetch
+                    debouncedFetch();
                 }
             )
             .subscribe();
 
         return () => {
             supabase.removeChannel(channel);
+            if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
         };
-    }, [currentUser, fetchNotifications]);
+    }, [currentUser, debouncedFetch]);
 
     const markAsRead = async (id: string) => {
-        // Optimistic Update
+        // 1. Optimistic Update
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
         setUnreadCount(prev => Math.max(0, prev - 1));
 
         if (!currentUser || !supabase) return;
-        await supabase.from('notifications').update({ read: true }).eq('id', id);
+
+        // 2. Database Update
+        const { error } = await supabase.from('notifications').update({ read: true }).eq('id', id);
+        if (error) {
+            console.error("Failed to mark read. Check RLS policies!", error);
+            // Revert on error
+            debouncedFetch();
+        }
     };
 
     const markAllAsRead = async () => {
-        console.log('Marking all as read...');
         if (!currentUser || !supabase) return;
 
-        // Optimistic Update
+        // 1. Optimistic Update
         const updated = notifications.map(n => ({ ...n, read: true }));
         setNotifications(updated);
         setUnreadCount(0);
 
-        try {
-            const { error } = await supabase.from('notifications').update({ read: true }).eq('user_id', currentUser.id);
-            if (error) {
-                console.error('Error marking all as read:', error);
-                // Revert on error
-                fetchNotifications(true);
-            } else {
-                console.log('Successfully marked all as read in DB');
-            }
-        } catch (err) {
-            console.error('Exception marking all as read:', err);
-            fetchNotifications(true);
+        // 2. Database Update
+        const { error } = await supabase
+            .from('notifications')
+            .update({ read: true })
+            .eq('user_id', currentUser.id);
+
+        if (error) {
+            console.error('Error marking all read:', error);
+            debouncedFetch(); // Revert
         }
     };
 
     const deleteNotification = async (id: string) => {
-        // Optimistic Update
         const notif = notifications.find(n => n.id === id);
+
+        // 1. Optimistic Update
         setNotifications(prev => prev.filter(n => n.id !== id));
         if (notif && !notif.read) {
             setUnreadCount(prev => Math.max(0, prev - 1));
         }
 
         if (!currentUser || !supabase) return;
-        const { error } = await supabase.from('notifications').delete().eq('id', id);
+
+        // 2. Database Update
+        // If this is a grouped notification, we want to delete ALL from that user
+        let query = supabase.from('notifications').delete();
+
+        if (notif?.fromUserId && (notif.type === 'like' || notif.type === 'match')) {
+            // Delete ALL notifications from this specific user of this type
+            // This prevents the "Stack" effect where deleting one reveals another
+            query = query.eq('from_user_id', notif.fromUserId).eq('type', notif.type);
+        } else {
+            query = query.eq('id', id);
+        }
+
+        const { error } = await query;
 
         if (error) {
-            console.error('Error deleting notification:', error);
-            // Revert optimistic update? 
-            // For now, just logging is enough to verify RLS issues. 
-            // In a real app we might toast an error or refresh list.
-            fetchNotifications(true); // Re-fetch to restore state if delete failed
+            console.error('Error deleting:', error);
+            debouncedFetch();
         }
     };
 

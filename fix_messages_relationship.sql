@@ -8,4 +8,4 @@ ADD CONSTRAINT fk_messages_match
 FOREIGN KEY (match_id) REFERENCES matches(id);
 
 -- 3. Notify
--- Make sure to reload the schema cache in Supabase (Settings > API > Reload schema cache) after running this.
+NOTIFY pgrst, 'reload schema';
