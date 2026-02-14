@@ -156,12 +156,12 @@ export const Matches: React.FC = () => {
     loadMatches();
 
     const channel = supabase.channel('matches-list-updates')
-      // Listen for ANY message change (New OR Read)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => {
-        // Optimization: Only refresh if it involves one of our matches? 
-        // For now, refreshing on any message event associated with user is safer.
-        // Since we can't easily filter by "my matches" in the subscription filter without a list,
-        // we rely on the debounced fetch to handle the load.
+      // INSERT: new message arrived
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
+        refreshMatches();
+      })
+      // UPDATE: is_read changed (e.g. partner marked messages read)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, () => {
         refreshMatches();
       })
       .subscribe();
@@ -212,7 +212,15 @@ export const Matches: React.FC = () => {
           </div>
         ) : (
           filteredChats.map(chat => (
-            <div key={chat.id} onClick={() => navigate(`/chat/${chat.id}`)} className="group relative bg-gray-900/30 hover:bg-gray-800/50 border border-gray-800/50 hover:border-gray-700 rounded-2xl p-4 transition-all duration-300 cursor-pointer active:scale-[0.98]">
+            <div key={chat.id} onClick={() => {
+              // === FIX BUG 2: Optimistic Cache Update ===
+              setChats(prev => {
+                const updated = prev.map(c => c.id === chat.id ? { ...c, unreadCount: 0 } : c);
+                try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch (e) { }
+                return updated;
+              });
+              navigate(`/chat/${chat.id}`);
+            }} className="group relative bg-gray-900/30 hover:bg-gray-800/50 border border-gray-800/50 hover:border-gray-700 rounded-2xl p-4 transition-all duration-300 cursor-pointer active:scale-[0.98]">
               <div className="flex items-center gap-4">
                 <div className="relative">
                   <img src={getOptimizedUrl(chat.partner.avatar, 64)} alt="Avatar" className="w-14 h-14 rounded-full object-cover border-2 border-gray-800 group-hover:border-gray-600 transition-colors" />

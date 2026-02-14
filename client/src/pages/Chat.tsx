@@ -28,7 +28,6 @@ export const Chat: React.FC = () => {
   });
   const [loading, setLoading] = useState(() => !partner || messages.length === 0);
 
-  // FIX: Use ref for partner to avoid re-subscribing when profile loads
   const partnerRef = useRef(partner);
   useEffect(() => { partnerRef.current = partner; }, [partner]);
 
@@ -114,7 +113,8 @@ export const Chat: React.FC = () => {
     return () => { if (partner) unsubscribeFromUser(partner.id); };
   }, [matchId, currentUser]);
 
-  // Mark Read — runs once on mount, and again whenever a new incoming message arrives
+  // === FIX BUG 3: Use Ref for markMessagesRead ===
+  // This prevents stale closure in the realtime listener
   const markMessagesRead = async () => {
     if (!matchId || !currentUser) return;
     await supabase
@@ -125,10 +125,13 @@ export const Chat: React.FC = () => {
       .eq('is_read', false);
   };
 
+  const markMessagesReadRef = useRef(markMessagesRead);
+  useEffect(() => { markMessagesReadRef.current = markMessagesRead; });
+
+  // Mark on mount
   useEffect(() => {
     if (!matchId || !currentUser) return;
-    // Mark all unread partner messages as read as soon as the chat opens
-    markMessagesRead();
+    markMessagesReadRef.current();
   }, [matchId, currentUser?.id]);
 
   const loadMoreMessages = async () => {
@@ -153,7 +156,7 @@ export const Chat: React.FC = () => {
   // Realtime
   useEffect(() => {
     if (!matchId || !supabase) return;
-    // FIX: Using matchId in channel name for Turbo mode, but removed partner from deps to prevent re-connects
+
     const channel = supabase.channel(`chat_turbo:${matchId}`)
       .on('postgres_changes', {
         event: 'INSERT',
@@ -162,13 +165,11 @@ export const Chat: React.FC = () => {
         filter: `match_id=eq.${matchId}` // Server-side filter
       }, (payload) => {
         const newMsg = payload.new;
-        // No need for manual check, server guarantees match
-
         const incoming: Message = { id: newMsg.id, senderId: newMsg.sender_id, text: newMsg.text.replace('[SYSTEM]', '').trim(), timestamp: new Date(newMsg.created_at).getTime(), isSystem: newMsg.text.startsWith('[SYSTEM]') || newMsg.text.startsWith('📞') };
 
-        // If the incoming message is from the partner, mark it read immediately
+        // === Fix: Use Ref to call fresh function ===
         if (newMsg.sender_id !== currentUser?.id) {
-          markMessagesRead();
+          markMessagesReadRef.current();
         }
 
         setMessages(prev => {
@@ -186,7 +187,7 @@ export const Chat: React.FC = () => {
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [matchId]); // FIX: Removed 'partner' from dependency array to stabilize connection
+  }, [matchId]);
 
   const handleSend = async (e?: React.FormEvent) => {
     e?.preventDefault(); if (!newMessage.trim() || !currentUser || !matchId) return;
