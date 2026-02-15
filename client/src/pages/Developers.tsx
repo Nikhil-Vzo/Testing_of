@@ -65,18 +65,19 @@ export const Developers: React.FC = () => {
                   {dev.icon}
                 </div>
 
-                <h2 className="text-2xl font-bold text-white mb-2">{dev.name}</h2>
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-8">{dev.role}</span>
+                <h2 className="text-2xl font-bold text-white mb-1">{dev.name}</h2>
+                <span className="text-xs font-bold text-neon uppercase tracking-widest mb-2">{dev.role}</span>
+                <p className="text-[11px] text-gray-400 mb-6 font-mono">Amity Raipur • B.Tech CSE • 2nd Year</p>
 
                 <div className="flex gap-4">
+                  <a href={dev.links.instagram} target="_blank" rel="noopener noreferrer" className="p-3 bg-gray-800 rounded-xl hover:bg-gradient-to-tr hover:from-yellow-400 hover:via-red-500 hover:to-purple-500 hover:text-white transition-all hover:-translate-y-1">
+                    <Instagram className="w-5 h-5" />
+                  </a>
                   <a href={dev.links.github} target="_blank" rel="noopener noreferrer" className="p-3 bg-gray-800 rounded-xl hover:bg-white hover:text-black transition-all hover:-translate-y-1">
                     <Github className="w-5 h-5" />
                   </a>
                   <a href={dev.links.linkedin} target="_blank" rel="noopener noreferrer" className="p-3 bg-gray-800 rounded-xl hover:bg-[#0077b5] hover:text-white transition-all hover:-translate-y-1">
                     <Linkedin className="w-5 h-5" />
-                  </a>
-                  <a href={dev.links.instagram} target="_blank" rel="noopener noreferrer" className="p-3 bg-gray-800 rounded-xl hover:bg-gradient-to-tr hover:from-yellow-400 hover:via-red-500 hover:to-purple-500 hover:text-white transition-all hover:-translate-y-1">
-                    <Instagram className="w-5 h-5" />
                   </a>
                 </div>
               </div>
@@ -86,7 +87,7 @@ export const Developers: React.FC = () => {
 
         <div className="mt-16 text-center">
           <p className="text-gray-600 text-xs font-mono">
-            Running v1.0.0-stable • Made with ❤️ in India
+            Running v3.0.0-turbo • Made with ❤️ in India
           </p>
         </div>
 
