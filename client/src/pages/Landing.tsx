@@ -66,7 +66,7 @@ export const Landing: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-neon selection:text-white relative overflow-hidden flex flex-col">
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-neon selection:text-white relative flex flex-col">
       {/* WebGL Liquid Background */}
       <LiquidBackground />
 
