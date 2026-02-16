@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
-import { Ghost, Search, MessageCircle, Bell, CalendarHeart, User, MessageSquarePlus, Sparkles, MoreHorizontal } from 'lucide-react';
+import { Ghost, Search, MessageCircle, Bell, CalendarHeart, User, MessageSquarePlus, Sparkles } from 'lucide-react';
 import { StarField } from '../components/StarField';
 import { supabase } from '../lib/supabase'; // Use Supabase directly
 
@@ -186,9 +186,7 @@ export const AppLayout: React.FC = () => {
               </div>
 
               {/* Options Icon */}
-              <button className="text-gray-600 hover:text-white transition-colors">
-                <MoreHorizontal className="w-5 h-5" />
-              </button>
+
             </div>
           </div>
         </div>
