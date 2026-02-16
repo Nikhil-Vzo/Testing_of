@@ -5,7 +5,7 @@ import { ArrowLeft, Github, Linkedin, Instagram, Code, Terminal } from 'lucide-r
 export const Developers: React.FC = () => {
   const navigate = useNavigate();
 
-  const dvs = [
+/*  const dvs = [
     {
       name: "Nikhil Yadav",
       role: "Lead Developer",
@@ -30,7 +30,7 @@ export const Developers: React.FC = () => {
       gradient: "from-blue-600/20 to-cyan-600/20",
       border: "border-blue-500/30 hover:border-blue-500/60"
     }
-  ];
+  ];*/
 
   return (
     <div className="min-h-screen w-full bg-black flex flex-col items-center justify-center relative p-6 overflow-hidden">
