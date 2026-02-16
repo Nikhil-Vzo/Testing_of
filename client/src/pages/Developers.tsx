@@ -5,7 +5,7 @@ import { ArrowLeft, Github, Linkedin, Instagram, Code, Terminal } from 'lucide-r
 export const Developers: React.FC = () => {
   const navigate = useNavigate();
 
-  const devs = [
+  const dvs = [
     {
       name: "Nikhil Yadav",
       role: "Lead Developer",
