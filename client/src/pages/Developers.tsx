@@ -5,32 +5,32 @@ import { ArrowLeft, Github, Linkedin, Instagram, Code, Terminal } from 'lucide-r
 export const Developers: React.FC = () => {
   const navigate = useNavigate();
 
-/*  const dvs = [
+ const dvs = [
     {
-      name: "Nikhil Yadav",
+      name: "Ni",
       role: "Lead Developer",
       icon: <Code className="w-8 h-8 text-neon" />,
       links: {
-        instagram: "https://www.instagram.com/nikhill_vzo/",
-        github: "https://github.com/Nikhil-Vzo",
-        linkedin: "https://www.linkedin.com/in/nikhil1yadav/"
+        instagram: "https://www.instagram.com/nikill_vzo/",
+        github: "https://github.com/Nihil-Vzo"
+        linkedin: "https://www.linkedin.com/in/niil1yadav/"
       },
       gradient: "from-neon/20 to-purple-600/20",
       border: "border-neon/30 hover:border-neon/60"
     },
     {
-      name: "Avneesh Jha",
+      name: "A",
       role: "Lead Developer",
       icon: <Terminal className="w-8 h-8 text-blue-400" />,
       links: {
-        instagram: "https://www.instagram.com/its_avneesh_15/",
-        github: "https://github.com/TechNinja15",
-        linkedin: "https://www.linkedin.com/in/avneesh-kumar-jha-443034319/"
+        instagram: "https://www.instagram.com/its_eesh_15/",
+        github: "https://github.com/TechNinj"
+        linkedin: "https://www.linkedin.com/in/ava-443034319/"
       },
       gradient: "from-blue-600/20 to-cyan-600/20",
       border: "border-blue-500/30 hover:border-blue-500/60"
     }
-  ];*/
+  ];
 
   return (
     <div className="min-h-screen w-full bg-black flex flex-col items-center justify-center relative p-6 overflow-hidden">
