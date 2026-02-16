@@ -21,7 +21,7 @@ export const Developers: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen w-full bg-black flex flex-col items-center justify-center relative p-6 overflow-hidden">
+    <div className="h-screen w-full overflow-y-auto overflow-x-hidden bg-black flex flex-col items-center justify-center relative p-6">
 
       {/* Background Ambience */}
       <div className="fixed inset-0 pointer-events-none">

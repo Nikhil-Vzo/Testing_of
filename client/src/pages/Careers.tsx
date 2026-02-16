@@ -57,7 +57,7 @@ export const Careers: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-black text-white font-sans flex flex-col">
+        <div className="h-screen w-full overflow-y-auto overflow-x-hidden bg-black text-white font-sans flex flex-col">
             {/* Header */}
             <div className="p-6 border-b border-gray-900 bg-black/50 backdrop-blur-md sticky top-0 z-20 flex items-center gap-4">
                 <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-800 rounded-full transition-colors">
