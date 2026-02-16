@@ -427,8 +427,8 @@ export const Home: React.FC = () => {
                                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent via-40% to-black pointer-events-none" />
 
                                 {/* Loading Quote */}
-                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-6 text-center">
-                                    <p className="text-white/60 font-serif italic text-lg animate-pulse">{quote}</p>
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-6 text-center z-20">
+                                    <p className="text-white/70 font-serif italic text-lg animate-pulse bg-black/60 px-6 py-3 rounded-full backdrop-blur-md shadow-2xl border border-white/10">“{quote}”</p>
                                 </div>
 
                                 {/* Skeleton Text at Bottom */}

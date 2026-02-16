@@ -24,7 +24,7 @@ const ChatSkeleton = () => {
     <div className="h-full w-full bg-black flex flex-col relative">
       {/* Quote Overlay */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-        <p className="text-white/40 font-serif italic text-sm animate-pulse px-8 text-center">{quote}</p>
+        <p className="text-white/70 font-serif italic text-sm animate-pulse text-center bg-black/60 px-6 py-3 rounded-full backdrop-blur-md shadow-2xl border border-white/10">“{quote}”</p>
       </div>
 
       <div className="flex-none px-4 py-3 border-b border-gray-800 animate-pulse">

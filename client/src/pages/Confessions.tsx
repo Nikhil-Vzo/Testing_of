@@ -48,7 +48,7 @@ const LoadingOverlay = () => {
     return (
         <div className="flex flex-col gap-4 relative">
             <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-                <p className="text-white/70 font-serif italic text-sm animate-pulse text-center bg-black/60 px-6 py-3 rounded-full backdrop-blur-md shadow-2xl border border-white/10">{quote}</p>
+                <p className="text-white/70 font-serif italic text-sm animate-pulse text-center bg-black/60 px-6 py-3 rounded-full backdrop-blur-md shadow-2xl border border-white/10">“{quote}”</p>
             </div>
             {[1, 2, 3].map(i => <ConfessionSkeleton key={i} />)}
         </div>

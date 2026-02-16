@@ -18,7 +18,7 @@ interface ChatPreview {
 }
 
 // v3 Key to force cache clear for the new logic
-const CACHE_KEY = 'otherhalf_matches_cache_v3';
+const CACHE_KEY = 'otherhalf_matches_cache_v4';
 
 const MatchSkeleton = () => (
   <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-900/30 border border-gray-800/50 animate-pulse">
@@ -88,83 +88,67 @@ export const Matches: React.FC = () => {
     try {
       const blockedUsers = await getBlockList();
 
-      // Fetches Matches + Profiles + Messages (for count) in 1 query
-      const { data: matchesData, error } = await supabase
-        .from('matches')
-        .select(`
-          id, user_a, user_b, created_at,
-          user_a_profile:profiles!fk_matches_user_a(id, real_name, anonymous_id, avatar, is_verified, university, gender, branch, year, bio, dob, interests),
-          user_b_profile:profiles!fk_matches_user_b(id, real_name, anonymous_id, avatar, is_verified, university, gender, branch, year, bio, dob, interests),
-          messages!fk_messages_match(text, created_at, sender_id, is_read)
-        `)
-        .or(`user_a.eq.${currentUser.id},user_b.eq.${currentUser.id}`)
-        .order('created_at', { ascending: false });
+      // OPTIMIZED: Use RPC to get matches with latest message only (Server-side)
+      const { data: formatted, error } = await supabase
+        .rpc('get_matches_with_preview', { current_user_id: currentUser.id });
 
       if (error) throw error;
 
-      if (!matchesData || matchesData.length === 0) {
+      if (!formatted || formatted.length === 0) {
         setChats([]);
         setLoading(false);
         sessionStorage.removeItem(CACHE_KEY);
         return;
       }
 
-      const formatted: ChatPreview[] = [];
-
-      for (const match of matchesData) {
-        const partnerId = match.user_a === currentUser.id ? match.user_b : match.user_a;
-        if (blockedUsers.includes(partnerId) || await isBlockedBy(partnerId)) continue;
-
-        // @ts-ignore
-        const rawProfile = match.user_a === currentUser.id ? match.user_b_profile : match.user_a_profile;
-        const partnerProfile: any = Array.isArray(rawProfile) ? rawProfile[0] : rawProfile;
-
-        if (!partnerProfile) continue;
-
-        // @ts-ignore
-        const matchMessages = match.messages || [];
-        // Sort to find latest
-        matchMessages.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-        const lastMsg = matchMessages[0];
-
-        // CALCULATION: This is the source of truth. We count what the DB says.
-        const unreadCount = matchMessages.filter((m: any) => m.sender_id === partnerId && !m.is_read).length;
-
-        formatted.push({
-          id: match.id,
+      // Map RPC result (snake_case from DB) to our camelCase app types
+      const mappedChats: ChatPreview[] = formatted.map((m: any) => {
+        const p = m.partner_profile;
+        return {
+          id: m.match_id,
           partner: {
-            id: partnerProfile.id,
-            anonymousId: partnerProfile.anonymous_id,
-            realName: partnerProfile.real_name,
-            avatar: partnerProfile.avatar,
-            isVerified: partnerProfile.is_verified,
-            university: partnerProfile.university,
-            gender: partnerProfile.gender,
-            branch: partnerProfile.branch || '',
-            year: partnerProfile.year || '',
-            bio: partnerProfile.bio || '',
-            dob: partnerProfile.dob || '',
-            interests: partnerProfile.interests || [],
+            id: m.partner_id,
+            anonymousId: p.anonymous_id,
+            realName: p.real_name,
+            avatar: p.avatar,
+            isVerified: p.is_verified,
+            university: p.university,
+            gender: p.gender,
+            branch: p.branch || '',
+            year: p.year || '',
+            bio: p.bio || '',
+            dob: p.dob || '',
+            interests: p.interests || [],
             matchPercentage: 0,
             distance: 'Connected'
           },
-          lastMessage: lastMsg?.text?.replace('[SYSTEM]', '') || 'New Match!',
-          lastMessageTime: lastMsg ? new Date(lastMsg.created_at).getTime() : new Date(match.created_at).getTime(),
-          unreadCount: unreadCount || 0
-        });
+          lastMessage: m.last_message,
+          lastMessageTime: m.last_message_time ? new Date(m.last_message_time).getTime() : null,
+          unreadCount: m.unread_count
+        };
+      });
+
+      // Filter blocked users locally (or add to RPC later, but local is fine for now)
+      const visibleChats: ChatPreview[] = [];
+      for (const chat of mappedChats) {
+        if (!blockedUsers.includes(chat.partner.id) && !(await isBlockedBy(chat.partner.id))) {
+          visibleChats.push(chat);
+        }
       }
 
-      formatted.sort((a, b) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
+      // Sort by time
+      visibleChats.sort((a, b) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
 
       setChats(prev => {
-        const isDifferent = JSON.stringify(prev) !== JSON.stringify(formatted);
+        const isDifferent = JSON.stringify(prev) !== JSON.stringify(visibleChats);
         if (isDifferent) {
-          try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(formatted)); } catch (e) { sessionStorage.clear(); }
-          return formatted;
+          try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(visibleChats)); } catch (e) { sessionStorage.clear(); }
+          return visibleChats;
         }
         return prev;
       });
+
+
 
     } catch (err) {
       console.error("Matches load error", err);
@@ -216,7 +200,7 @@ export const Matches: React.FC = () => {
     return (
       <div className="h-full w-full bg-transparent p-4 space-y-4 relative">
         <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-          <p className="text-white/40 font-serif italic text-sm animate-pulse px-8 text-center bg-black/40 py-2 rounded-full backdrop-blur-sm">{quote}</p>
+          <p className="text-white/70 font-serif italic text-sm animate-pulse text-center bg-black/60 px-6 py-3 rounded-full backdrop-blur-md shadow-2xl border border-white/10">“{quote}”</p>
         </div>
         <MatchSkeleton /><MatchSkeleton /><MatchSkeleton />
       </div>
