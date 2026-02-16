@@ -1,9 +1,5 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Github, Linkedin, Instagram, Code, Terminal } from 'lucide-react';
-
-export const Developers: React.FC = () => {
-  const navigate = useNavigate();
 
 
         
@@ -14,7 +10,4 @@ export const Developers: React.FC = () => {
           </p>
         </div>
 
-      </div>
-    </div>
-  );
-};
+      
