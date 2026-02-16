@@ -7,6 +7,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, Ghost, Loader2 } from 'lucide-react';
 import { getBlockList, isBlockedBy } from '../services/blockService';
 import { getOptimizedUrl } from '../utils/image';
+import { getRandomQuote } from '../data/loadingQuotes';
 
 interface ChatPreview {
   id: string;
@@ -211,8 +212,12 @@ export const Matches: React.FC = () => {
   });
 
   if (loading) {
+    const quote = getRandomQuote();
     return (
-      <div className="h-full w-full bg-transparent p-4 space-y-4">
+      <div className="h-full w-full bg-transparent p-4 space-y-4 relative">
+        <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+          <p className="text-white/40 font-serif italic text-sm animate-pulse px-8 text-center bg-black/40 py-2 rounded-full backdrop-blur-sm">{quote}</p>
+        </div>
         <MatchSkeleton /><MatchSkeleton /><MatchSkeleton />
       </div>
     );
