@@ -47,8 +47,8 @@ const LoadingOverlay = () => {
     const [quote] = useState(getRandomQuote());
     return (
         <div className="flex flex-col gap-4 relative">
-            <div className="absolute inset-0 z-10 flex items-center justify-center pt-20">
-                <p className="text-white/50 font-serif italic text-sm animate-pulse text-center bg-black/40 px-4 py-2 rounded-full backdrop-blur-sm">{quote}</p>
+            <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+                <p className="text-white/70 font-serif italic text-sm animate-pulse text-center bg-black/60 px-6 py-3 rounded-full backdrop-blur-md shadow-2xl border border-white/10">{quote}</p>
             </div>
             {[1, 2, 3].map(i => <ConfessionSkeleton key={i} />)}
         </div>
