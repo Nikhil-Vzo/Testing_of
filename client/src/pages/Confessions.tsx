@@ -559,7 +559,7 @@ export const Confessions: React.FC = () => {
                                         <span className="text-[10px] font-bold text-gray-500">{conf.comments[conf.comments.length - 1].userId}</span>
                                         <span className="text-[9px] text-gray-600">• Recent</span>
                                     </div>
-                                    <p className="text-xs text-gray-400 line-clamp-1 italic">"{conf.comments[conf.comments.length - 1].text}"</p>
+                                    <p className="text-xs text-gray-400 truncate italic">"{conf.comments[conf.comments.length - 1].text.length > 60 ? conf.comments[conf.comments.length - 1].text.slice(0, 60) + '...' : conf.comments[conf.comments.length - 1].text}"</p>
                                 </div>
                             )}
 
