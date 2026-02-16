@@ -8,13 +8,34 @@ import { useToast } from '../context/ToastContext';
 import { ArrowLeft, Send, Phone, Video, MoreVertical, Ghost, Shield, Clock, User, AlertTriangle, Ban, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { PermissionModal } from '../components/PermissionModal';
-import { blockUser, unblockUser, isUserBlocked, isBlockedBy } from '../services/blockService';
+import { blockUser, unblockUser, checkBlockStatus } from '../services/blockService';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { initiateCall, checkUserBusy } from '../services/callSignaling';
 import { analytics } from '../utils/analytics';
 import { getOptimizedUrl } from '../utils/image';
 
 const MESSAGES_PER_PAGE = 50;
+
+const ChatSkeleton = () => (
+  <div className="h-full w-full bg-black flex flex-col">
+    <div className="flex-none px-4 py-3 border-b border-gray-800 animate-pulse">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-gray-800" />
+        <div className="space-y-1">
+          <div className="h-3 w-28 bg-gray-800 rounded" />
+          <div className="h-2 w-16 bg-gray-700 rounded" />
+        </div>
+      </div>
+    </div>
+    <div className="flex-1 p-4 space-y-4">
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
+          <div className="h-10 w-48 bg-gray-800/60 rounded-2xl animate-pulse" />
+        </div>
+      ))}
+    </div>
+  </div>
+);
 
 export const Chat: React.FC = () => {
   const { id: matchId } = useParams<{ id: string }>();
@@ -75,11 +96,10 @@ export const Chat: React.FC = () => {
         if (matchError || !matchData) { if (loading) navigate('/matches'); return; }
         const partnerId = matchData.user_a === currentUser.id ? matchData.user_b : matchData.user_a;
 
-        const [profileRes, blockRes, blockedByRes, messagesRes] = await Promise.all([
+        const [profileRes, blockStatus, messagesRes] = await Promise.all([
           supabase.from('profiles').select('id, real_name, anonymous_id, avatar, is_verified').eq('id', partnerId).single(),
-          isUserBlocked(partnerId),
-          isBlockedBy(partnerId),
-          supabase.from('messages').select('*').eq('match_id', matchId).order('created_at', { ascending: false }).limit(MESSAGES_PER_PAGE)
+          checkBlockStatus(partnerId),
+          supabase.from('messages').select('id, sender_id, text, created_at, is_read').eq('match_id', matchId).order('created_at', { ascending: false }).limit(MESSAGES_PER_PAGE)
         ]);
 
         let newPartner = partner;
@@ -94,7 +114,7 @@ export const Chat: React.FC = () => {
           setPartner(newPartner);
           subscribeToUser(partnerId);
         }
-        setIsBlocked(blockRes); setIsBlockedByThem(blockedByRes);
+        setIsBlocked(blockStatus.isBlocked); setIsBlockedByThem(blockStatus.isBlockedBy);
 
         let newMessages: Message[] = messages;
         if (messagesRes.data) {
@@ -138,7 +158,7 @@ export const Chat: React.FC = () => {
     if (!hasMoreMessages || isLoadingMore || !matchId) return;
     setIsLoadingMore(true);
     try {
-      const { data: msgData } = await supabase.from('messages').select('*').eq('match_id', matchId).order('created_at', { ascending: false }).range(messages.length, messages.length + MESSAGES_PER_PAGE - 1);
+      const { data: msgData } = await supabase.from('messages').select('id, sender_id, text, created_at, is_read').eq('match_id', matchId).order('created_at', { ascending: false }).range(messages.length, messages.length + MESSAGES_PER_PAGE - 1);
       if (msgData && msgData.length > 0) {
         const formatted = msgData.map((m: any) => ({ id: m.id, senderId: m.sender_id, text: m.text.replace('[SYSTEM]', '').trim(), timestamp: new Date(m.created_at).getTime(), isSystem: m.text.startsWith('[SYSTEM]') || m.text.startsWith('📞') })).reverse();
         setMessages(prev => [...formatted, ...prev]); setHasMoreMessages(msgData.length === MESSAGES_PER_PAGE);
@@ -217,7 +237,7 @@ export const Chat: React.FC = () => {
   const insertSystemMessage = async (text: string) => { if (!currentUser || !matchId) return; try { await supabase.from('messages').insert({ match_id: matchId, sender_id: currentUser.id, text: text.startsWith('📞') ? text : `[SYSTEM] ${text}` }); } catch { } };
   const handleBlockUser = () => { if (!partner) return; showConfirm(isBlocked ? 'Unblock' : 'Block', `Confirm?`, async () => { if (isBlocked ? await unblockUser(partner.id) : await blockUser(partner.id)) { setIsBlocked(!isBlocked); setShowMenu(false); showToast('Success', 'success'); } }, !isBlocked); };
 
-  if (loading) return <div className="h-full w-full bg-black flex flex-col items-center justify-center"><Loader2 className="w-8 h-8 text-neon animate-spin mb-4" /><p className="text-gray-500 text-sm">Loading chat...</p></div>;
+  if (loading) return <ChatSkeleton />;
   if (!partner) return null;
 
   return (
@@ -226,7 +246,21 @@ export const Chat: React.FC = () => {
       <PermissionModal isOpen={permissionModal.isOpen} onPermissionsGranted={permissionModal.onGranted} onCancel={() => setPermissionModal(prev => ({ ...prev, isOpen: false }))} requiredPermissions={permissionModal.type === 'video' ? ['camera', 'microphone'] : ['microphone']} />
       <div className="flex-none px-4 py-3 bg-black/95 backdrop-blur-md border-b border-gray-800 flex items-center justify-between z-20">
         <div className="flex items-center gap-3"><button onClick={() => navigate('/matches')} className="p-2 -ml-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-800"><ArrowLeft className="w-5 h-5" /></button><div className="relative"><img src={getOptimizedUrl(partner.avatar, 64)} className="w-10 h-10 rounded-full border border-gray-700 object-cover" /><div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-black ${isUserOnline(partner.id) ? 'bg-green-500' : 'bg-gray-500'}`}></div></div><div><h3 className="text-sm font-bold text-white">{partner.realName || partner.anonymousId}</h3><span className="text-[10px] text-gray-500">{isUserOnline(partner.id) ? <span className="text-green-400">Active</span> : (getLastSeen(partner.id) ? (new Date().getTime() - getLastSeen(partner.id)!.getTime() < 60000 ? 'just now' : getLastSeen(partner.id)?.toLocaleDateString()) : 'Offline')}</span></div></div>
-        <div className="flex items-center gap-1"><button onClick={() => startVideoCall('video')} disabled={isStartingCall} className="p-2.5 text-gray-400 hover:text-neon hover:bg-gray-800 rounded-full"><Video className="w-5 h-5" /></button><button onClick={() => startVideoCall('audio')} disabled={isStartingCall} className="p-2.5 text-gray-400 hover:text-green-400 hover:bg-gray-800 rounded-full"><Phone className="w-5 h-5" /></button><div className="relative"><button onClick={() => setShowMenu(!showMenu)} className="p-2.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full"><MoreVertical className="w-5 h-5" /></button>{showMenu && <div className="absolute right-0 top-12 z-50 w-48 bg-gray-900 border border-gray-700 rounded-xl shadow-xl overflow-hidden"><button onClick={() => { navigate(`/profile/${partner.id}`); setShowMenu(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-gray-300 hover:bg-gray-800"><User className="w-4 h-4" /> View Profile</button><button onClick={handleBlockUser} className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-gray-300 hover:bg-gray-800"><Ban className="w-4 h-4" /> {isBlocked ? 'Unblock' : 'Block'}</button><button onClick={() => { navigate('/contact', { state: { reportUserId: partner.id } }); setShowMenu(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-red-400 hover:bg-gray-800"><AlertTriangle className="w-4 h-4" /> Report</button></div>}</div></div>
+        <div className="flex items-center gap-1"><button onClick={() => startVideoCall('video')} disabled={isStartingCall} className="p-2.5 text-gray-400 hover:text-neon hover:bg-gray-800 rounded-full"><Video className="w-5 h-5" /></button><button onClick={() => startVideoCall('audio')} disabled={isStartingCall} className="p-2.5 text-gray-400 hover:text-green-400 hover:bg-gray-800 rounded-full"><Phone className="w-5 h-5" /></button>
+          <div className="relative">
+            <button onClick={() => setShowMenu(!showMenu)} className="p-2.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full"><MoreVertical className="w-5 h-5" /></button>
+            {showMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+                <div className="absolute right-0 top-12 z-50 w-48 bg-gray-900 border border-gray-700 rounded-xl shadow-xl overflow-hidden">
+                  <button onClick={() => { navigate(`/profile/${partner.id}`); setShowMenu(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-gray-300 hover:bg-gray-800"><User className="w-4 h-4" /> View Profile</button>
+                  <button onClick={() => { setShowMenu(false); handleBlockUser(); }} className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-gray-300 hover:bg-gray-800"><Ban className="w-4 h-4" /> {isBlocked ? 'Unblock' : 'Block'}</button>
+                  <button onClick={() => { navigate('/contact', { state: { reportUserId: partner.id } }); setShowMenu(false); }} className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-red-400 hover:bg-gray-800"><AlertTriangle className="w-4 h-4" /> Report</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </div>
       <div ref={chatContainerRef} className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4" onScroll={handleScroll}>
         {isLoadingMore && <div className="flex justify-center"><Loader2 className="w-5 h-5 text-gray-500 animate-spin" /></div>}

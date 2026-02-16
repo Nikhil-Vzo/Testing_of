@@ -141,6 +141,7 @@ export default function App() {
             <Route path="/virtual-date" element={<VirtualDate />} />
             <Route path="/virtual-date/cinema" element={<CinemaDate />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/:id" element={<Profile />} />
             <Route path="/confessions" element={<Confessions />} />
           </Route>
 
