@@ -45,6 +45,7 @@ export const Home: React.FC = () => {
     const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
     const [showSuccessBurst, setShowSuccessBurst] = useState(false);
     const [isSwiping, setIsSwiping] = useState(false);
+    const [isRecycleMode, setIsRecycleMode] = useState(false);
     const cardRef = useRef<HTMLDivElement>(null);
 
     const preloadImages = useCallback((profiles: MatchProfile[]) => {
@@ -57,6 +58,47 @@ export const Home: React.FC = () => {
             }
         });
     }, []);
+
+    const fetchSkippedProfiles = async () => {
+        if (!currentUser || !supabase) return;
+        setIsLoading(true);
+        try {
+            const { data, error } = await supabase.rpc('get_skipped_profiles', {
+                current_user_id: currentUser.id
+            });
+
+            if (error) throw error;
+
+            if (data && data.length > 0) {
+                const mappedProfiles: MatchProfile[] = data.map((p: any) => ({
+                    id: p.id,
+                    anonymousId: p.anonymous_id,
+                    realName: p.real_name,
+                    gender: p.gender,
+                    university: p.university,
+                    branch: p.branch,
+                    year: p.year,
+                    interests: p.interests || [],
+                    bio: p.bio,
+                    dob: p.dob,
+                    isVerified: p.is_verified,
+                    avatar: p.avatar,
+                    lookingFor: p.looking_for || [],
+                    matchPercentage: Math.floor(Math.random() * (99 - 70 + 1) + 70),
+                    distance: 'Recycled'
+                }));
+                setQueue(mappedProfiles);
+                setIsRecycleMode(true);
+                preloadImages(mappedProfiles.slice(0, 5));
+            } else {
+                alert("No skipped profiles found to review.");
+            }
+        } catch (err) {
+            console.error('Error fetching skipped profiles:', err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     // Load users from Supabase (with caching)
     useEffect(() => {
@@ -235,6 +277,10 @@ export const Home: React.FC = () => {
         const targetId = currentProfile.id;
         const action = direction === 'right' ? 'like' : 'pass';
 
+        // If in recycle mode, swiping left just touches the timestamp to move to back of queue
+        // Swiping right moves to likes
+
+
         // Cinematic exit animation
         const offScreenX = direction === 'right' ? window.innerWidth * 1.5 : -window.innerWidth * 1.5;
         setDragX(offScreenX);
@@ -287,7 +333,8 @@ export const Home: React.FC = () => {
                     .upsert({
                         liker_id: currentUser.id,
                         target_id: targetId,
-                        action: action
+                        action: action,
+                        created_at: new Date().toISOString() // Update timestamp to move to back of line if passed again
                     }, { onConflict: 'liker_id, target_id' });
 
                 if (swipeError) console.error('Swipe error:', swipeError);
@@ -364,8 +411,10 @@ export const Home: React.FC = () => {
             {/* === TOP HEADER === */}
             <div className="w-full px-5 py-4 flex items-center justify-between gap-4 z-30 relative">
                 <div className="flex items-center gap-2">
-                    <Ghost className="w-7 h-7 text-neon drop-shadow-[0_0_12px_rgba(255,0,127,0.6)]" />
-                    <span className="text-xl font-black text-white tracking-tighter uppercase hidden sm:block">Discover</span>
+                    <Ghost className={`w-7 h-7 drop-shadow-[0_0_12px_rgba(255,0,127,0.6)] ${isRecycleMode ? 'text-yellow-400' : 'text-neon'}`} />
+                    <span className="text-xl font-black text-white tracking-tighter uppercase hidden sm:block">
+                        {isRecycleMode ? 'Second Chance' : 'Discover'}
+                    </span>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -469,17 +518,26 @@ export const Home: React.FC = () => {
                         </h2>
                         <p className="text-gray-500 text-sm max-w-xs mb-8 mx-auto leading-relaxed">
                             {filterMode === 'campus'
-                                ? 'No more students from your university. Try Global to see others!'
+                                ? 'No more students from your university. Try Global or review who you skipped!'
                                 : 'No more profiles available right now.'}
                         </p>
-                        {filterMode === 'campus' && (
+                        <div className="flex flex-col gap-3">
+                            {filterMode === 'campus' && (
+                                <button
+                                    onClick={() => setFilterMode('global')}
+                                    className="px-6 py-3 bg-gradient-to-r from-neon to-purple-600 text-white rounded-full font-bold text-sm transition-all hover:shadow-[0_0_30px_rgba(255,0,127,0.4)] hover:scale-105 active:scale-95"
+                                >
+                                    Switch to Global
+                                </button>
+                            )}
+
                             <button
-                                onClick={() => setFilterMode('global')}
-                                className="px-6 py-3 bg-gradient-to-r from-neon to-purple-600 text-white rounded-full font-bold text-sm transition-all hover:shadow-[0_0_30px_rgba(255,0,127,0.4)] hover:scale-105 active:scale-95"
+                                onClick={fetchSkippedProfiles}
+                                className="px-6 py-3 bg-gray-800 border border-gray-700 text-gray-300 rounded-full font-bold text-sm transition-all hover:bg-gray-700 hover:text-white hover:border-gray-500 hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
                             >
-                                Switch to Global
+                                <Ghost className="w-4 h-4" /> Review Skipped Profiles
                             </button>
-                        )}
+                        </div>
                     </div>
                 ) : (
                     /* === CARD CONTAINER === */
@@ -641,6 +699,6 @@ export const Home: React.FC = () => {
                     animation: pulse-fast 0.3s ease-in-out 2;
                 }
             `}</style>
-        </div>
+        </div >
     );
 };
