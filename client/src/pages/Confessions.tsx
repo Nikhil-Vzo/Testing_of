@@ -7,15 +7,20 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { analytics } from '../utils/analytics';
 
+import { getRandomQuote } from '../data/loadingQuotes';
+
+// ... other imports
+
 type SortOption = 'newest' | 'oldest' | 'popular' | 'discussed';
 
 const REACTIONS = ['❤️', '😂', '🔥', '😮', '😢', '👀'];
 const POSTS_PER_PAGE = 10;
-const CACHE_KEY = 'otherhalf_confessions_cache';
+const CACHE_KEY = 'otherhalf_confessions_v2';
 
 // --- SKELETON COMPONENT ---
 const ConfessionSkeleton = () => (
     <div className="bg-gray-900/30 border border-gray-800/50 rounded-xl p-4 animate-pulse">
+        {/* ... (existing inner) ... */}
         <div className="flex gap-3 mb-3">
             <div className="w-10 h-10 bg-gray-800 rounded-xl" />
             <div className="flex-1 space-y-2 py-1">
@@ -37,6 +42,18 @@ const ConfessionSkeleton = () => (
         </div>
     </div>
 );
+
+const LoadingOverlay = () => {
+    const [quote] = useState(getRandomQuote());
+    return (
+        <div className="flex flex-col gap-4 relative">
+            <div className="absolute inset-0 z-10 flex items-center justify-center pt-20">
+                <p className="text-white/50 font-serif italic text-sm animate-pulse text-center bg-black/40 px-4 py-2 rounded-full backdrop-blur-sm">{quote}</p>
+            </div>
+            {[1, 2, 3].map(i => <ConfessionSkeleton key={i} />)}
+        </div>
+    );
+};
 
 export const Confessions: React.FC = () => {
     const { currentUser } = useAuth();
@@ -497,88 +514,77 @@ export const Confessions: React.FC = () => {
 
             {/* Feed */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4 pb-32 relative z-10">
-                {isLoading && (
-                    <>
-                        <ConfessionSkeleton />
-                        <ConfessionSkeleton />
-                        <ConfessionSkeleton />
-                    </>
-                )}
-
-                {!isLoading && confessions.length === 0 && (
-                    <div className="text-center py-20">
-                        <Ghost className="w-10 h-10 text-gray-600 mx-auto mb-6" />
-                        <h2 className="text-lg font-bold text-gray-300">It's quiet here...</h2>
-                    </div>
-                )}
-
-                {confessions.map(conf => (
-                    <div key={conf.id} className={`bg-gray-900/30 backdrop-blur-md border rounded-xl p-4 ${conf.id === '46c46dcc-ad75-487d-b5a4-70b03081c222' ? 'border-neon/50' : 'border-gray-800/50'}`}>
-                        {/* Card Content Matches User's + Existing */}
-                        <div className="flex gap-3 mb-3">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${conf.id === '46c46dcc-ad75-487d-b5a4-70b03081c222' ? 'bg-neon text-white' : 'bg-gray-900 border border-gray-800'}`}>
-                                {conf.id === '46c46dcc-ad75-487d-b5a4-70b03081c222' ? <Crown className="w-5 h-5" /> : <span className="text-sm font-bold text-gray-500">?</span>}
-                            </div>
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                    <span className={`text-sm font-bold ${conf.id === '46c46dcc-ad75-487d-b5a4-70b03081c222' ? 'text-neon' : 'text-gray-300'}`}>{conf.id === '46c46dcc-ad75-487d-b5a4-70b03081c222' ? 'Team Other Half' : conf.userId}</span>
-                                </div>
-                                <div className="flex justify-between mt-0.5">
-                                    <p className="text-[10px] text-gray-600 uppercase font-bold">{conf.university}</p>
-                                    <span className="text-[10px] text-gray-600 font-mono">{new Date(conf.timestamp).toLocaleDateString()}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <p className="text-gray-300 text-sm leading-relaxed mb-4 whitespace-pre-wrap">{conf.text}</p>
-                        {conf.imageUrl && <div className="mb-4 rounded-lg overflow-hidden border border-gray-900 bg-black aspect-video" onClick={() => setViewImage(conf.imageUrl || null)}><img src={conf.imageUrl} className="w-full h-full object-cover" /></div>}
-
-                        {conf.type === 'poll' && conf.pollOptions && (
-                            <div className="mb-4 space-y-2 bg-gray-900/30 p-3 rounded-lg border border-gray-900">
-                                {conf.pollOptions.map(option => {
-                                    const total = conf.pollOptions?.reduce((a, b) => a + b.votes, 0) || 0;
-                                    const pct = total > 0 ? Math.round((option.votes / total) * 100) : 0;
-                                    return (
-                                        <button key={option.id} onClick={() => handlePollVote(conf.id, option.id)} disabled={!!conf.userVote} className="w-full relative h-9 rounded border border-gray-800 overflow-hidden">
-                                            <div className="absolute top-0 left-0 h-full bg-gray-800" style={{ width: `${pct}%` }} />
-                                            <div className="absolute inset-0 flex items-center justify-between px-3 z-10"><span className="text-xs font-medium text-gray-400">{option.text}</span>{conf.userVote && <span className="text-[10px] font-bold text-gray-500">{pct}%</span>}</div>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-
-                        <div className="flex flex-col gap-2 border-t border-gray-900 pt-3">
-                            {conf.reactions && Object.values(conf.reactions).some(v => v > 0) && (
-                                <div className="flex flex-wrap gap-1.5 mb-2">{Object.entries(conf.reactions).map(([e, c]) => c > 0 && <span key={e} className="inline-flex items-center gap-1 bg-gray-900 text-[10px] px-2 py-0.5 rounded-full text-gray-400 border border-gray-800">{e} <b>{c}</b></span>)}</div>
-                            )}
-
-                            {/* Comment Preview (Attraction Feature) */}
-                            {!expandedComments[conf.id] && conf.comments && conf.comments.length > 0 && (
-                                <div className="mb-3 bg-gray-900/20 p-2 rounded-lg border border-gray-800/50" onClick={() => toggleComments(conf.id)}>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-[10px] font-bold text-gray-500">{conf.comments[conf.comments.length - 1].userId}</span>
-                                        <span className="text-[9px] text-gray-600">• Recent</span>
+                {!isLoading && (
+                    <div className="space-y-4">
+                        {confessions.map(conf => (
+                            <div key={conf.id} className={`bg-gray-900/30 backdrop-blur-md border rounded-xl p-4 ${conf.id === '46c46dcc-ad75-487d-b5a4-70b03081c222' ? 'border-neon/50' : 'border-gray-800/50'}`}>
+                                {/* Card Content Matches User's + Existing */}
+                                <div className="flex gap-3 mb-3">
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${conf.id === '46c46dcc-ad75-487d-b5a4-70b03081c222' ? 'bg-neon text-white' : 'bg-gray-900 border border-gray-800'}`}>
+                                        {conf.id === '46c46dcc-ad75-487d-b5a4-70b03081c222' ? <Crown className="w-5 h-5" /> : <span className="text-sm font-bold text-gray-500">?</span>}
                                     </div>
-                                    <p className="text-xs text-gray-400 truncate italic">"{conf.comments[conf.comments.length - 1].text.length > 60 ? conf.comments[conf.comments.length - 1].text.slice(0, 60) + '...' : conf.comments[conf.comments.length - 1].text}"</p>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className={`text-sm font-bold ${conf.id === '46c46dcc-ad75-487d-b5a4-70b03081c222' ? 'text-neon' : 'text-gray-300'}`}>{conf.id === '46c46dcc-ad75-487d-b5a4-70b03081c222' ? 'Team Other Half' : conf.userId}</span>
+                                        </div>
+                                        <div className="flex justify-between mt-0.5">
+                                            <p className="text-[10px] text-gray-600 uppercase font-bold">{conf.university}</p>
+                                            <span className="text-[10px] text-gray-600 font-mono">{new Date(conf.timestamp).toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
                                 </div>
-                            )}
+                                <p className="text-gray-300 text-sm leading-relaxed mb-4 whitespace-pre-wrap">{conf.text}</p>
+                                {conf.imageUrl && <div className="mb-4 rounded-lg overflow-hidden border border-gray-900 bg-black aspect-video" onClick={() => setViewImage(conf.imageUrl || null)}><img src={conf.imageUrl} className="w-full h-full object-cover" /></div>}
 
-                            <div className="flex items-center gap-3">
-                                <button onClick={(e) => handleReactionClick(e, conf.id)} className="flex items-center gap-2 text-gray-500 hover:text-white text-xs px-2 py-1 rounded-md hover:bg-gray-900"><SmilePlus className="w-4 h-4" /> React</button>
-                                <button onClick={() => toggleComments(conf.id)} className="flex items-center gap-2 text-gray-500 hover:text-blue-400 text-xs px-2 py-1 rounded-md hover:bg-gray-900"><MessageCircle className="w-4 h-4" /> {conf.comments?.length || 0}</button>
-                            </div>
-                        </div>
+                                {conf.type === 'poll' && conf.pollOptions && (
+                                    <div className="mb-4 space-y-2 bg-gray-900/30 p-3 rounded-lg border border-gray-900">
+                                        {conf.pollOptions.map(option => {
+                                            const total = conf.pollOptions?.reduce((a, b) => a + b.votes, 0) || 0;
+                                            const pct = total > 0 ? Math.round((option.votes / total) * 100) : 0;
+                                            return (
+                                                <button key={option.id} onClick={() => handlePollVote(conf.id, option.id)} disabled={!!conf.userVote} className="w-full relative h-9 rounded border border-gray-800 overflow-hidden">
+                                                    <div className="absolute top-0 left-0 h-full bg-gray-800" style={{ width: `${pct}%` }} />
+                                                    <div className="absolute inset-0 flex items-center justify-between px-3 z-10"><span className="text-xs font-medium text-gray-400">{option.text}</span>{conf.userVote && <span className="text-[10px] font-bold text-gray-500">{pct}%</span>}</div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
 
-                        {expandedComments[conf.id] && (
-                            <div className="mt-3 pt-3 border-t border-gray-900">
-                                <div className="space-y-2 mb-3 max-h-96 overflow-y-auto">
-                                    {conf.comments?.map(c => <div key={c.id} className="bg-gray-900/40 p-2 rounded-lg"><div className="flex justify-between mb-1"><span className="text-[10px] font-bold text-gray-500">{c.userId}</span></div><p className="text-xs text-gray-300">{c.text}</p></div>)}
+                                <div className="flex flex-col gap-2 border-t border-gray-900 pt-3">
+                                    {conf.reactions && Object.values(conf.reactions).some(v => v > 0) && (
+                                        <div className="flex flex-wrap gap-1.5 mb-2">{Object.entries(conf.reactions).map(([e, c]) => c > 0 && <span key={e} className="inline-flex items-center gap-1 bg-gray-900 text-[10px] px-2 py-0.5 rounded-full text-gray-400 border border-gray-800">{e} <b>{c}</b></span>)}</div>
+                                    )}
+
+                                    {/* Comment Preview (Attraction Feature) */}
+                                    {!expandedComments[conf.id] && conf.comments && conf.comments.length > 0 && (
+                                        <div className="mb-3 bg-gray-900/20 p-2 rounded-lg border border-gray-800/50" onClick={() => toggleComments(conf.id)}>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-[10px] font-bold text-gray-500">{conf.comments[conf.comments.length - 1].userId}</span>
+                                                <span className="text-[9px] text-gray-600">• Recent</span>
+                                            </div>
+                                            <p className="text-xs text-gray-400 truncate italic">"{conf.comments[conf.comments.length - 1].text.length > 60 ? conf.comments[conf.comments.length - 1].text.slice(0, 60) + '...' : conf.comments[conf.comments.length - 1].text}"</p>
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-center gap-3">
+                                        <button onClick={(e) => handleReactionClick(e, conf.id)} className="flex items-center gap-2 text-gray-500 hover:text-white text-xs px-2 py-1 rounded-md hover:bg-gray-900"><SmilePlus className="w-4 h-4" /> React</button>
+                                        <button onClick={() => toggleComments(conf.id)} className="flex items-center gap-2 text-gray-500 hover:text-blue-400 text-xs px-2 py-1 rounded-md hover:bg-gray-900"><MessageCircle className="w-4 h-4" /> {conf.comments?.length || 0}</button>
+                                    </div>
                                 </div>
-                                <div className="flex gap-2"><input className="flex-1 bg-black border border-gray-800 rounded-lg px-3 py-2 text-xs text-white" placeholder="Comment..." value={commentInputs[conf.id] || ''} onChange={e => setCommentInputs(p => ({ ...p, [conf.id]: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleCommentSubmit(conf.id)} /><button onClick={() => handleCommentSubmit(conf.id)} className="p-2 bg-gray-800 text-white rounded-lg"><Send className="w-3.5 h-3.5" /></button></div>
+
+                                {expandedComments[conf.id] && (
+                                    <div className="mt-3 pt-3 border-t border-gray-900">
+                                        <div className="space-y-2 mb-3 max-h-96 overflow-y-auto">
+                                            {conf.comments?.map(c => <div key={c.id} className="bg-gray-900/40 p-2 rounded-lg"><div className="flex justify-between mb-1"><span className="text-[10px] font-bold text-gray-500">{c.userId}</span></div><p className="text-xs text-gray-300">{c.text}</p></div>)}
+                                        </div>
+                                        <div className="flex gap-2"><input className="flex-1 bg-black border border-gray-800 rounded-lg px-3 py-2 text-xs text-white" placeholder="Comment..." value={commentInputs[conf.id] || ''} onChange={e => setCommentInputs(p => ({ ...p, [conf.id]: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleCommentSubmit(conf.id)} /><button onClick={() => handleCommentSubmit(conf.id)} className="p-2 bg-gray-800 text-white rounded-lg"><Send className="w-3.5 h-3.5" /></button></div>
+                                    </div>
+                                )}
                             </div>
-                        )}
+                        ))}
                     </div>
-                ))}
+                )}
 
                 {/* Loading More Spinner */}
                 {hasMore && <div ref={observerTarget} className="flex justify-center p-4"><Loader2 className="w-6 h-6 text-neon animate-spin" /></div>}

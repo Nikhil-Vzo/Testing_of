@@ -7,6 +7,8 @@ import { Heart, X, MapPin, GraduationCap, Ghost, Sparkles, School, Globe, Bell }
 import { supabase } from '../lib/supabase';
 import { analytics } from '../utils/analytics';
 
+import { getRandomQuote } from '../data/loadingQuotes';
+
 // Cache key for session storage
 const PROFILES_CACHE_KEY = 'otherhalf_discover_cache';
 const CACHE_EXPIRY_KEY = 'otherhalf_discover_cache_expiry';
@@ -27,27 +29,26 @@ export const Home: React.FC = () => {
     const { currentUser } = useAuth();
     const [queue, setQueue] = useState<MatchProfile[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [quote] = useState(getRandomQuote());
+    const [dragX, setDragX] = useState(0);
+    const [dragY, setDragY] = useState(0);
+    const [startX, setStartX] = useState(0);
+    const [startY, setStartY] = useState(0);
+
     const [filterMode, setFilterMode] = useState<'campus' | 'global'>('campus');
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(true);
     const { unreadCount } = useNotifications();
     const preloadedImages = useRef<Set<string>>(new Set());
 
-    // Enhanced drag state
     const [isDragging, setIsDragging] = useState(false);
-    const [dragX, setDragX] = useState(0);
-    const [dragY, setDragY] = useState(0);
-    const [startX, setStartX] = useState(0);
-    const [startY, setStartY] = useState(0);
-
-    // Animation states
     const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
     const [showSuccessBurst, setShowSuccessBurst] = useState(false);
-    const [isSwiping, setIsSwiping] = useState(false); // Prevent rapid double-taps
+    const [isSwiping, setIsSwiping] = useState(false);
     const cardRef = useRef<HTMLDivElement>(null);
 
-    // Preload images for smoother experience
     const preloadImages = useCallback((profiles: MatchProfile[]) => {
+
         profiles.forEach(profile => {
             if (profile.avatar && !preloadedImages.current.has(profile.avatar)) {
                 const img = new Image();
@@ -424,6 +425,11 @@ export const Home: React.FC = () => {
 
                                 {/* Skeleton Gradient Overlay */}
                                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent via-40% to-black pointer-events-none" />
+
+                                {/* Loading Quote */}
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-6 text-center">
+                                    <p className="text-white/60 font-serif italic text-lg animate-pulse">{quote}</p>
+                                </div>
 
                                 {/* Skeleton Text at Bottom */}
                                 <div className="absolute bottom-0 inset-x-0 p-5 space-y-3">

@@ -14,28 +14,38 @@ import { initiateCall, checkUserBusy } from '../services/callSignaling';
 import { analytics } from '../utils/analytics';
 import { getOptimizedUrl } from '../utils/image';
 
+import { getRandomQuote } from '../data/loadingQuotes';
+
 const MESSAGES_PER_PAGE = 50;
 
-const ChatSkeleton = () => (
-  <div className="h-full w-full bg-black flex flex-col">
-    <div className="flex-none px-4 py-3 border-b border-gray-800 animate-pulse">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-gray-800" />
-        <div className="space-y-1">
-          <div className="h-3 w-28 bg-gray-800 rounded" />
-          <div className="h-2 w-16 bg-gray-700 rounded" />
+const ChatSkeleton = () => {
+  const [quote] = useState(getRandomQuote());
+  return (
+    <div className="h-full w-full bg-black flex flex-col relative">
+      {/* Quote Overlay */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+        <p className="text-white/40 font-serif italic text-sm animate-pulse px-8 text-center">{quote}</p>
+      </div>
+
+      <div className="flex-none px-4 py-3 border-b border-gray-800 animate-pulse">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gray-800" />
+          <div className="space-y-1">
+            <div className="h-3 w-28 bg-gray-800 rounded" />
+            <div className="h-2 w-16 bg-gray-700 rounded" />
+          </div>
         </div>
       </div>
+      <div className="flex-1 p-4 space-y-4">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
+            <div className="h-10 w-48 bg-gray-800/60 rounded-2xl animate-pulse" />
+          </div>
+        ))}
+      </div>
     </div>
-    <div className="flex-1 p-4 space-y-4">
-      {[...Array(5)].map((_, i) => (
-        <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
-          <div className="h-10 w-48 bg-gray-800/60 rounded-2xl animate-pulse" />
-        </div>
-      ))}
-    </div>
-  </div>
-);
+  );
+};
 
 export const Chat: React.FC = () => {
   const { id } = useParams<{ id: string }>();
