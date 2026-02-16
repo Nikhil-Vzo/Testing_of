@@ -1,5 +1,9 @@
 -- Function to get skipped profiles for second chance mode
 -- Returns profiles that the user has PASSED on, ordered by oldest pass first.
+
+-- DROP first to allow changing return type
+DROP FUNCTION IF EXISTS get_skipped_profiles(uuid);
+
 create or replace function get_skipped_profiles(current_user_id uuid)
 returns table (
   id uuid,
@@ -11,7 +15,7 @@ returns table (
   year text,
   interests text[],
   bio text,
-  dob date,
+  dob text, -- CHANGED FROM DATE TO TEXT to match schema
   is_verified boolean,
   avatar text,
   looking_for text[]
@@ -31,7 +35,7 @@ begin
     p.year,
     p.interests,
     p.bio,
-    p.dob,
+    p.dob, -- Ensure this column is actually text in your profiles table
     p.is_verified,
     p.avatar,
     p.looking_for

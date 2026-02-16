@@ -91,7 +91,7 @@ export const Home: React.FC = () => {
                 setIsRecycleMode(true);
                 preloadImages(mappedProfiles.slice(0, 5));
             } else {
-                alert("No skipped profiles found to review.");
+                alert("No skipped profiles found yet! Swipe left on some people first, or your previous history might have been reset during the update.");
             }
         } catch (err) {
             console.error('Error fetching skipped profiles:', err);
@@ -99,6 +99,57 @@ export const Home: React.FC = () => {
             setIsLoading(false);
         }
     };
+
+    // Load users from Supabase (with caching)
+    const fetchFreshData = useCallback(async (showLoading: boolean) => {
+        if (!currentUser || !supabase) return;
+
+        if (showLoading) setIsLoading(true);
+
+        try {
+            // Fetch new matches with server-side filtering
+            let { data, error } = await supabase.rpc('get_potential_matches', {
+                user_id: currentUser.id,
+                match_mode: filterMode,
+                user_university: currentUser.university
+            });
+
+            if (error) {
+                console.error('Error fetching matches:', error);
+                if (showLoading) setIsLoading(false);
+                return;
+            }
+
+            if (data) {
+                const mappedProfiles: MatchProfile[] = data.map((p: any) => ({
+                    id: p.id,
+                    anonymousId: p.anonymous_id,
+                    realName: p.real_name,
+                    gender: p.gender,
+                    university: p.university,
+                    branch: p.branch,
+                    year: p.year,
+                    interests: p.interests || [],
+                    bio: p.bio,
+                    dob: p.dob,
+                    isVerified: p.is_verified,
+                    avatar: p.avatar,
+                    lookingFor: p.looking_for || [],
+                    matchPercentage: Math.floor(Math.random() * (99 - 70 + 1) + 70),
+                    distance: filterMode === 'campus' ? 'On Campus' : 'Global'
+                }));
+
+                // Update state - NO CACHING for now to ensure freshness on mode switch
+                setQueue(mappedProfiles);
+                setIsRecycleMode(false); // Reset recycle mode when fetching fresh
+                preloadImages(mappedProfiles.slice(0, 5));
+            }
+        } catch (err) {
+            console.error('Unexpected error:', err);
+        } finally {
+            if (showLoading) setIsLoading(false);
+        }
+    }, [currentUser, filterMode, preloadImages]);
 
     // Load users from Supabase (with caching)
     useEffect(() => {
@@ -113,90 +164,22 @@ export const Home: React.FC = () => {
             const isFreshSignup = !cachedData;
 
             // 1. Try to load from cache first (instant load) - but only if not a fresh signup
-            if (!isFreshSignup) {
-                const cacheExpiry = sessionStorage.getItem(CACHE_EXPIRY_KEY);
+            // NOTE: We skip cache if we are switching modes, but for initial load okay.
+            // Actually, with the new mode logic, valid cache might be wrong mode.
+            // For now, let's just trigger fresh fetch to be safe and simple.
 
-                if (cachedData && cacheExpiry && Date.now() < parseInt(cacheExpiry)) {
-                    const cached = JSON.parse(cachedData) as MatchProfile[];
-                    setQueue(cached);
-                    setIsLoading(false);
-                    // Preload images for cached data
-                    preloadImages(cached.slice(0, 5));
-                    // Still fetch fresh data in background
-                    fetchFreshData(false);
-                    return;
-                }
-            }
-
-            // 2. No valid cache OR fresh signup, fetch fresh data
-            await fetchFreshData(true);
-        };
-
-        const fetchFreshData = async (showLoading: boolean) => {
-            if (showLoading) setIsLoading(true);
-
-            try {
-                // Try fetching new (unswiped) profiles first using the ORIGINAL algorithm
-                let { data, error } = await supabase!.rpc('get_potential_matches', {
-                    user_id: currentUser!.id
-                });
-
-                if (error) {
-                    console.error('Error fetching matches:', error);
-                    if (showLoading) setIsLoading(false);
-                    return;
-                }
-
-                if (data) {
-                    const mappedProfiles: MatchProfile[] = data.map((p: any) => ({
-                        id: p.id,
-                        anonymousId: p.anonymous_id,
-                        realName: p.real_name,
-                        gender: p.gender,
-                        university: p.university,
-                        branch: p.branch,
-                        year: p.year,
-                        interests: p.interests || [],
-                        bio: p.bio,
-                        dob: p.dob,
-                        isVerified: p.is_verified,
-                        avatar: p.avatar,
-                        lookingFor: p.looking_for || [],
-                        matchPercentage: Math.floor(Math.random() * (99 - 70 + 1) + 70),
-                        distance: 'On Campus'
-                    }));
-
-                    // Cache the data
-                    sessionStorage.setItem(PROFILES_CACHE_KEY, JSON.stringify(mappedProfiles));
-                    sessionStorage.setItem(CACHE_EXPIRY_KEY, (Date.now() + CACHE_DURATION).toString());
-
-                    setQueue(mappedProfiles);
-
-                    // Preload first 5 images immediately
-                    preloadImages(mappedProfiles.slice(0, 5));
-                }
-            } catch (err) {
-                console.error('Unexpected error:', err);
-            } finally {
-                if (showLoading) setIsLoading(false);
-            }
+            // 2. Always fetch fresh data on mount to respect mode
+            fetchFreshData(true);
         };
 
         fetchPotentialMatches();
-    }, [currentUser, preloadImages]);
+    }, [fetchFreshData]);
 
     // Fetch and subscribe to notifications - Handled by Context now
     // useEffect(() => { ... }, [currentUser]);
 
-    // Filter locally instead of refetching
-    const filteredQueue = queue.filter(p => {
-        if (!currentUser) return true;
-        if (filterMode === 'campus') {
-            return p.university === currentUser.university;
-        }
-        // Global: show only students from OTHER universities
-        return p.university !== currentUser.university;
-    });
+    // No more client-side filtering needed!
+    const filteredQueue = queue;
 
     const currentProfile = filteredQueue[currentIndex];
     const nextProfile = filteredQueue[currentIndex + 1];
