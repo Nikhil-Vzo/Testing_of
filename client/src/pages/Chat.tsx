@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCall } from '../context/CallContext';
 import { usePresence } from '../context/PresenceContext';
@@ -38,16 +38,24 @@ const ChatSkeleton = () => (
 );
 
 export const Chat: React.FC = () => {
-  const { id: matchId } = useParams<{ id: string }>();
+  const { id } = useParams<{ id: string }>();
+  const matchId = id!; // Guaranteed by route
+  const location = useLocation(); // Add this hook
   const cacheKey = `otherhalf_chat_${matchId}_v2`;
 
   const [partner, setPartner] = useState<MatchProfile | null>(() => {
+    // 1. Check Navigation State (Fastest)
+    if (location.state?.partner) return location.state.partner;
+    // 2. Check Session Storage
     try { const c = sessionStorage.getItem(cacheKey); return c ? JSON.parse(c).partner : null; } catch { return null; }
   });
+
   const [messages, setMessages] = useState<Message[]>(() => {
     try { const c = sessionStorage.getItem(cacheKey); return c ? JSON.parse(c).messages : []; } catch { return []; }
   });
-  const [loading, setLoading] = useState(() => !partner || messages.length === 0);
+
+  // Loading is only true if we don't have a partner yet. Messages can load lazily.
+  const [loading, setLoading] = useState(() => !partner);
 
   const partnerRef = useRef(partner);
   useEffect(() => { partnerRef.current = partner; }, [partner]);
@@ -88,32 +96,73 @@ export const Chat: React.FC = () => {
   useEffect(() => {
     if (!currentUser || !matchId || !supabase) return;
     if (partner) subscribeToUser(partner.id);
-    if (messages.length > 0 && loading) setTimeout(() => messagesEndRef.current?.scrollIntoView(), 0);
+    if (messages.length > 0) setTimeout(() => messagesEndRef.current?.scrollIntoView(), 0);
+
+    // 4. Persistence Effect: If we have a partner from state, ensure it hits cache immediately
+    // unlikely to cause issues as messages might be empty, but better safe.
+    useEffect(() => {
+      if (location.state?.partner) {
+        try {
+          const currentCache = sessionStorage.getItem(cacheKey);
+          const cachedMessages = currentCache ? JSON.parse(currentCache).messages : [];
+          sessionStorage.setItem(cacheKey, JSON.stringify({ partner: location.state.partner, messages: cachedMessages }));
+        } catch { }
+      }
+    }, [location.state, cacheKey]);
 
     const loadInitialData = async () => {
       try {
-        const { data: matchData, error: matchError } = await supabase.from('matches').select('user_a, user_b').eq('id', matchId).single();
-        if (matchError || !matchData) { if (loading) navigate('/matches'); return; }
-        const partnerId = matchData.user_a === currentUser.id ? matchData.user_b : matchData.user_a;
+        let partnerId = partner?.id;
 
-        const [profileRes, blockStatus, messagesRes] = await Promise.all([
-          supabase.from('profiles').select('id, real_name, anonymous_id, avatar, is_verified').eq('id', partnerId).single(),
-          checkBlockStatus(partnerId),
+        // Fetch partner ID if totally missing (direct link load)
+        if (!partnerId) {
+          const { data: matchData, error: matchError } = await supabase.from('matches').select('user_a, user_b').eq('id', matchId).single();
+          if (matchError || !matchData) { navigate('/matches'); return; }
+          partnerId = matchData.user_a === currentUser.id ? matchData.user_b : matchData.user_a;
+
+          // If we had to fetch ID, we must fetch profile to show anything
+          const { data: profile } = await supabase.from('profiles').select('id, real_name, anonymous_id, avatar, is_verified').eq('id', partnerId).single();
+          if (profile) {
+            const newPartner = {
+              id: profile.id, anonymousId: profile.anonymous_id, realName: profile.real_name,
+              gender: '', university: '', branch: '',
+              year: '', interests: [], bio: '',
+              dob: '', isVerified: profile.is_verified, avatar: profile.avatar,
+              matchPercentage: 0, distance: 'Connected'
+            };
+            setPartner(newPartner);
+            subscribeToUser(partnerId!);
+          }
+        } else {
+          // We have a partner (from State or Cache). 
+          // Refresh profile in BACKGROUND (Fire & Forget) to keep clear of stale data
+          supabase.from('profiles').select('id, real_name, anonymous_id, avatar, is_verified').eq('id', partnerId).single().then(({ data: profile }) => {
+            if (profile) {
+              setPartner(prev => {
+                if (!prev) return prev;
+                const updated = {
+                  ...prev,
+                  realName: profile.real_name,
+                  anonymousId: profile.anonymous_id,
+                  avatar: profile.avatar,
+                  isVerified: profile.is_verified
+                };
+                // Only update if changed (simple check)
+                if (JSON.stringify(prev) !== JSON.stringify(updated)) {
+                  return updated;
+                }
+                return prev;
+              });
+            }
+          });
+        }
+
+        // Parallel Fetch: Messages + Block Status
+        const [blockStatus, messagesRes] = await Promise.all([
+          partnerId ? checkBlockStatus(partnerId) : Promise.resolve({ isBlocked: false, isBlockedBy: false }),
           supabase.from('messages').select('id, sender_id, text, created_at, is_read').eq('match_id', matchId).order('created_at', { ascending: false }).limit(MESSAGES_PER_PAGE)
         ]);
 
-        let newPartner = partner;
-        if (profileRes.data) {
-          newPartner = {
-            id: profileRes.data.id, anonymousId: profileRes.data.anonymous_id, realName: profileRes.data.real_name,
-            gender: '', university: '', branch: '',
-            year: '', interests: [], bio: '',
-            dob: '', isVerified: profileRes.data.is_verified, avatar: profileRes.data.avatar,
-            matchPercentage: 0, distance: 'Connected'
-          };
-          setPartner(newPartner);
-          subscribeToUser(partnerId);
-        }
         setIsBlocked(blockStatus.isBlocked); setIsBlockedByThem(blockStatus.isBlockedBy);
 
         let newMessages: Message[] = messages;
@@ -124,11 +173,17 @@ export const Chat: React.FC = () => {
             isSystem: m.text.startsWith('[SYSTEM]') || m.text.startsWith('📞')
           })).reverse();
           setMessages(newMessages); setHasMoreMessages(messagesRes.data.length === MESSAGES_PER_PAGE);
-          if (loading) setTimeout(() => messagesEndRef.current?.scrollIntoView(), 100);
+          setTimeout(() => messagesEndRef.current?.scrollIntoView(), 100);
         }
-        if (newPartner && newMessages.length > 0) try { sessionStorage.setItem(cacheKey, JSON.stringify({ partner: newPartner, messages: newMessages })); } catch (e) { }
+
+        // Update cache with latest partner (possibly updated) and messages
+        if (partnerRef.current && newMessages.length > 0) {
+          try { sessionStorage.setItem(cacheKey, JSON.stringify({ partner: partnerRef.current, messages: newMessages })); } catch (e) { }
+        }
+
       } catch (err) { console.error('Error loading chat:', err); } finally { setLoading(false); }
     };
+
     loadInitialData();
     return () => { if (partner) unsubscribeFromUser(partner.id); };
   }, [matchId, currentUser]);

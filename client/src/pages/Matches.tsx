@@ -219,7 +219,7 @@ export const Matches: React.FC = () => {
                 try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch (e) { }
                 return updated;
               });
-              navigate(`/chat/${chat.id}`);
+              navigate(`/chat/${chat.id}`, { state: { partner: chat.partner } });
             }} className="group relative bg-gray-900/30 hover:bg-gray-800/50 border border-gray-800/50 hover:border-gray-700 rounded-2xl p-4 transition-all duration-300 cursor-pointer active:scale-[0.98]">
               <div className="flex items-center gap-4">
                 <div className="relative">
