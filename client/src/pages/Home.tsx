@@ -10,7 +10,7 @@ import { analytics } from '../utils/analytics';
 import { getRandomQuote } from '../data/loadingQuotes';
 
 // Cache key for session storage
-const PROFILES_CACHE_KEY = 'otherhalf_discover_cache';
+const PROFILES_CACHE_KEY = 'otherhalf_discover_cache_v2';
 const CACHE_EXPIRY_KEY = 'otherhalf_discover_cache_expiry';
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
