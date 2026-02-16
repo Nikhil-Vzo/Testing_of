@@ -11,9 +11,9 @@ export const Developers: React.FC = () => {
       role: "Lead Developer",
       icon: <Code className="w-8 h-8 text-neon" />,
       links: {
-        instagram: "https://www.instagram.com/nikill_vzo/",
-        github: "https://github.com/Nihil-Vzo"
-        linkedin: "https://www.linkedin.com/in/niil1yadav/"
+        instagram: "https://www.instagram.com/nll_vzo/",
+        github: "https://github.com/NiVzo"
+        linkedin: "https://www.linkedin.com/il1yadav/"
       },
       gradient: "from-neon/20 to-purple-600/20",
       border: "border-neon/30 hover:border-neon/60"
@@ -24,8 +24,8 @@ export const Developers: React.FC = () => {
       icon: <Terminal className="w-8 h-8 text-blue-400" />,
       links: {
         instagram: "https://www.instagram.com/its_eesh_15/",
-        github: "https://github.com/TechNinj"
-        linkedin: "https://www.linkedin.com/in/ava-443034319/"
+        github: "https://github.com/Technj"
+        linkedin: "https://www.linkedin.co034319/"
       },
       gradient: "from-blue-600/20 to-cyan-600/20",
       border: "border-blue-500/30 hover:border-blue-500/60"
