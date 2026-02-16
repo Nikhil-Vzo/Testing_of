@@ -44,7 +44,7 @@ export const Contact: React.FC = () => {
     }
 
     return (
-        <div className="h-full w-full bg-transparent flex flex-col">
+        <div className="h-screen w-full overflow-y-auto overflow-x-hidden bg-black text-white font-sans flex flex-col">
             {/* Header */}
             <div className="px-4 py-3 bg-black/95 backdrop-blur-md border-b border-gray-800 flex items-center gap-3">
                 <button

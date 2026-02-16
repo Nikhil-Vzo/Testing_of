@@ -11,12 +11,13 @@ interface JobPosition {
 }
 
 const POSITIONS: JobPosition[] = [
+    { id: 'pitch', title: 'Pitch Yourself', icon: Send, description: 'Don\'t see your role? Tell us how you can contribute.' },
     { id: 'developer', title: 'Developer', icon: Code2, description: 'Build the future of campus dating. React, Node, Supabase.' },
     { id: 'marketing', title: 'Marketing & Promotions', icon: Megaphone, description: 'Spread the word and grow the community on campus.' },
     { id: 'ui_ux', title: 'UI/UX Designer', icon: Palette, description: 'Craft beautiful, intuitive experiences for students.' },
     { id: 'video_editor', title: 'Video Editor', icon: Video, description: 'Create engaging content for Reels and TikTok.' },
-    { id: 'instagram_manager', title: 'Instagram Manager', icon: Instagram, description: 'Manage our brand voice and engage with the audience.' },
-    { id: 'social_media', title: 'Social Media Manager', icon: Share2, description: 'Strategize and execute social campaigns across platforms.' },
+    { id: 'instagram_manager', title: 'Instagram Manager', icon: Instagram, description: 'Curate our aesthetic, manage stories, and engage with followers.' },
+    { id: 'social_media', title: 'Social Media Manager', icon: Share2, description: 'Drive growth strategy across LinkedIn, X, and other platforms.' },
 ];
 
 export const Careers: React.FC = () => {
