@@ -246,15 +246,15 @@ export const Profile: React.FC = () => {
                                             <span className="text-base md:text-lg">{profileUser.university}</span>
                                         </div>
                                         <span className="hidden md:inline text-gray-700">•</span>
-                                        <div className="flex items-center gap-2">
-                                            <span className="bg-gray-800 px-3 py-1 rounded-full text-xs md:text-sm border border-gray-700 text-gray-300">
+                                        <div className="flex flex-wrap justify-center gap-2">
+                                            <span className="bg-gray-800 px-3 py-1 rounded-full text-xs md:text-sm border border-gray-700 text-gray-300 whitespace-nowrap">
                                                 {profileUser.year}
                                             </span>
-                                            <span className="bg-gray-800 px-3 py-1 rounded-full text-xs md:text-sm border border-gray-700 text-gray-300">
+                                            <span className="bg-gray-800 px-3 py-1 rounded-full text-xs md:text-sm border border-gray-700 text-gray-300 whitespace-nowrap">
                                                 {profileUser.branch}
                                             </span>
                                             {profileUser.dob && (
-                                                <span className="bg-gray-800 px-3 py-1 rounded-full text-xs md:text-sm border border-gray-700 text-gray-300">
+                                                <span className="bg-gray-800 px-3 py-1 rounded-full text-xs md:text-sm border border-gray-700 text-gray-300 whitespace-nowrap">
                                                     {new Date(profileUser.dob).getFullYear()}
                                                 </span>
                                             )}
@@ -450,7 +450,7 @@ export const Profile: React.FC = () => {
                                         <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
                                             <Scale className="w-5 h-5 text-gray-400" /> Company & Legal
                                         </h3>
-                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             {[
                                                 { label: 'About Us', icon: Info, path: '/about' },
                                                 { label: 'Privacy Policy', icon: Lock, path: '/privacy' },

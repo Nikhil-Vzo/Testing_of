@@ -119,7 +119,7 @@ export const Landing: React.FC = () => {
           <Sparkles className="w-3 h-3 text-neon opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
 
-        <h1 className="text-4xl sm:text-6xl md:text-8xl font-black mb-4 sm:mb-6 tracking-tighter leading-none perspective-1000 flex flex-col items-center gap-2 sm:gap-4">
+        <h1 className="text-4xl sm:text-6xl md:text-8xl font-black mb-2 sm:mb-6 tracking-tighter leading-none perspective-1000 flex flex-col items-center gap-1 sm:gap-4">
           <span className="block" style={{ opacity: textRevealed ? 1 : 0, transition: 'opacity 0.5s ease-out 0.2s' }}>
             FIND YOUR
           </span>
