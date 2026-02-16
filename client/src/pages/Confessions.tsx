@@ -514,6 +514,8 @@ export const Confessions: React.FC = () => {
 
             {/* Feed */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4 pb-32 relative z-10">
+                {isLoading && <LoadingOverlay />}
+
                 {!isLoading && (
                     <div className="space-y-4">
                         {confessions.map(conf => (
