@@ -195,7 +195,7 @@ export const AppLayout: React.FC = () => {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col relative min-w-0 bg-black">
         {showStars && <StarField />}
-        <div className="flex-1 overflow-hidden relative w-full h-full z-10 bg-transparent">
+        <div className={`flex-1 overflow-hidden relative w-full h-full z-10 bg-transparent ${!location.pathname.includes('/chat/') ? 'pb-20 md:pb-0' : ''}`}>
           <Outlet />
         </div>
 

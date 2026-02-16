@@ -513,7 +513,7 @@ export const Confessions: React.FC = () => {
             </div>
 
             {/* Feed */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4 pb-32 relative z-10">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4 pb-48 relative z-10">
                 {isLoading && <LoadingOverlay />}
 
                 {!isLoading && (

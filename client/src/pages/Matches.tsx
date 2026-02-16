@@ -223,7 +223,7 @@ export const Matches: React.FC = () => {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-3">
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-3 pb-24">
         {filteredChats.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 opacity-50">
             <Ghost className="w-12 h-12 text-gray-600 mb-4" />
