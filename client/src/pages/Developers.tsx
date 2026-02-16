@@ -5,26 +5,26 @@ import { ArrowLeft, Github, Linkedin, Instagram, Code, Terminal } from 'lucide-r
 export const Developers: React.FC = () => {
   const navigate = useNavigate();
 
- const dvs = [
+ const devs = [
     {
-      name: "Ni",
+      name: "Bacardi limon(750ml) ",
       role: "Lead Developer",
       icon: <Code className="w-8 h-8 text-neon" />,
       links: {
         instagram: "https://www.instagram.com/nll_vzo/",
-        github: "https://github.com/NiVzo"
+        github: "https://github.com/NiVzo",
         linkedin: "https://www.linkedin.com/il1yadav/"
       },
       gradient: "from-neon/20 to-purple-600/20",
       border: "border-neon/30 hover:border-neon/60"
     },
     {
-      name: "A",
+      name: "Frooti(10 wala)",
       role: "Lead Developer",
       icon: <Terminal className="w-8 h-8 text-blue-400" />,
       links: {
         instagram: "https://www.instagram.com/its_eesh_15/",
-        github: "https://github.com/Technj"
+        github: "https://github.com/Technj",
         linkedin: "https://www.linkedin.co034319/"
       },
       gradient: "from-blue-600/20 to-cyan-600/20",
