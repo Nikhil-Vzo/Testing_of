@@ -139,10 +139,19 @@ export const Home: React.FC = () => {
                     distance: filterMode === 'campus' ? 'On Campus' : 'Global'
                 }));
 
-                // Update state - NO CACHING for now to ensure freshness on mode switch
+                // Update state
                 setQueue(mappedProfiles);
-                setIsRecycleMode(false); // Reset recycle mode when fetching fresh
+                setIsRecycleMode(false);
                 preloadImages(mappedProfiles.slice(0, 5));
+
+                // Cache the data safely
+                try {
+                    sessionStorage.setItem(PROFILES_CACHE_KEY, JSON.stringify(mappedProfiles));
+                    sessionStorage.setItem(CACHE_EXPIRY_KEY, (Date.now() + CACHE_DURATION).toString());
+                } catch (e) {
+                    console.warn('Failed to cache profiles:', e);
+                    // If quota exceeded, we just don't cache. No crash.
+                }
             }
         } catch (err) {
             console.error('Unexpected error:', err);
