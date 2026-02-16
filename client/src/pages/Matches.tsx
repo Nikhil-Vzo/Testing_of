@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { usePresence } from '../context/PresenceContext';
 import { supabase } from '../lib/supabase';
 import { MatchProfile } from '../types';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, Ghost, Loader2 } from 'lucide-react';
 import { getBlockList, isBlockedBy } from '../services/blockService';
 import { getOptimizedUrl } from '../utils/image';
@@ -33,12 +33,42 @@ export const Matches: React.FC = () => {
   const { currentUser } = useAuth();
   const { isUserOnline } = usePresence();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // 1. Load from Cache initially for speed
   const [chats, setChats] = useState<ChatPreview[]>(() => {
     try {
       const cached = sessionStorage.getItem(CACHE_KEY);
-      return cached ? JSON.parse(cached) : [];
+      let initialChats = cached ? JSON.parse(cached) : [];
+
+      // CHECK FOR INSTANT UPDATE FROM CHAT
+      // If we just came back from a chat, update that specific match immediately
+      if (location.state?.updatedMatchId) {
+        const { updatedMatchId, lastMessage, lastMessageTime } = location.state;
+
+        initialChats = initialChats.map((c: ChatPreview) => {
+          if (c.id === updatedMatchId) {
+            return {
+              ...c,
+              lastMessage: lastMessage || c.lastMessage,
+              lastMessageTime: lastMessageTime || c.lastMessageTime,
+              unreadCount: 0 // We just read it
+            };
+          }
+          return c;
+        });
+
+        // Re-sort because the timestamp changed
+        initialChats.sort((a: ChatPreview, b: ChatPreview) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
+
+        // Update cache immediately so specific effect isn't needed
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify(initialChats));
+
+        // Clear state to prevent re-runs (optional but cleaner)
+        window.history.replaceState({}, document.title);
+      }
+
+      return initialChats;
     } catch { return []; }
   });
 
