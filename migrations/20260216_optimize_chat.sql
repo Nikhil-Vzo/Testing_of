@@ -7,7 +7,9 @@ CREATE INDEX IF NOT EXISTS idx_messages_match_created
 ON public.messages (match_id, created_at DESC);
 
 -- Index for fetching matches (used in Matches.tsx)
--- This covers: .or(`user_a.eq.${currentUser.id},user_b.eq.${currentUser.id}`)
--- Note: OR queries are hard to index perfectly, but separate indexes on user_a and user_b help
-CREATE INDEX IF NOT EXISTS idx_matches_user_a ON public.matches (user_a);
-CREATE INDEX IF NOT EXISTS idx_matches_user_b ON public.matches (user_b);
+-- optimized for OR query with covering index
+DROP INDEX IF EXISTS idx_matches_user_a;
+DROP INDEX IF EXISTS idx_matches_user_b;
+
+CREATE INDEX IF NOT EXISTS idx_matches_user_a ON public.matches (user_a) INCLUDE (user_b, created_at);
+CREATE INDEX IF NOT EXISTS idx_matches_user_b ON public.matches (user_b) INCLUDE (user_a, created_at);

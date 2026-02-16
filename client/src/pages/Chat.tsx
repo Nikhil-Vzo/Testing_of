@@ -92,23 +92,22 @@ export const Chat: React.FC = () => {
     if (container) { container.addEventListener('contextmenu', preventScreenshot); document.addEventListener('keydown', handleKeyDown); return () => { container.removeEventListener('contextmenu', preventScreenshot); document.removeEventListener('keydown', handleKeyDown); }; }
   }, []);
 
+  // 4. Persistence Effect: If we have a partner from state, ensure it hits cache immediately
+  useEffect(() => {
+    if (location.state?.partner) {
+      try {
+        const currentCache = sessionStorage.getItem(cacheKey);
+        const cachedMessages = currentCache ? JSON.parse(currentCache).messages : [];
+        sessionStorage.setItem(cacheKey, JSON.stringify({ partner: location.state.partner, messages: cachedMessages }));
+      } catch { }
+    }
+  }, [location.state, cacheKey]);
+
   // Initial Load
   useEffect(() => {
     if (!currentUser || !matchId || !supabase) return;
     if (partner) subscribeToUser(partner.id);
     if (messages.length > 0) setTimeout(() => messagesEndRef.current?.scrollIntoView(), 0);
-
-    // 4. Persistence Effect: If we have a partner from state, ensure it hits cache immediately
-    // unlikely to cause issues as messages might be empty, but better safe.
-    useEffect(() => {
-      if (location.state?.partner) {
-        try {
-          const currentCache = sessionStorage.getItem(cacheKey);
-          const cachedMessages = currentCache ? JSON.parse(currentCache).messages : [];
-          sessionStorage.setItem(cacheKey, JSON.stringify({ partner: location.state.partner, messages: cachedMessages }));
-        } catch { }
-      }
-    }, [location.state, cacheKey]);
 
     const loadInitialData = async () => {
       try {
