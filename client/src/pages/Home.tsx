@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase';
 import { analytics } from '../utils/analytics';
 
 import { getRandomQuote } from '../data/loadingQuotes';
+import { safeSetItem } from '../utils/storage';
 
 // Cache key for session storage
 const PROFILES_CACHE_KEY = 'otherhalf_discover_cache_v2';
@@ -292,32 +293,17 @@ export const Home: React.FC = () => {
             setDragY(0);
             setSwipeDirection(null);
 
-            // Remove from queue and update cache immediately to prevent reappearance on refresh
+            // 1. UPDATE STATE & CACHE (Optimistic)
             const nextQueue = queue.filter(p => p.id !== targetId);
             setQueue(nextQueue);
-            sessionStorage.setItem(PROFILES_CACHE_KEY, JSON.stringify(nextQueue));
 
-            // setCurrentIndex is no longer needed as we are removing from queue, 
-            // but if we keep the queue structure we should just ensure we don't go out of bounds.
-            // Actually, better approach for React state is to remove from queue:
-            // But if we want to keep the 'stack' effect, we might just want to persist the *original* list minus this one.
+            // USE SAFE SET ITEM HERE to prevent crash if storage is full
+            safeSetItem(PROFILES_CACHE_KEY, JSON.stringify(nextQueue));
 
-            // Let's stick to the current index approach but update the cache by filtering out the swiped ID.
-            // We need to read the *current* cache to ensure we don't overwrite with old state if something changed,
-            // though here we are the only writer.
+            // 2. UNLOCK UI IMMEDIATELY
+            setIsSwiping(false);
 
-            // Re-read current cache to be safe or just use current queue state if we trust it.
-            // We'll update the cache to exclude the swiped user.
-            const currentCache = sessionStorage.getItem(PROFILES_CACHE_KEY);
-            if (currentCache) {
-                const parsed = JSON.parse(currentCache) as MatchProfile[];
-                const updated = parsed.filter(p => p.id !== targetId);
-                sessionStorage.setItem(PROFILES_CACHE_KEY, JSON.stringify(updated));
-            }
-
-            // currentIndex stays the same because we removed the current item from the queue,
-            // so the next profile naturally slides into the current position.
-
+            // 3. SEND TO DB (Background)
             try {
                 // Use UPSERT to handle recycling (re-swiping on previously passed users)
                 const { error: swipeError } = await supabase
@@ -326,17 +312,13 @@ export const Home: React.FC = () => {
                         liker_id: currentUser.id,
                         target_id: targetId,
                         action: action,
-                        created_at: new Date().toISOString() // Update timestamp to move to back of line if passed again
+                        created_at: new Date().toISOString()
                     }, { onConflict: 'liker_id, target_id' });
 
                 if (swipeError) console.error('Swipe error:', swipeError);
-
-                // Note: Notification logic handled by DB Trigger
             } catch (err) {
                 console.error('Swipe logic error:', err);
             }
-
-            setIsSwiping(false); // Unlock after swipe is fully processed
         }, 200);
     };
 

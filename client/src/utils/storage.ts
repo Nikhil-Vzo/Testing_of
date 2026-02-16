@@ -1,5 +1,5 @@
 // Helper to safely store in sessionStorage with quota handling
-const safeSetItem = (key: string, value: string) => {
+export const safeSetItem = (key: string, value: string) => {
     try {
         sessionStorage.setItem(key, value);
     } catch (e: any) {
