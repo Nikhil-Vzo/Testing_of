@@ -1,6 +1,5 @@
--- Improve Discovery Filtering to fix "Empty Feed" issues.
--- This RPC filters users AT THE DATABASE LEVEL instead of fetching random users and filtering on client.
--- UPDATE: Added case-insensitive matching for University and null checks.
+-- Improve Discovery Filtering with Fuzzy Matching
+-- Fixes issue where "Amity" and "Amity University" were treated as different in Global mode.
 
 DROP FUNCTION IF EXISTS get_potential_matches(uuid, text, text, int, int);
 
@@ -37,11 +36,19 @@ BEGIN
       WHERE b.blocker_id = p.id 
       AND b.blocked_id = get_potential_matches.user_id
     )
-    -- MODE FILTERING (Case Insensitive)
+    -- MODE FILTERING (Fuzzy Matching)
     AND (
-        (match_mode = 'campus' AND LOWER(p.university) = LOWER(user_university))
+        (match_mode = 'campus' AND (
+            LOWER(p.university) = LOWER(user_university) 
+            OR LOWER(p.university) LIKE '%' || LOWER(user_university) || '%'
+            OR LOWER(user_university) LIKE '%' || LOWER(p.university) || '%'
+        ))
         OR
-        (match_mode = 'global' AND LOWER(p.university) != LOWER(user_university))
+        (match_mode = 'global' AND (
+            LOWER(p.university) != LOWER(user_university) 
+            AND NOT (LOWER(p.university) LIKE '%' || LOWER(user_university) || '%')
+            AND NOT (LOWER(user_university) LIKE '%' || LOWER(p.university) || '%')
+        ))
     )
   ORDER BY random()
   LIMIT limit_count;

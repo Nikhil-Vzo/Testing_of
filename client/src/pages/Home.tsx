@@ -65,7 +65,9 @@ export const Home: React.FC = () => {
         setIsLoading(true);
         try {
             const { data, error } = await supabase.rpc('get_skipped_profiles', {
-                current_user_id: currentUser.id
+                current_user_id: currentUser.id,
+                match_mode: filterMode,
+                user_university: currentUser.university
             });
 
             if (error) throw error;
