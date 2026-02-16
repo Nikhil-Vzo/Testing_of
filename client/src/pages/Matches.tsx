@@ -8,6 +8,7 @@ import { Search, Ghost, Loader2 } from 'lucide-react';
 import { getBlockList, isBlockedBy } from '../services/blockService';
 import { getOptimizedUrl } from '../utils/image';
 import { getRandomQuote } from '../data/loadingQuotes';
+import { LoadingState } from '../components/LoadingState';
 
 interface ChatPreview {
   id: string;
@@ -196,70 +197,66 @@ export const Matches: React.FC = () => {
   });
 
   if (loading) {
-    const quote = getRandomQuote();
-    return (
-      <div className="h-full w-full bg-transparent p-4 space-y-4 relative">
-        <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-          <p className="text-white/70 font-serif italic text-sm animate-pulse text-center bg-black/60 px-6 py-3 rounded-full backdrop-blur-md shadow-2xl border border-white/10">“{quote}”</p>
-        </div>
-        <MatchSkeleton /><MatchSkeleton /><MatchSkeleton />
-      </div>
+    <div className="h-full w-full bg-transparent p-4 space-y-4 relative">
+      <LoadingState />
+      <MatchSkeleton /><MatchSkeleton /><MatchSkeleton />
+    </div>
     );
   }
 
-  return (
-    <div className="h-full w-full bg-transparent text-white flex flex-col font-sans">
-      <div className="p-5 border-b border-gray-800/50 bg-black/20 backdrop-blur-md sticky top-0 z-20">
-        <h1 className="text-2xl font-black tracking-tight mb-4 flex items-center gap-2">Matches <span className="bg-neon/10 text-neon text-xs px-2 py-1 rounded-full border border-neon/20">{chats.length}</span></h1>
-        <div className="relative group">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-neon transition-colors" />
-          <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search matches..." className="w-full bg-gray-900/50 border border-gray-800 rounded-xl py-2.5 pl-10 pr-4 text-sm text-gray-200 focus:outline-none focus:border-neon/50 focus:bg-gray-900 transition-all" />
+return (
+  <div className="h-full w-full bg-transparent text-white flex flex-col font-sans">
+    <div className="p-5 border-b border-gray-800/50 bg-black/20 backdrop-blur-md sticky top-0 z-20">
+      <h1 className="text-2xl font-black tracking-tight mb-4 flex items-center gap-2">Matches <span className="bg-neon/10 text-neon text-xs px-2 py-1 rounded-full border border-neon/20">{chats.length}</span></h1>
+      <div className="relative group">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-neon transition-colors" />
+        <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search matches..." className="w-full bg-gray-900/50 border border-gray-800 rounded-xl py-2.5 pl-10 pr-4 text-sm text-gray-200 focus:outline-none focus:border-neon/50 focus:bg-gray-900 transition-all" />
+      </div>
+    </div>
+
+    <div className="px-5 py-3 flex gap-2 overflow-x-auto no-scrollbar">
+      {(['all', 'unread', 'online'] as const).map(f => (
+        <button key={f} onClick={() => setFilter(f)} className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all ${filter === f ? 'bg-white text-black border-white' : 'bg-transparent text-gray-500 border-gray-800 hover:border-gray-600'}`}>{f.charAt(0).toUpperCase() + f.slice(1)}</button>
+      ))}
+    </div>
+
+    <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-3 pb-24">
+      {filteredChats.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 opacity-50">
+          <Ghost className="w-12 h-12 text-gray-600 mb-4" />
+          <p className="text-sm text-gray-400 font-medium">No matches found</p>
         </div>
-      </div>
-
-      <div className="px-5 py-3 flex gap-2 overflow-x-auto no-scrollbar">
-        {(['all', 'unread', 'online'] as const).map(f => (
-          <button key={f} onClick={() => setFilter(f)} className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all ${filter === f ? 'bg-white text-black border-white' : 'bg-transparent text-gray-500 border-gray-800 hover:border-gray-600'}`}>{f.charAt(0).toUpperCase() + f.slice(1)}</button>
-        ))}
-      </div>
-
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-3 pb-24">
-        {filteredChats.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 opacity-50">
-            <Ghost className="w-12 h-12 text-gray-600 mb-4" />
-            <p className="text-sm text-gray-400 font-medium">No matches found</p>
-          </div>
-        ) : (
-          filteredChats.map(chat => (
-            <div key={chat.id} onClick={() => {
-              // === FIX BUG 2: Optimistic Cache Update ===
-              setChats(prev => {
-                const updated = prev.map(c => c.id === chat.id ? { ...c, unreadCount: 0 } : c);
-                try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch (e) { }
-                return updated;
-              });
-              navigate(`/chat/${chat.id}`, { state: { partner: chat.partner } });
-            }} className="group relative bg-gray-900/30 hover:bg-gray-800/50 border border-gray-800/50 hover:border-gray-700 rounded-2xl p-4 transition-all duration-300 cursor-pointer active:scale-[0.98]">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <img src={getOptimizedUrl(chat.partner.avatar, 64)} alt="Avatar" className="w-14 h-14 rounded-full object-cover border-2 border-gray-800 group-hover:border-gray-600 transition-colors" />
-                  {isUserOnline(chat.partner.id) && <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-black rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>}
+      ) : (
+        filteredChats.map(chat => (
+          <div key={chat.id} onClick={() => {
+            // === FIX BUG 2: Optimistic Cache Update ===
+            setChats(prev => {
+              const updated = prev.map(c => c.id === chat.id ? { ...c, unreadCount: 0 } : c);
+              try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch (e) { }
+              return updated;
+            });
+            navigate(`/chat/${chat.id}`, { state: { partner: chat.partner } });
+          }} className="group relative bg-gray-900/30 hover:bg-gray-800/50 border border-gray-800/50 hover:border-gray-700 rounded-2xl p-4 transition-all duration-300 cursor-pointer active:scale-[0.98]">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <img src={getOptimizedUrl(chat.partner.avatar, 64)} alt="Avatar" className="w-14 h-14 rounded-full object-cover border-2 border-gray-800 group-hover:border-gray-600 transition-colors" />
+                {isUserOnline(chat.partner.id) && <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-black rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-start mb-0.5">
+                  <h3 className="text-base font-bold text-gray-100 truncate pr-2 group-hover:text-white transition-colors">{chat.partner.realName || chat.partner.anonymousId}</h3>
+                  {chat.lastMessageTime && <span className="text-[10px] text-gray-500 font-mono whitespace-nowrap">{new Date(chat.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-start mb-0.5">
-                    <h3 className="text-base font-bold text-gray-100 truncate pr-2 group-hover:text-white transition-colors">{chat.partner.realName || chat.partner.anonymousId}</h3>
-                    {chat.lastMessageTime && <span className="text-[10px] text-gray-500 font-mono whitespace-nowrap">{new Date(chat.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <p className={`text-sm truncate pr-4 ${chat.unreadCount > 0 ? 'text-white font-semibold' : 'text-gray-500 group-hover:text-gray-400'}`}>{chat.lastMessage}</p>
-                    {chat.unreadCount > 0 && <div className="bg-neon text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg shadow-neon/20 min-w-[20px] text-center">{chat.unreadCount}</div>}
-                  </div>
+                <div className="flex justify-between items-center">
+                  <p className={`text-sm truncate pr-4 ${chat.unreadCount > 0 ? 'text-white font-semibold' : 'text-gray-500 group-hover:text-gray-400'}`}>{chat.lastMessage}</p>
+                  {chat.unreadCount > 0 && <div className="bg-neon text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg shadow-neon/20 min-w-[20px] text-center">{chat.unreadCount}</div>}
                 </div>
               </div>
             </div>
-          ))
-        )}
-      </div>
+          </div>
+        ))
+      )}
     </div>
-  );
+  </div>
+);
 };
