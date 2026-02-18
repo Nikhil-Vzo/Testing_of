@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { MatchProfile } from '../types';
 import { useNavigate } from 'react-router-dom';
-import { Heart, X, MapPin, GraduationCap, Ghost, Sparkles, School, Globe, Bell } from 'lucide-react';
+import { Heart, X, MapPin, GraduationCap, Ghost, CheckCircle2, School, Globe, Bell } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { analytics } from '../utils/analytics';
 
@@ -608,7 +608,7 @@ export const Home: React.FC = () => {
                                             </span>
                                         )}
                                         {currentProfile.isVerified && (
-                                            <Sparkles className="w-5 h-5 text-blue-400 drop-shadow-lg" />
+                                            <CheckCircle2 className="w-5 h-5 text-blue-400 fill-blue-400/20 drop-shadow-lg" />
                                         )}
                                     </div>
                                     <div className="flex items-center gap-2 mt-1 text-sm text-gray-200">

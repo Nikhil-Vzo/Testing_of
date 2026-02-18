@@ -4,7 +4,7 @@ import { usePresence } from '../context/PresenceContext';
 import { supabase } from '../lib/supabase';
 import { MatchProfile } from '../types';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, Ghost, Loader2 } from 'lucide-react';
+import { Search, Ghost, Loader2, CheckCircle2 } from 'lucide-react';
 import { getBlockList, isBlockedBy } from '../services/blockService';
 import { getOptimizedUrl } from '../utils/image';
 import { getRandomQuote } from '../data/loadingQuotes';
@@ -245,7 +245,12 @@ export const Matches: React.FC = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start mb-0.5">
-                    <h3 className="text-base font-bold text-gray-100 truncate pr-2 group-hover:text-white transition-colors">{chat.partner.realName || chat.partner.anonymousId}</h3>
+                    <div className="flex items-center gap-1 min-w-0 pr-2">
+                      <h3 className="text-base font-bold text-gray-100 truncate group-hover:text-white transition-colors">{chat.partner.realName || chat.partner.anonymousId}</h3>
+                      {chat.partner.isVerified && (
+                        <CheckCircle2 className="w-4 h-4 text-blue-400 fill-blue-400/20 flex-shrink-0" />
+                      )}
+                    </div>
                     {chat.lastMessageTime && <span className="text-[10px] text-gray-500 font-mono whitespace-nowrap">{new Date(chat.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
                   </div>
                   <div className="flex justify-between items-center">

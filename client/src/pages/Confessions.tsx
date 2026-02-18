@@ -129,28 +129,27 @@ export const Confessions: React.FC = () => {
                 const record = (event === 'DELETE' ? payload.old : payload.new) as any;
                 const confessionId = record.confession_id;
 
+                // Skip own reactions — already handled optimistically in handleReaction
+                if (record.user_id === currentUser.id) return;
+
                 setConfessions(prev => {
                     const updated = prev.map(c => {
                         if (c.id !== confessionId) return c;
                         const newReactions = { ...c.reactions };
                         let newLikes = c.likes;
-                        let newUserReaction = c.userReaction;
 
                         if (event === 'INSERT') {
                             newReactions[record.emoji] = (newReactions[record.emoji] || 0) + 1;
                             newLikes += 1;
-                            if (record.user_id === currentUser.id) newUserReaction = record.emoji;
                         } else if (event === 'DELETE') {
                             newReactions[record.emoji] = Math.max(0, (newReactions[record.emoji] || 1) - 1);
                             newLikes = Math.max(0, newLikes - 1);
-                            if (record.user_id === currentUser.id) newUserReaction = undefined;
                         } else if (event === 'UPDATE') {
                             const oldEmoji = (payload.old as any)?.emoji;
                             if (oldEmoji) newReactions[oldEmoji] = Math.max(0, (newReactions[oldEmoji] || 1) - 1);
                             newReactions[record.emoji] = (newReactions[record.emoji] || 0) + 1;
-                            if (record.user_id === currentUser.id) newUserReaction = record.emoji;
                         }
-                        return { ...c, reactions: newReactions, likes: newLikes, userReaction: newUserReaction };
+                        return { ...c, reactions: newReactions, likes: newLikes };
                     });
                     try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch { }
                     return updated;
@@ -159,17 +158,22 @@ export const Confessions: React.FC = () => {
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'confession_comments' }, async (payload) => {
                 const record = payload.new as any;
                 const confessionId = record.confession_id;
+
+                // Skip own comments — already added optimistically in handleCommentSubmit
+                if (record.user_id === currentUser.id) return;
+
                 setConfessions(prev => {
                     const updated = prev.map(c => {
                         if (c.id !== confessionId) return c;
                         if (expandedCommentsRef.current[confessionId]) {
-                            const newComment = { id: record.id, userId: record.user_id === currentUser.id ? 'You' : 'Anonymous', text: record.text, timestamp: new Date(record.created_at).getTime() };
+                            // Dedup by ID before adding
                             if (c.comments?.some(com => com.id === record.id)) return c;
+                            const newComment = { id: record.id, userId: 'Anonymous', text: record.text, timestamp: new Date(record.created_at).getTime() };
                             return { ...c, comments: [...(c.comments || []), newComment] };
                         }
+                        // Not expanded — just bump the count with a placeholder
                         return { ...c, comments: [...(c.comments || []), { id: record.id, userId: '', text: '', timestamp: 0 }] };
                     });
-                    // Only update session storage if meaningful change? Maybe skip for comments to avoid thrashing
                     return updated;
                 });
             })
@@ -465,8 +469,14 @@ export const Confessions: React.FC = () => {
         setExpandedComments(prev => ({ ...prev, [confessionId]: true }));
 
         try {
-            await supabase!.from('confession_comments').insert({ confession_id: confessionId, user_id: currentUser.id, text: text.trim() });
-            // Ideally replace ID, but strictly not required for display
+            const { data: inserted } = await supabase!.from('confession_comments').insert({ confession_id: confessionId, user_id: currentUser.id, text: text.trim() }).select('id').single();
+            // Replace the optimistic temp ID with the real DB ID to prevent future dedup issues
+            if (inserted?.id) {
+                setConfessions(prev => prev.map(c => {
+                    if (c.id !== confessionId) return c;
+                    return { ...c, comments: c.comments.map(com => com.id === optimisticComment.id ? { ...com, id: inserted.id } : com) };
+                }));
+            }
         } catch (err) { console.error(err); }
     };
 
