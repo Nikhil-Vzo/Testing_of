@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Heart, XCircle, GraduationCap, User, Sparkles, MapPin } from 'lucide-react';
+import { X, Heart, XCircle, GraduationCap, User, BadgeCheck, MapPin } from 'lucide-react';
 
 interface ProfileData {
     id: string;
@@ -69,7 +69,7 @@ export const ProfilePreviewModal: React.FC<ProfilePreviewModalProps> = ({
                                 {profile.anonymousId}
                             </h2>
                             {profile.isVerified && (
-                                <Sparkles className="w-6 h-6 text-blue-400 drop-shadow-lg" />
+                                <BadgeCheck className="w-6 h-6 drop-shadow-[0_0_6px_rgba(96,165,250,0.8)]" style={{ color: '#60a5fa' }} />
                             )}
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-200 drop-shadow-lg">

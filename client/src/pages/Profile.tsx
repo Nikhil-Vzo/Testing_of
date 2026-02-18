@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'; // Changed: Import Supabase
 import { UserProfile } from '../types';
 import { NeonButton, NeonInput } from '../components/Common';
 import {
-    Edit2, Camera, X, Ghost, User, GraduationCap, CheckCircle2,
+    Edit2, Camera, X, Ghost, User, GraduationCap, BadgeCheck, CheckCircle2,
     LogOut, ChevronDown, Settings, Lock, ShieldBan,
     MessageCircle, Mail, Phone, Loader2, Heart, Search,
     Download, Smartphone, ExternalLink, Code, Scale, FileText,
@@ -227,8 +227,8 @@ export const Profile: React.FC = () => {
                                     )}
                                 </div>
                                 {profileUser.isVerified && (
-                                    <div className="absolute bottom-2 right-2 md:bottom-4 md:right-4 bg-blue-500 text-white p-1.5 md:p-2 rounded-full border-4 border-[#0a0a0a] shadow-lg animate-bounce-in" title="Verified Student">
-                                        <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6" />
+                                    <div className="absolute bottom-2 right-2 md:bottom-4 md:right-4 bg-gradient-to-br from-blue-500 to-blue-600 text-white p-1.5 md:p-2 rounded-full border-4 border-[#0a0a0a] shadow-[0_0_16px_rgba(96,165,250,0.7)] animate-bounce-in" title="Verified Student">
+                                        <BadgeCheck className="w-5 h-5 md:w-6 md:h-6" />
                                     </div>
                                 )}
                             </div>

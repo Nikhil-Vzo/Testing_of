@@ -4,7 +4,7 @@ import { usePresence } from '../context/PresenceContext';
 import { supabase } from '../lib/supabase';
 import { MatchProfile } from '../types';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, Ghost, Loader2, CheckCircle2 } from 'lucide-react';
+import { Search, Ghost, Loader2, BadgeCheck } from 'lucide-react';
 import { getBlockList, isBlockedBy } from '../services/blockService';
 import { getOptimizedUrl } from '../utils/image';
 import { getRandomQuote } from '../data/loadingQuotes';
@@ -248,7 +248,7 @@ export const Matches: React.FC = () => {
                     <div className="flex items-center gap-1 min-w-0 pr-2">
                       <h3 className="text-base font-bold text-gray-100 truncate group-hover:text-white transition-colors">{chat.partner.realName || chat.partner.anonymousId}</h3>
                       {chat.partner.isVerified && (
-                        <CheckCircle2 className="w-4 h-4 text-blue-400 fill-blue-400/20 flex-shrink-0" />
+                        <BadgeCheck className="w-4 h-4 flex-shrink-0 drop-shadow-[0_0_4px_rgba(96,165,250,0.8)]" style={{ color: '#60a5fa' }} />
                       )}
                     </div>
                     {chat.lastMessageTime && <span className="text-[10px] text-gray-500 font-mono whitespace-nowrap">{new Date(chat.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
