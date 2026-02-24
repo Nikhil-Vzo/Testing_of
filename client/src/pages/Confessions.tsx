@@ -201,20 +201,38 @@ export const Confessions: React.FC = () => {
                     profiles (anonymous_id, avatar)
                 )
             `)
+            .order('created_at', { foreignTable: 'confession_comments', ascending: false })
+            .limit(3, { foreignTable: 'confession_comments' })
             .range(from, to);
 
-        if (sortType === 'newest') query = query.order('created_at', { ascending: false });
-        else if (sortType === 'oldest') query = query.order('created_at', { ascending: true });
-        else query = query.order('created_at', { ascending: false });
+        // Also query total comment counts (lightweight — just IDs)
+        let countQuery = supabase.from('confessions')
+            .select(`id, confession_comments(id)`)
+            .range(from, to);
 
-        const { data: posts, error } = await query;
+        if (sortType === 'newest') {
+            query = query.order('created_at', { ascending: false });
+            countQuery = countQuery.order('created_at', { ascending: false });
+        } else if (sortType === 'oldest') {
+            query = query.order('created_at', { ascending: true });
+            countQuery = countQuery.order('created_at', { ascending: true });
+        } else {
+            query = query.order('created_at', { ascending: false });
+            countQuery = countQuery.order('created_at', { ascending: false });
+        }
 
-        if (error) {
+        const [{ data: posts, error }, { data: countData }] = await Promise.all([query, countQuery]);
+
+        if (error || !posts) {
             console.error('Error:', error);
             setIsLoading(false);
             setIsLoadingMore(false);
             return;
         }
+
+        // Build comment count map
+        const commentCountMap = new Map<string, number>();
+        countData?.forEach((p: any) => commentCountMap.set(p.id, p.confession_comments?.length || 0));
 
         if (posts.length < POSTS_PER_PAGE) setHasMore(false);
 
@@ -238,6 +256,7 @@ export const Confessions: React.FC = () => {
                     text: c.text,
                     timestamp: new Date(c.created_at).getTime()
                 })) || [],
+                commentCount: commentCountMap.get(p.id) || 0,
                 university: p.university, type: p.type as 'text' | 'poll',
                 pollOptions: p.poll_options?.map((opt: any) => ({ id: opt.id, text: opt.text, votes: opt.vote_count })),
                 userVote: myVoteMap.get(p.id),
@@ -577,7 +596,7 @@ export const Confessions: React.FC = () => {
 
                                     <div className="flex items-center gap-3">
                                         <button onClick={(e) => handleReactionClick(e, conf.id)} className="flex items-center gap-2 text-gray-500 hover:text-white text-xs px-2 py-1 rounded-md hover:bg-gray-900"><SmilePlus className="w-4 h-4" /> React</button>
-                                        <button onClick={() => toggleComments(conf.id)} className="flex items-center gap-2 text-gray-500 hover:text-blue-400 text-xs px-2 py-1 rounded-md hover:bg-gray-900"><MessageCircle className="w-4 h-4" /> {conf.comments?.length || 0}</button>
+                                        <button onClick={() => toggleComments(conf.id)} className="flex items-center gap-2 text-gray-500 hover:text-blue-400 text-xs px-2 py-1 rounded-md hover:bg-gray-900"><MessageCircle className="w-4 h-4" /> {conf.commentCount ?? conf.comments?.length ?? 0}</button>
                                     </div>
                                 </div>
 

@@ -64,13 +64,12 @@ export default function App() {
   const { isCallActive, appId, channelName, token, partnerName, partnerAvatar, endCall, incomingCall, outgoingCall, acceptCall, rejectCall, setOutgoingCall, callType, callSessionId } = useCall();
 
   useEffect(() => {
-    // Check if we've already shown intro this session (optional, here we show it every refresh for effect as requested)
-    // const hasShown = sessionStorage.getItem('hasShownIntro');
-    // if (hasShown) setShowIntro(false);
+    const hasShown = sessionStorage.getItem('hasShownIntro');
+    if (hasShown) setShowIntro(false);
   }, []);
 
   const handleIntroComplete = () => {
-    // sessionStorage.setItem('hasShownIntro', 'true');
+    sessionStorage.setItem('hasShownIntro', 'true');
     setShowIntro(false);
   };
 

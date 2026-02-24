@@ -10,6 +10,19 @@ export default defineConfig({
       'peerjs': path.resolve(__dirname, '../node_modules/peerjs')
     }
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'supabase-vendor': ['@supabase/supabase-js'],
+          'three-vendor': ['three'],
+          'agora-vendor': ['agora-rtc-sdk-ng', 'agora-rtc-react'],
+          'ui-vendor': ['lucide-react', 'emoji-picker-react'],
+        }
+      }
+    }
+  },
   server: {
     port: 5173,
     proxy: {

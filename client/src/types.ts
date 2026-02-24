@@ -71,6 +71,7 @@ export interface Confession {
   likes: number;
   reactions?: Record<string, number>;
   comments: Comment[];
+  commentCount?: number; // Total count, separate from limited comments array
   university: string;
   type?: 'text' | 'poll';
   pollOptions?: PollOption[];

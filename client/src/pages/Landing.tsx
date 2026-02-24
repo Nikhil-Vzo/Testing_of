@@ -1,9 +1,11 @@
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, Suspense, lazy } from 'react';
 import { Ghost, Heart, Shield, ArrowRight, Instagram, Twitter, Sparkles } from 'lucide-react';
 import { NeonButton } from '../components/Common';
 import { useNavigate, Link } from 'react-router-dom';
-import { LiquidBackground } from '../components/LiquidBackground';
+
+// Lazy load to avoid blocking initial paint with Three.js (~600KB)
+const LiquidBackground = lazy(() => import('../components/LiquidBackground').then(m => ({ default: m.LiquidBackground })));
 import { HeartCursor } from '../components/HeartCursor';
 import { useAuth } from '../context/AuthContext';
 
@@ -67,8 +69,10 @@ export const Landing: React.FC = () => {
 
   return (
     <div className="h-screen w-full overflow-y-auto overflow-x-hidden bg-black text-white font-sans selection:bg-neon selection:text-white relative flex flex-col">
-      {/* WebGL Liquid Background */}
-      <LiquidBackground />
+      {/* WebGL Liquid Background — lazy loaded */}
+      <Suspense fallback={<div className="fixed inset-0 z-0 bg-black" />}>
+        <LiquidBackground />
+      </Suspense>
 
       {/* Heart Cursor */}
       <HeartCursor />
@@ -156,7 +160,7 @@ export const Landing: React.FC = () => {
         >
           <button
             onClick={onEnter}
-            className="group px-5 py-3 sm:px-6 sm:py-4 md:px-16 md:py-8 bg-neon text-white font-black text-base sm:text-lg md:text-3xl uppercase tracking-wider sm:tracking-widest rounded-full hover:scale-105 active:scale-95 transition-all duration-300 shadow-[0_0_40px_rgba(255,0,127,0.6)] hover:shadow-[0_0_80px_rgba(255,0,127,0.9)]"
+            className="group px-5 py-3 sm:px-6 sm:py-4 md:px-10 md:py-5 bg-neon text-white font-black text-base sm:text-lg md:text-xl uppercase tracking-wider sm:tracking-widest rounded-full hover:scale-105 active:scale-95 transition-all duration-300 shadow-[0_0_40px_rgba(255,0,127,0.6)] hover:shadow-[0_0_80px_rgba(255,0,127,0.9)]"
           >
             <span className="flex items-center gap-2 sm:gap-3">
               <span className="hidden sm:inline">Find Your Othrhalff</span>

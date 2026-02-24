@@ -172,9 +172,35 @@ export const Matches: React.FC = () => {
     loadMatches();
 
     const channel = supabase.channel('matches-list-updates')
-      // INSERT: new message arrived
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
-        refreshMatches();
+      // INSERT: new message arrived — optimistically update local state
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+        const msg = payload.new as any;
+        setChats(prev => {
+          // Find the chat this message belongs to
+          const matchId = msg.match_id;
+          const chatIndex = prev.findIndex(c => c.id === matchId);
+          if (chatIndex === -1) {
+            // New match we don't have yet — fall back to full refresh
+            refreshMatches();
+            return prev;
+          }
+
+          // Update the existing chat entry optimistically
+          const updated = [...prev];
+          const chat = { ...updated[chatIndex] };
+          chat.lastMessage = msg.content || msg.text || '';
+          chat.lastMessageTime = msg.created_at ? new Date(msg.created_at).getTime() : Date.now();
+          // Only increment unread if the message is from the partner (not us)
+          if (msg.sender_id !== currentUser?.id) {
+            chat.unreadCount = (chat.unreadCount || 0) + 1;
+          }
+          updated[chatIndex] = chat;
+
+          // Re-sort by latest message
+          updated.sort((a, b) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
+          try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch (e) { }
+          return updated;
+        });
       })
       // UPDATE: is_read changed (e.g. partner marked messages read)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, () => {
@@ -223,9 +249,13 @@ export const Matches: React.FC = () => {
 
       <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-3 pb-24">
         {filteredChats.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 opacity-50">
-            <Ghost className="w-12 h-12 text-gray-600 mb-4" />
-            <p className="text-sm text-gray-400 font-medium">No matches found</p>
+          <div className="flex flex-col items-center justify-center py-20">
+            <Ghost className="w-16 h-16 text-gray-700 mb-4" />
+            <p className="text-base font-bold text-gray-400 mb-2">No matches yet</p>
+            <p className="text-sm text-gray-600 mb-6 text-center max-w-xs">Start swiping to find your OthrHalff — they're waiting for you!</p>
+            <button onClick={() => navigate('/home')} className="px-6 py-3 bg-neon text-white font-bold text-sm uppercase tracking-wider rounded-full hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,0,127,0.4)]">
+              Start Discovering
+            </button>
           </div>
         ) : (
           filteredChats.map(chat => (

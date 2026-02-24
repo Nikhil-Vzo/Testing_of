@@ -35,7 +35,7 @@ export const AppLayout: React.FC = () => {
       // 2. Count Matches
       const { count: matchesCount } = await supabase
         .from('matches')
-        .select('*', { count: 'exact', head: true })
+        .select('*', { count: 'estimated', head: true })
         .or(`user_a.eq.${currentUser.id},user_b.eq.${currentUser.id}`);
 
       setMatchCount(matchesCount || 0);
@@ -166,7 +166,7 @@ export const AppLayout: React.FC = () => {
                   {currentUser?.avatar ? (
                     <img src={currentUser.avatar} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                    <div className="w-full h-full bg-gray-800 flex items-center justify-center" style={{ background: `linear-gradient(135deg, hsl(${(currentUser?.anonymousId?.charCodeAt(0) || 0) * 7 % 360}, 70%, 40%), hsl(${(currentUser?.anonymousId?.charCodeAt(1) || 0) * 13 % 360}, 70%, 50%))` }}>
                       <span className="text-white text-xs font-bold">{currentUser?.anonymousId?.slice(-2)}</span>
                     </div>
                   )}
@@ -209,10 +209,11 @@ export const AppLayout: React.FC = () => {
               <span className="text-[10px] font-bold tracking-wider">DISCOVER</span>
             </button>
 
-            <button onClick={() => navigate('/matches')} className={`p-2 flex flex-col items-center gap-1 ${isActive('/matches') ? 'text-neon' : 'text-gray-600'}`}>
+            <button onClick={() => navigate('/matches')} className={`p-2 flex flex-col items-center gap-1 relative ${isActive('/matches') ? 'text-neon' : 'text-gray-600'}`}>
               <div className={`p-1 rounded-xl ${isActive('/matches') ? 'bg-neon/10' : ''}`}>
                 <MessageCircle className="w-6 h-6" />
               </div>
+              {matchCount > 0 && <span className="absolute top-0.5 right-1 bg-neon text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full min-w-[16px] text-center shadow-[0_0_8px_rgba(255,0,127,0.4)]">{matchCount > 99 ? '99+' : matchCount}</span>}
               <span className="text-[10px] font-bold tracking-wider">CHATS</span>
             </button>
 
