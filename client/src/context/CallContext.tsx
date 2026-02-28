@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { subscribeToIncomingCalls, CallSession, answerCall as answerCallAPI, rejectCall as rejectCallAPI, endCall as endCallAPI } from '../services/callSignaling';
+import { supabase } from '../lib/supabase';
 
 interface IncomingCall {
   callSessionId: string;
@@ -141,9 +142,35 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
           callType: callSession.call_type || 'video'
         }));
 
-        // Auto-reject after 30 seconds
-        callTimeoutRef.current = setTimeout(() => {
+        // Auto-reject after 30 seconds + send missed call notification
+        callTimeoutRef.current = setTimeout(async () => {
+          const callerName = callerProfile?.real_name || callerProfile?.anonymous_id || 'Someone';
+          const callTypeLabel = callSession.call_type === 'audio' ? 'voice' : 'video';
+
           handleRejectCall(callSession.id);
+
+          // 1. Insert notification into DB (shows in Notifications page)
+          try {
+            await supabase.from('notifications').insert({
+              user_id: currentUser!.id,
+              from_user_id: callSession.caller_id,
+              type: 'system',
+              title: `📞 Missed ${callTypeLabel} call`,
+              message: `You missed a ${callTypeLabel} call from ${callerName}`,
+              read: false
+            });
+          } catch (err) {
+            console.error('[CallContext] Failed to insert missed call notification:', err);
+          }
+
+          // 2. Browser notification (if permissions granted)
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(`Missed ${callTypeLabel} call`, {
+              body: `${callerName} tried to call you`,
+              icon: callerProfile?.avatar || '/favicon.png',
+              tag: `missed-call-${callSession.id}`
+            });
+          }
         }, 30000);
       }
     });
