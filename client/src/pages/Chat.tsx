@@ -51,7 +51,7 @@ export const Chat: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const matchId = id!; // Guaranteed by route
   const location = useLocation(); // Add this hook
-  const cacheKey = `otherhalf_chat_${matchId}_v2`;
+  const cacheKey = `otherhalf_chat_${matchId}_v3`;
 
   const [partner, setPartner] = useState<MatchProfile | null>(() => {
     // 1. Check Navigation State (Fastest)

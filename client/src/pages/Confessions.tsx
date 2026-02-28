@@ -16,7 +16,7 @@ type SortOption = 'newest' | 'oldest' | 'popular' | 'discussed';
 
 const REACTIONS = ['❤️', '😂', '🔥', '😮', '😢', '👀'];
 const POSTS_PER_PAGE = 10;
-const CACHE_KEY = 'otherhalf_confessions_v2';
+const CACHE_KEY = 'otherhalf_confessions_v3';
 
 // --- SKELETON COMPONENT ---
 const ConfessionSkeleton = () => (

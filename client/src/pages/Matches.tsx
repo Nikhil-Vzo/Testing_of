@@ -19,7 +19,7 @@ interface ChatPreview {
 }
 
 // v3 Key to force cache clear for the new logic
-const CACHE_KEY = 'otherhalf_matches_cache_v4';
+const CACHE_KEY = 'otherhalf_matches_cache_v5';
 
 const MatchSkeleton = () => (
   <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-900/30 border border-gray-800/50 animate-pulse">

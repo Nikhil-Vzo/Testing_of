@@ -11,8 +11,8 @@ import { getRandomQuote } from '../data/loadingQuotes';
 import { safeSetItem } from '../utils/storage';
 
 // Cache key for session storage
-const PROFILES_CACHE_KEY = 'otherhalf_discover_cache_v2';
-const CACHE_EXPIRY_KEY = 'otherhalf_discover_cache_expiry';
+const PROFILES_CACHE_KEY = 'otherhalf_discover_cache_v3';
+const CACHE_EXPIRY_KEY = 'otherhalf_discover_cache_expiry_v3';
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Calculate age from DOB string
