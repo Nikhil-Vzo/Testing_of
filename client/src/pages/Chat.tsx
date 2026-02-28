@@ -71,7 +71,7 @@ export const Chat: React.FC = () => {
   useEffect(() => { partnerRef.current = partner; }, [partner]);
 
   const { currentUser } = useAuth();
-  const { startCall, setOutgoingCall, isCallActive } = useCall();
+  const { startCall, setOutgoingCall, setOutgoingCallSessionId, isCallActive } = useCall();
   const { subscribeToUser, unsubscribeFromUser, isUserOnline, getLastSeen } = usePresence();
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -291,12 +291,13 @@ export const Chat: React.FC = () => {
     try {
       const s = await initiateCall(partner.id, matchId, { id: currentUser.id, name: currentUser.realName, avatar: currentUser.avatar || '', callType: type });
       if (!s) throw new Error('Fail');
-      const t = setTimeout(async () => { setOutgoingCall(null); setIsStartingCall(false); showToast('No answer', 'info'); await insertSystemMessage('📞 Missed Call'); }, 30000);
+      setOutgoingCallSessionId(s.id);
+      const t = setTimeout(async () => { setOutgoingCall(null); setOutgoingCallSessionId(''); setIsStartingCall(false); showToast('No answer', 'info'); await insertSystemMessage('📞 Missed Call'); }, 30000);
       const ch = supabase.channel(`call:${s.id}`).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'call_sessions', filter: `id=eq.${s.id}` }, async (payload: any) => {
         if (payload.new.status === 'active') { clearTimeout(t); supabase.removeChannel(ch); startCall(partner.realName, partner.avatar || '', s.app_id, s.channel_name, s.token, type, s.id); setIsStartingCall(false); }
         else if (payload.new.status === 'rejected') { clearTimeout(t); supabase.removeChannel(ch); setOutgoingCall(null); setIsStartingCall(false); showToast('Declined', 'info'); await insertSystemMessage('📞 Call Declined'); }
       }).subscribe();
-    } catch { showToast('Call failed', 'error'); setOutgoingCall(null); setIsStartingCall(false); }
+    } catch { showToast('Call failed', 'error'); setOutgoingCall(null); setOutgoingCallSessionId(''); setIsStartingCall(false); }
   };
   const insertSystemMessage = async (text: string) => { if (!currentUser || !matchId) return; try { await supabase.from('messages').insert({ match_id: matchId, sender_id: currentUser.id, text: text.startsWith('📞') ? text : `[SYSTEM] ${text}` }); } catch { } };
   const handleBlockUser = () => { if (!partner) return; showConfirm(isBlocked ? 'Unblock' : 'Block', `Confirm?`, async () => { if (isBlocked ? await unblockUser(partner.id) : await blockUser(partner.id)) { setIsBlocked(!isBlocked); setShowMenu(false); showToast('Success', 'success'); } }, !isBlocked); };

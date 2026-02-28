@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import AgoraRTC, {
   IAgoraRTCRemoteUser,
   ICameraVideoTrack,
   IMicrophoneAudioTrack
 } from 'agora-rtc-sdk-ng';
-import { X, Mic, MicOff, Video as VideoIcon, VideoOff, PhoneOff, ShieldCheck } from 'lucide-react';
+import { X, Mic, MicOff, Video as VideoIcon, VideoOff, PhoneOff, ShieldCheck, Wifi, WifiOff } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { endCall as endCallAPI } from '../services/callSignaling';
 import { supabase } from '../lib/supabase';
@@ -29,6 +29,37 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
   const [isJoined, setIsJoined] = useState(false);
   const [client] = useState(() => AgoraRTC.createClient({ mode: 'rtc', codec: 'h264' }));
   const { showToast } = useToast();
+
+  // === FIX 1: Use refs to avoid stale closures in cleanup ===
+  const localVideoTrackRef = useRef<ICameraVideoTrack | null>(null);
+  const localAudioTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
+  useEffect(() => { localVideoTrackRef.current = localVideoTrack; }, [localVideoTrack]);
+  useEffect(() => { localAudioTrackRef.current = localAudioTrack; }, [localAudioTrack]);
+
+  // === FIX 2: Call duration timer ===
+  const [callDuration, setCallDuration] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (isJoined) {
+      timerRef.current = setInterval(() => {
+        setCallDuration(prev => prev + 1);
+      }, 1000);
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [isJoined]);
+
+  const formatDuration = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  // === FIX 3: Network quality indicator ===
+  const [networkQuality, setNetworkQuality] = useState<number>(0); // 0=unknown, 1=excellent, 2=good, 3=poor, 4=bad, 5=very bad, 6=disconnected
+
+  // === FIX 4: Reconnection state ===
+  const [isReconnecting, setIsReconnecting] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -70,6 +101,24 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
         client.on('user-left', (user) => {
           console.log('User left:', user.uid);
           setRemoteUsers((prev) => prev.filter(u => u.uid !== user.uid));
+        });
+
+        // Network quality monitoring
+        client.on('network-quality', (stats) => {
+          setNetworkQuality(stats.downlinkNetworkQuality);
+        });
+
+        // Auto-reconnection handling
+        client.on('connection-state-change', (curState, prevState) => {
+          console.log(`[Call] Connection: ${prevState} → ${curState}`);
+          if (curState === 'RECONNECTING') {
+            setIsReconnecting(true);
+          } else if (curState === 'CONNECTED') {
+            setIsReconnecting(false);
+          } else if (curState === 'DISCONNECTED') {
+            setIsReconnecting(false);
+            showToast('Call disconnected', 'error');
+          }
         });
 
         // Join channel
@@ -124,11 +173,12 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
     init();
 
     return () => {
-      // Cleanup
-      localAudioTrack?.close();
-      localVideoTrack?.close();
+      // Cleanup using refs (avoids stale closure bug)
+      localAudioTrackRef.current?.close();
+      localVideoTrackRef.current?.close();
       client.leave();
       client.removeAllListeners();
+      if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [appId, channelName, token, onLeave, callType]);
 
@@ -210,8 +260,10 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
   };
 
   const handleEndCall = async () => {
-    localAudioTrack?.close();
-    localVideoTrack?.close();
+    // Use refs to ensure we close the actual current tracks
+    localAudioTrackRef.current?.close();
+    localVideoTrackRef.current?.close();
+    if (timerRef.current) clearInterval(timerRef.current);
     client.leave();
 
     // Update DB status to 'ended'
@@ -222,6 +274,20 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
     onLeave();
   };
 
+  // Network quality helper
+  const getNetworkIcon = () => {
+    if (networkQuality <= 2) return <Wifi className="w-4 h-4 text-green-400" />;
+    if (networkQuality <= 4) return <Wifi className="w-4 h-4 text-yellow-400" />;
+    return <WifiOff className="w-4 h-4 text-red-400" />;
+  };
+
+  const getNetworkLabel = () => {
+    if (networkQuality === 0) return '';
+    if (networkQuality <= 2) return 'Strong';
+    if (networkQuality <= 4) return 'Weak';
+    return 'Poor';
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col">
       {/* Header */}
@@ -230,8 +296,13 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
           <ShieldCheck className="w-5 h-5 text-neon" />
           <div>
             <h3 className="text-white font-bold">{partnerName}</h3>
-            <p className="text-xs text-gray-400">
-              {isJoined ? (callType === 'audio' ? 'Audio Call • Encrypted' : 'Video Call • Encrypted') : 'Connecting...'}
+            <p className="text-xs text-gray-400 flex items-center gap-2">
+              {isJoined ? (
+                <>
+                  <span>{callType === 'audio' ? 'Audio' : 'Video'} • {formatDuration(callDuration)}</span>
+                  {networkQuality > 0 && <span className="flex items-center gap-1">{getNetworkIcon()} {getNetworkLabel()}</span>}
+                </>
+              ) : 'Connecting...'}
             </p>
           </div>
         </div>
@@ -260,6 +331,17 @@ export const VideoCall: React.FC<VideoCallProps> = ({ appId, channelName, token,
             />
           </div>
         ))}
+
+        {/* Reconnecting overlay */}
+        {isReconnecting && (
+          <div className="absolute inset-0 flex items-center justify-center z-30 bg-black/70 backdrop-blur-sm">
+            <div className="text-center">
+              <WifiOff className="w-12 h-12 text-yellow-400 mx-auto mb-3 animate-pulse" />
+              <p className="text-yellow-400 font-bold text-lg">Reconnecting...</p>
+              <p className="text-gray-400 text-sm mt-1">Check your internet connection</p>
+            </div>
+          </div>
+        )}
 
         {/* Waiting/Audio-only UI - Show if no remote video tracks are visible */}
         {(!remoteUsers.length || !remoteUsers.some(u => u.videoTrack)) && (

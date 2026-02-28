@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useAuth } from './AuthContext';
-import { subscribeToIncomingCalls, CallSession, answerCall as answerCallAPI, rejectCall as rejectCallAPI } from '../services/callSignaling';
+import { subscribeToIncomingCalls, CallSession, answerCall as answerCallAPI, rejectCall as rejectCallAPI, endCall as endCallAPI } from '../services/callSignaling';
 
 interface IncomingCall {
   callSessionId: string;
@@ -29,6 +29,9 @@ interface CallContextType {
   acceptCall: () => void;
   rejectCall: () => void;
   setOutgoingCall: (call: { receiverName: string; receiverAvatar: string; callType: 'audio' | 'video' } | null) => void;
+  outgoingCallSessionId: string;
+  setOutgoingCallSessionId: (id: string) => void;
+  cancelOutgoingCall: () => Promise<void>;
 }
 
 const CallContext = createContext<CallContextType | undefined>(undefined);
@@ -47,6 +50,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const callTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [callSessionId, setCallSessionId] = useState('');
+  const [outgoingCallSessionId, setOutgoingCallSessionId] = useState('');
 
   // Refs for latest state (used in subscription callbacks to avoid stale closures)
   const isCallActiveRef = useRef(false);
@@ -163,6 +167,16 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setPartnerAvatar('');
     setCallSessionId('');
     setOutgoingCall(null);
+    setOutgoingCallSessionId('');
+  };
+
+  // Cancel outgoing call — clears UI AND updates DB
+  const cancelOutgoingCall = async () => {
+    if (outgoingCallSessionId) {
+      await endCallAPI(outgoingCallSessionId);
+    }
+    setOutgoingCall(null);
+    setOutgoingCallSessionId('');
   };
 
   const acceptCall = async () => {
@@ -236,6 +250,9 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
         callSessionId,
         incomingCall,
         outgoingCall,
+        outgoingCallSessionId,
+        setOutgoingCallSessionId,
+        cancelOutgoingCall,
         startCall,
         endCall,
         acceptCall,

@@ -61,7 +61,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 export default function App() {
   const [showIntro, setShowIntro] = useState(true);
-  const { isCallActive, appId, channelName, token, partnerName, partnerAvatar, endCall, incomingCall, outgoingCall, acceptCall, rejectCall, setOutgoingCall, callType, callSessionId } = useCall();
+  const { isCallActive, appId, channelName, token, partnerName, partnerAvatar, endCall, incomingCall, outgoingCall, acceptCall, rejectCall, cancelOutgoingCall, callType, callSessionId } = useCall();
 
   useEffect(() => {
     const hasShown = sessionStorage.getItem('hasShownIntro');
@@ -109,7 +109,7 @@ export default function App() {
         <OutgoingCallModal
           receiverName={outgoingCall.receiverName}
           receiverAvatar={outgoingCall.receiverAvatar}
-          onCancel={() => setOutgoingCall(null)}
+          onCancel={cancelOutgoingCall}
           isVideoCall={outgoingCall.callType === 'video'}
         />
       )}
