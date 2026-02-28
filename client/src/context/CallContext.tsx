@@ -51,6 +51,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [callSessionId, setCallSessionId] = useState('');
   const [outgoingCallSessionId, setOutgoingCallSessionId] = useState('');
+  const pendingAcceptRef = useRef(false); // Queues accept if tapped before session ID arrives
 
   // Refs for latest state (used in subscription callbacks to avoid stale closures)
   const isCallActiveRef = useRef(false);
@@ -61,6 +62,15 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => { isCallActiveRef.current = isCallActive; }, [isCallActive]);
   useEffect(() => { incomingCallRef.current = incomingCall; }, [incomingCall]);
   useEffect(() => { outgoingCallRef.current = outgoingCall; }, [outgoingCall]);
+
+  // Auto-accept when session ID arrives after user already tapped Accept
+  useEffect(() => {
+    if (pendingAcceptRef.current && incomingCall?.callSessionId) {
+      console.log('[CallContext] Session ID arrived, auto-accepting queued call');
+      pendingAcceptRef.current = false;
+      acceptCall();
+    }
+  }, [incomingCall]);
 
   // Subscribe to incoming calls
   useEffect(() => {
@@ -182,10 +192,11 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const acceptCall = async () => {
     if (!incomingCall) return;
 
-    // If we only have broadcast signal but no DB session yet, we can't accept
-    // because we need the token and channel name from the DB session.
+    // If we only have broadcast signal but no DB session yet,
+    // QUEUE the accept — it will auto-fire when session data arrives.
     if (!incomingCall.callSessionId) {
-      console.log('[CallContext] Cannot accept yet, waiting for session ID...');
+      console.log('[CallContext] Accept queued, waiting for session ID...');
+      pendingAcceptRef.current = true;
       return;
     }
 
@@ -228,6 +239,7 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Update database
     await rejectCallAPI(callSessionId);
 
+    pendingAcceptRef.current = false;
     setIncomingCall(null);
   };
 
