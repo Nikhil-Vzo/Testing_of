@@ -10,11 +10,7 @@ import { NotificationProvider } from './context/NotificationContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import './index.css';
 
-// 🎨 Custom Console Message with Logo
-console.log(
-  '%c ',
-  `font-size: 1px; padding: 30px 60px; background: url('${window.location.origin}/favicon.png') no-repeat center; background-size: 60px 60px;`
-);
+
 
 console.log(
   '%cOthrHalff',
