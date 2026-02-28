@@ -10,21 +10,20 @@ import { NotificationProvider } from './context/NotificationContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import './index.css';
 
-// 🎨 Custom Console Message
+// 🎨 Custom Console Message with Logo
 console.log(
-  `%c
-   ___  _   _        _   _       _  __  __ 
-  / _ \\| |_| |_  _ _| | | |__ _ | |/ _|/ _|
- | (_) |  _| ' \\| '_| |_| / _\` || |  _|  _|
-  \\___/ \\__|_||_|_| |___|_\\__,_||_|_| |_|  
-                                             
-`,
-  'color: #ff007f; font-weight: bold; font-size: 14px;'
+  '%c ',
+  `font-size: 1px; padding: 30px 60px; background: url('${window.location.origin}/favicon.png') no-repeat center; background-size: 60px 60px;`
 );
 
 console.log(
-  '%c💘 Find your OthrHalff — where anonymous meets destiny.',
-  'color: #ff007f; font-size: 13px; font-weight: bold; padding: 8px 0;'
+  '%cOthrHalff',
+  'color: #ff007f; font-size: 24px; font-weight: 900; letter-spacing: -1px; text-shadow: 0 0 10px rgba(255,0,127,0.3);'
+);
+
+console.log(
+  '%c💘 Where anonymous meets destiny.',
+  'color: #ff007f; font-size: 13px; font-weight: bold; padding: 4px 0;'
 );
 
 console.log(
