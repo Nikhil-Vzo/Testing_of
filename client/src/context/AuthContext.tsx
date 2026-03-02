@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { UserProfile } from '../types';
 import { authService } from '../services/auth';
 import { supabase } from '../lib/supabase';
+import ForceLogoutCountdown from '../components/ForceLogoutCountdown';
 
 interface AuthContextType {
   currentUser: UserProfile | null;
@@ -17,6 +18,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showLogoutCountdown, setShowLogoutCountdown] = useState(false);
 
   // Load from DB on mount (Optimized: Cache-First)
   useEffect(() => {
@@ -69,13 +71,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           } else if (localUser) {
             // Supabase says "No valid session" but we have stale local data.
-            // This happens when browser storage is corrupted (e.g. on phones after 
-            // a URL change or cache issue). Auto-clear the stale data so the user 
-            // gets sent to login cleanly instead of being stuck in a broken state.
-            // Their data is safe in Supabase — it all comes back after re-login.
-            console.warn('Stale local session detected, clearing...');
-            setCurrentUser(null);
-            authService.logout();
+            // Show a countdown so users know why they're being logged out.
+            console.warn('Stale local session detected, showing logout countdown...');
+            setShowLogoutCountdown(true);
           }
         } catch (err) {
           console.error('Background auth check failed:', err);
@@ -94,6 +92,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Non-blocking sync
     authService.login(user).catch(err => console.error("Background sync error:", err));
   };
+
+  const handleCountdownComplete = useCallback(() => {
+    setShowLogoutCountdown(false);
+    setCurrentUser(null);
+    authService.logout();
+  }, []);
 
   const logout = () => {
     setCurrentUser(null);
@@ -126,6 +130,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isLoading
     }}>
       {children}
+      {showLogoutCountdown && (
+        <ForceLogoutCountdown onComplete={handleCountdownComplete} />
+      )}
     </AuthContext.Provider>
   );
 };
