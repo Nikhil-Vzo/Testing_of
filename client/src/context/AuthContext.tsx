@@ -68,10 +68,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               }
             }
           } else if (localUser) {
-            // OPTIONAL: If Supabase says "No Session" but we have Local Data, 
-            // we might want to logout or try to refresh token. 
-            // For now, we trust the cache to allow offline usage, but you can force logout here if strict security is needed.
-            // logout(); 
+            // Supabase says "No valid session" but we have stale local data.
+            // This happens when browser storage is corrupted (e.g. on phones after 
+            // a URL change or cache issue). Auto-clear the stale data so the user 
+            // gets sent to login cleanly instead of being stuck in a broken state.
+            // Their data is safe in Supabase — it all comes back after re-login.
+            console.warn('Stale local session detected, clearing...');
+            setCurrentUser(null);
+            authService.logout();
           }
         } catch (err) {
           console.error('Background auth check failed:', err);
