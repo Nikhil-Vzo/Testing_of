@@ -9,4 +9,10 @@ if (!supabaseUrl || !supabaseKey) {
 }
 
 // Create the Supabase client
-export const supabase = createClient(supabaseUrl, supabaseKey);
+// Fixed storageKey so auth sessions persist even if the URL changes
+// (e.g., switching between supabase.co and jiobase.com proxy)
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    storageKey: 'sb-htepqqigtzmllailykas-auth-token',
+  },
+});
