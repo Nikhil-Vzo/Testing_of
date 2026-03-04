@@ -171,16 +171,27 @@ export const Home: React.FC = () => {
                 return;
             }
 
-            // Check if this is a fresh signup (no cached data yet)
-            const cachedData = sessionStorage.getItem(PROFILES_CACHE_KEY);
-            const isFreshSignup = !cachedData;
+            // 1. Try cache first for instant load (stale-while-revalidate)
+            try {
+                const cachedData = sessionStorage.getItem(PROFILES_CACHE_KEY);
+                const cachedExpiry = sessionStorage.getItem(CACHE_EXPIRY_KEY);
 
-            // 1. Try to load from cache first (instant load) - but only if not a fresh signup
-            // NOTE: We skip cache if we are switching modes, but for initial load okay.
-            // Actually, with the new mode logic, valid cache might be wrong mode.
-            // For now, let's just trigger fresh fetch to be safe and simple.
+                if (cachedData && cachedExpiry && Date.now() < Number(cachedExpiry)) {
+                    const cached = JSON.parse(cachedData);
+                    if (cached.length > 0) {
+                        setQueue(cached);
+                        setIsLoading(false);
+                        preloadImages(cached.slice(0, 5));
+                        // Background refresh — no loading spinner
+                        fetchFreshData(false);
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.warn('Cache read failed:', e);
+            }
 
-            // 2. Always fetch fresh data on mount to respect mode
+            // 2. No valid cache — fetch with loading spinner
             fetchFreshData(true);
         };
 

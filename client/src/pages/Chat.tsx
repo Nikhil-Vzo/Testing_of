@@ -251,8 +251,9 @@ export const Chat: React.FC = () => {
         const newMsg = payload.new;
         const incoming: Message = { id: newMsg.id, senderId: newMsg.sender_id, text: newMsg.text.replace('[SYSTEM]', '').trim(), timestamp: new Date(newMsg.created_at).getTime(), isSystem: newMsg.text.startsWith('[SYSTEM]') || newMsg.text.startsWith('📞') };
 
-        // === Fix: Use Ref to call fresh function ===
+        // Block enforcement: ignore messages from blocked users
         if (newMsg.sender_id !== currentUser?.id) {
+          if (isBlocked || isBlockedByThem) return; // Don't show messages if blocked
           markMessagesReadRef.current();
         }
 
@@ -274,7 +275,7 @@ export const Chat: React.FC = () => {
   }, [matchId]);
 
   const handleSend = async (e?: React.FormEvent) => {
-    e?.preventDefault(); if (!newMessage.trim() || !currentUser || !matchId) return;
+    e?.preventDefault(); if (!newMessage.trim() || !currentUser || !matchId || isBlocked || isBlockedByThem) return;
     const textToSend = newMessage.trim(); setNewMessage('');
     const optimistic: Message = { id: `temp-${Date.now()}`, senderId: currentUser.id, text: textToSend, timestamp: Date.now(), isSystem: false };
     setMessages(prev => [...prev, optimistic]); setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
@@ -282,7 +283,7 @@ export const Chat: React.FC = () => {
     catch { setMessages(prev => prev.filter(m => m.id !== optimistic.id)); showToast('Failed', 'error'); }
   };
 
-  const startVideoCall = async (type: 'audio' | 'video' = 'video') => { if (!partner || isStartingCall || !matchId || isCallActive) return; isUserOnline(partner.id) ? proceedWithCallCheck(type) : showConfirm('User Offline', `Call anyway?`, () => proceedWithCallCheck(type), false, 'Call'); };
+  const startVideoCall = async (type: 'audio' | 'video' = 'video') => { if (!partner || isStartingCall || !matchId || isCallActive || isBlocked || isBlockedByThem) return; isUserOnline(partner.id) ? proceedWithCallCheck(type) : showConfirm('User Offline', `Call anyway?`, () => proceedWithCallCheck(type), false, 'Call'); };
   const proceedWithCallCheck = (type: 'audio' | 'video') => setPermissionModal({ isOpen: true, type, onGranted: () => { setPermissionModal(prev => ({ ...prev, isOpen: false })); proceedWithCall(type); } });
   const proceedWithCall = async (type: 'audio' | 'video') => {
     if (!partner || !matchId || !currentUser) return; setIsStartingCall(true);
@@ -300,7 +301,7 @@ export const Chat: React.FC = () => {
     } catch { showToast('Call failed', 'error'); setOutgoingCall(null); setOutgoingCallSessionId(''); setIsStartingCall(false); }
   };
   const insertSystemMessage = async (text: string) => { if (!currentUser || !matchId) return; try { await supabase.from('messages').insert({ match_id: matchId, sender_id: currentUser.id, text: text.startsWith('📞') ? text : `[SYSTEM] ${text}` }); } catch { } };
-  const handleBlockUser = () => { if (!partner) return; showConfirm(isBlocked ? 'Unblock' : 'Block', `Confirm?`, async () => { if (isBlocked ? await unblockUser(partner.id) : await blockUser(partner.id)) { setIsBlocked(!isBlocked); setShowMenu(false); showToast('Success', 'success'); } }, !isBlocked); };
+  const handleBlockUser = () => { if (!partner) return; showConfirm(isBlocked ? 'Unblock User' : 'Block User', isBlocked ? `Are you sure you want to unblock ${partner.realName || partner.anonymousId}? They will be able to message and call you again.` : `Are you sure you want to block ${partner.realName || partner.anonymousId}? They won't be able to send you messages or call you. You can unblock them anytime.`, async () => { if (isBlocked ? await unblockUser(partner.id) : await blockUser(partner.id)) { setIsBlocked(!isBlocked); setShowMenu(false); showToast(isBlocked ? 'User unblocked' : 'User blocked', 'success'); } }, !isBlocked, isBlocked ? 'Unblock' : 'Block'); };
 
   if (loading) return <ChatSkeleton />;
   if (!partner) return null;
@@ -321,7 +322,7 @@ export const Chat: React.FC = () => {
             }
           });
         }} className="p-2 -ml-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-800"><ArrowLeft className="w-5 h-5" /></button><div className="relative"><img src={getOptimizedUrl(partner.avatar, 64)} className="w-10 h-10 rounded-full border border-gray-700 object-cover" /><div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-black ${isUserOnline(partner.id) ? 'bg-green-500' : 'bg-gray-500'}`}></div></div><div><div className="flex items-center gap-1"><h3 className="text-sm font-bold text-white">{partner.realName || partner.anonymousId}</h3>{partner.isVerified && (<BadgeCheck className="w-3.5 h-3.5 flex-shrink-0 drop-shadow-[0_0_4px_rgba(96,165,250,0.8)]" style={{ color: '#60a5fa' }} />)}</div><span className="text-[10px] text-gray-500">{isUserOnline(partner.id) ? <span className="text-green-400">Active</span> : (getLastSeen(partner.id) ? (new Date().getTime() - getLastSeen(partner.id)!.getTime() < 60000 ? 'just now' : getLastSeen(partner.id)?.toLocaleDateString()) : 'Offline')}</span></div></div>
-        <div className="flex items-center gap-1"><button onClick={() => startVideoCall('video')} disabled={isStartingCall} className="p-2.5 text-gray-400 hover:text-neon hover:bg-gray-800 rounded-full"><Video className="w-5 h-5" /></button><button onClick={() => startVideoCall('audio')} disabled={isStartingCall} className="p-2.5 text-gray-400 hover:text-green-400 hover:bg-gray-800 rounded-full"><Phone className="w-5 h-5" /></button>
+        <div className="flex items-center gap-1"><button onClick={() => startVideoCall('video')} disabled={isStartingCall || isBlocked || isBlockedByThem} className={`p-2.5 hover:bg-gray-800 rounded-full ${isBlocked || isBlockedByThem ? 'text-gray-700 cursor-not-allowed' : 'text-gray-400 hover:text-neon'}`}><Video className="w-5 h-5" /></button><button onClick={() => startVideoCall('audio')} disabled={isStartingCall || isBlocked || isBlockedByThem} className={`p-2.5 hover:bg-gray-800 rounded-full ${isBlocked || isBlockedByThem ? 'text-gray-700 cursor-not-allowed' : 'text-gray-400 hover:text-green-400'}`}><Phone className="w-5 h-5" /></button>
           <div className="relative">
             <button onClick={() => setShowMenu(!showMenu)} className="p-2.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full"><MoreVertical className="w-5 h-5" /></button>
             {showMenu && (
