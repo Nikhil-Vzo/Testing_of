@@ -29,26 +29,40 @@ export const Profile: React.FC = () => {
     const [fetchedProfile, setFetchedProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+    const [deferredPrompt, setDeferredPrompt] = useState<any>(() => (window as any).__pwaInstallPrompt);
 
-    // Capture PWA install prompt
+    // Also listen in case it fires after mount (unlikely but safe)
     useEffect(() => {
         const handler = (e: any) => {
             e.preventDefault();
             setDeferredPrompt(e);
+            (window as any).__pwaInstallPrompt = e;
         };
         window.addEventListener('beforeinstallprompt', handler);
         return () => window.removeEventListener('beforeinstallprompt', handler);
     }, []);
 
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+
     const handleInstallPWA = async () => {
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') setDeferredPrompt(null);
+        if (isStandalone) {
+            alert('OthrHalff is already installed!');
+            return;
+        }
+        // Try global prompt first, then component state
+        const prompt = (window as any).__pwaInstallPrompt || deferredPrompt;
+        if (prompt) {
+            prompt.prompt();
+            const { outcome } = await prompt.userChoice;
+            if (outcome === 'accepted') {
+                setDeferredPrompt(null);
+                (window as any).__pwaInstallPrompt = null;
+            }
+        } else if (isIOS) {
+            alert('To install: tap the Share button (↑) at the bottom of Safari, then tap "Add to Home Screen".');
         } else {
-            // iOS / already installed fallback
-            alert('To install: tap the Share button in your browser, then "Add to Home Screen".');
+            alert('To install: open the browser menu (⋮) and tap "Install app" or "Add to Home Screen".');
         }
     };
 

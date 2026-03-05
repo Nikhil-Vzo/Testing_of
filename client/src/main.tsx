@@ -10,6 +10,15 @@ import { NotificationProvider } from './context/NotificationContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import './index.css';
 
+// Capture PWA install prompt GLOBALLY (fires before React mounts, only once)
+// Store on window so any component can access it
+(window as any).__pwaInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  (window as any).__pwaInstallPrompt = e;
+  console.log('[PWA] Install prompt captured');
+});
+
 
 
 console.log(
