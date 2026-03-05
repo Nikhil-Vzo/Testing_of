@@ -15,10 +15,11 @@ const PageLayout: React.FC<{ title: string; icon: React.ReactNode; children: Rea
 
       <div className="max-w-4xl mx-auto relative z-10">
         <button
-          onClick={() => navigate('/')}
-          className="flex items-center gap-2 text-gray-500 hover:text-neon transition-colors mb-8 group"
+          onClick={() => navigate('/profile')}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900/50 hover:bg-gray-800 border border-gray-800 hover:border-neon/50 text-gray-400 hover:text-white rounded-full transition-all mb-8 group shadow-sm hover:shadow-neon-sm"
         >
-          <RotateCcw className="w-4 h-4 group-hover:-rotate-90 transition-transform" /> Back to Home
+          <RotateCcw className="w-4 h-4 group-hover:-rotate-90 transition-transform text-gray-500 group-hover:text-neon" />
+          <span className="text-sm font-bold tracking-wide">Back to Profile</span>
         </button>
 
         <div className="flex items-center gap-4 mb-12">
