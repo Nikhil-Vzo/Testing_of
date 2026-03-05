@@ -56,11 +56,11 @@ create table public.blocked_users (
 -- 4. Swipes (Matching algorithm base)
 create table public.swipes (
   id uuid default uuid_generate_v4() primary key,
-  swiper_id uuid references public.profiles(id) on delete cascade not null,
+  liker_id uuid references public.profiles(id) on delete cascade not null,
   target_id uuid references public.profiles(id) on delete cascade not null,
   action text check (action in ('like', 'pass')) not null,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  unique(swiper_id, target_id)
+  unique(liker_id, target_id)
 );
 
 -- 5. Matches (Successful mutual likes)
@@ -112,7 +112,7 @@ create table public.notifications (
 -- 9. Confessions (Anonymous feed)
 create table public.confessions (
   id uuid default uuid_generate_v4() primary key,
-  author_id uuid references public.profiles(id) on delete cascade not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
   anonymous_name text not null,
   content text not null,
   color text default 'gray',
@@ -136,7 +136,7 @@ create table public.confession_reactions (
 create table public.confession_comments (
   id uuid default uuid_generate_v4() primary key,
   confession_id uuid references public.confessions(id) on delete cascade not null,
-  author_id uuid references public.profiles(id) on delete cascade not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
   anonymous_name text not null,
   content text not null,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
@@ -222,9 +222,8 @@ create policy "Users can insert their own profile" on public.profiles for insert
 create policy "Users can update own profile" on public.profiles for update using (auth.uid() = id);
 
 -- USER PRESENCE
-create policy "Presence is viewable by everyone" on public.user_presence for select using (true);
-create policy "Users can insert own presence" on public.user_presence for insert with check (auth.uid() = id);
-create policy "Users can update own presence" on public.user_presence for update using (auth.uid() = id);
+create policy "Allow read all presence" on public.user_presence for select using (true);
+create policy "Allow upsert own presence" on public.user_presence for all using (true) with check (auth.uid() = id);
 
 -- BLOCKED USERS
 create policy "Users can view their blocks" on public.blocked_users for select using (auth.uid() = blocker_id or auth.uid() = blocked_id);
@@ -232,8 +231,8 @@ create policy "Users can insert blocks" on public.blocked_users for insert with 
 create policy "Users can delete their blocks" on public.blocked_users for delete using (auth.uid() = blocker_id);
 
 -- SWIPES
-create policy "Users can view own swipes" on public.swipes for select using (auth.uid() = swiper_id);
-create policy "Users can insert own swipes" on public.swipes for insert with check (auth.uid() = swiper_id);
+create policy "Allow read own swipes" on public.swipes for select using (auth.uid() = liker_id);
+create policy "Allow upsert own swipes" on public.swipes for all using (true) with check (auth.uid() = liker_id);
 
 -- MATCHES
 create policy "Users can view their matches" on public.matches for select using (auth.uid() = user1_id or auth.uid() = user2_id);
@@ -263,9 +262,9 @@ create policy "System can insert notifications" on public.notifications for inse
 
 -- CONFESSIONS (Anonymous feed)
 create policy "Confessions are viewable by everyone" on public.confessions for select using (true);
-create policy "Users can insert confessions" on public.confessions for insert with check (auth.uid() = author_id);
-create policy "Users can update their own confessions" on public.confessions for update using (auth.uid() = author_id);
-create policy "Users can delete their own confessions" on public.confessions for delete using (auth.uid() = author_id);
+create policy "Users can insert confessions" on public.confessions for insert with check (auth.uid() = user_id);
+create policy "Users can update their own confessions" on public.confessions for update using (auth.uid() = user_id);
+create policy "Users can delete their own confessions" on public.confessions for delete using (auth.uid() = user_id);
 
 -- CONFESSION REACTIONS
 create policy "Reactions are viewable by everyone" on public.confession_reactions for select using (true);
@@ -274,7 +273,7 @@ create policy "Users can delete own reactions" on public.confession_reactions fo
 
 -- CONFESSION COMMENTS
 create policy "Comments are viewable by everyone" on public.confession_comments for select using (true);
-create policy "Users can insert comments" on public.confession_comments for insert with check (auth.uid() = author_id);
+create policy "Users can insert comments" on public.confession_comments for insert with check (auth.uid() = user_id);
 
 -- POLLS
 create policy "Poll options are viewable by everyone" on public.poll_options for select using (true);
@@ -360,7 +359,7 @@ begin
   -- Exclude people they've already swiped on
   and not exists (
     select 1 from public.swipes s 
-    where s.swiper_id = current_user_id and s.target_id = p.id
+    where s.liker_id = current_user_id and s.target_id = p.id
   )
   -- Exclude blocked users (both directions)
   and not exists (
@@ -384,7 +383,7 @@ begin
   select p.*
   from public.profiles p
   join public.swipes s on s.target_id = p.id
-  where s.swiper_id = current_user_id
+  where s.liker_id = current_user_id
   and s.action = 'pass'
   order by s.created_at desc;
 end;
