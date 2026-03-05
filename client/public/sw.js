@@ -1,6 +1,6 @@
 // OthrHalff Service Worker for PWA
-const CACHE_NAME = 'othrhalff-v3.1'; // Bump version when updating
-const RUNTIME_CACHE = 'othrhalff-runtime-v1';
+const CACHE_NAME = 'othrhalff-v4.0'; // Bump version when updating
+const RUNTIME_CACHE = 'othrhalff-runtime-v2';
 
 // Core files to cache on install (keep minimal for fast install)
 const CORE_CACHE = [
@@ -169,34 +169,54 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // --- STRATEGY 2: Cache-first for static assets (JS, CSS, images, fonts) ---
-    // These don't change often, so serve from cache for speed
+    // --- STRATEGY 2: Network-first for JS/CSS (code updates must reach users fast) ---
     if (
         request.destination === 'script' ||
         request.destination === 'style' ||
+        url.pathname.match(/\.(js|css)$/)
+    ) {
+        event.respondWith(
+            fetch(request).then((response) => {
+                if (response && response.status === 200) {
+                    const responseClone = response.clone();
+                    caches.open(RUNTIME_CACHE).then((cache) => {
+                        cache.put(request, responseClone);
+                    });
+                }
+                return response;
+            }).catch(() => {
+                // Offline fallback: serve from cache
+                return caches.match(request).then((cached) => {
+                    return cached || new Response('Asset unavailable offline', {
+                        status: 503,
+                        statusText: 'Service Unavailable'
+                    });
+                });
+            })
+        );
+        return;
+    }
+
+    // --- STRATEGY 3: Cache-first for images/fonts (rarely change) ---
+    if (
         request.destination === 'image' ||
         request.destination === 'font' ||
-        url.pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|webp|woff|woff2|ttf|eot)$/)
+        url.pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|woff|woff2|ttf|eot)$/)
     ) {
         event.respondWith(
             caches.match(request).then((cached) => {
                 if (cached) {
-                    // Serve from cache immediately (fast!)
-                    // Optionally fetch in background to update cache
+                    // Serve from cache, update in background
                     fetch(request).then((response) => {
                         if (response && response.status === 200) {
                             caches.open(RUNTIME_CACHE).then((cache) => {
                                 cache.put(request, response);
                             });
                         }
-                    }).catch(() => { /* Ignore background update errors */ });
-
+                    }).catch(() => { });
                     return cached;
                 }
-
-                // Not in cache, fetch from network
                 return fetch(request).then((response) => {
-                    // Cache successful responses for next time
                     if (response && response.status === 200) {
                         const responseClone = response.clone();
                         caches.open(RUNTIME_CACHE).then((cache) => {
@@ -205,7 +225,6 @@ self.addEventListener('fetch', (event) => {
                     }
                     return response;
                 }).catch(() => {
-                    // Network failed and not in cache
                     return new Response('Asset unavailable offline', {
                         status: 503,
                         statusText: 'Service Unavailable'
