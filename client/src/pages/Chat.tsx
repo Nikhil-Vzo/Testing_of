@@ -168,7 +168,7 @@ export const Chat: React.FC = () => {
 
         // Parallel Fetch: Messages + Block Status
         const [blockStatus, messagesRes] = await Promise.all([
-          partnerId ? checkBlockStatus(partnerId) : Promise.resolve({ isBlocked: false, isBlockedBy: false }),
+          partnerId ? checkBlockStatus(partnerId, currentUser.id) : Promise.resolve({ isBlocked: false, isBlockedBy: false }),
           supabase.from('messages').select('id, sender_id, text, created_at, is_read').eq('match_id', matchId).order('created_at', { ascending: false }).limit(MESSAGES_PER_PAGE)
         ]);
 

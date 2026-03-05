@@ -81,22 +81,26 @@ export const getBlockList = async () => {
     return data.map(item => item.blocked_id);
 };
 
-export const checkBlockStatus = async (otherUserId: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { isBlocked: false, isBlockedBy: false };
+export const checkBlockStatus = async (otherUserId: string, currentUserId?: string) => {
+    let userId = currentUserId;
+    if (!userId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id;
+    }
+    if (!userId) return { isBlocked: false, isBlockedBy: false };
 
     const { data, error } = await supabase
         .from('blocked_users')
         .select('blocker_id, blocked_id')
-        .or(`and(blocker_id.eq.${user.id},blocked_id.eq.${otherUserId}),and(blocker_id.eq.${otherUserId},blocked_id.eq.${user.id})`);
+        .or(`and(blocker_id.eq.${userId},blocked_id.eq.${otherUserId}),and(blocker_id.eq.${otherUserId},blocked_id.eq.${userId})`);
 
     if (error) {
         console.error('Error checking block status:', error);
         return { isBlocked: false, isBlockedBy: false };
     }
 
-    const isBlocked = data.some(b => b.blocker_id === user.id && b.blocked_id === otherUserId);
-    const isBlockedBy = data.some(b => b.blocker_id === otherUserId && b.blocked_id === user.id);
+    const isBlocked = data.some(b => b.blocker_id === userId && b.blocked_id === otherUserId);
+    const isBlockedBy = data.some(b => b.blocker_id === otherUserId && b.blocked_id === userId);
 
     return { isBlocked, isBlockedBy };
 };
