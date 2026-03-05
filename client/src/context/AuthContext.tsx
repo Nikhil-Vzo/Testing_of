@@ -35,12 +35,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const { data: { session } } = await supabase.auth.getSession();
 
-          if (session?.user) {
+          // If no session, try refreshing (mobile browsers often lose the access token
+          // while backgrounded, but the refresh token is still valid)
+          let activeSession = session;
+          if (!activeSession && localUser) {
+            console.log('No session found, attempting token refresh...');
+            const { data: refreshData } = await supabase.auth.refreshSession();
+            activeSession = refreshData?.session ?? null;
+          }
+
+          if (activeSession?.user) {
             // Fetch fresh profile
             const { data: profile, error } = await supabase
               .from('profiles')
               .select('*')
-              .eq('id', session.user.id)
+              .eq('id', activeSession.user.id)
               .single();
 
             if (profile && !error) {
@@ -70,9 +79,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               }
             }
           } else if (localUser) {
-            // Supabase says "No valid session" but we have stale local data.
+            // Both getSession AND refreshSession failed — session is truly dead.
             // Show a countdown so users know why they're being logged out.
-            console.warn('Stale local session detected, showing logout countdown...');
+            console.warn('Session expired and refresh failed, showing logout countdown...');
             setShowLogoutCountdown(true);
           }
         } catch (err) {
