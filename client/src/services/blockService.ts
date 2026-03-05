@@ -48,14 +48,18 @@ export const isUserBlocked = async (userId: string) => {
     return !!data;
 };
 
-export const isBlockedBy = async (userId: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return false;
+export const isBlockedBy = async (userId: string, currentUserId?: string) => {
+    let myId = currentUserId;
+    if (!myId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        myId = user?.id;
+    }
+    if (!myId) return false;
 
     const { data, error } = await supabase
         .from('blocked_users')
         .select('id')
-        .match({ blocker_id: userId, blocked_id: user.id })
+        .match({ blocker_id: userId, blocked_id: myId })
         .maybeSingle(); // Use maybeSingle to avoid 406 error on empty result
 
     if (error && error.code !== 'PGRST116') { // Ignore JSON error if just empty
@@ -65,14 +69,18 @@ export const isBlockedBy = async (userId: string) => {
     return !!data;
 };
 
-export const getBlockList = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
+export const getBlockList = async (currentUserId?: string) => {
+    let userId = currentUserId;
+    if (!userId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id;
+    }
+    if (!userId) return [];
 
     const { data, error } = await supabase
         .from('blocked_users')
         .select('blocked_id')
-        .eq('blocker_id', user.id);
+        .eq('blocker_id', userId);
 
     if (error) {
         console.error('Error fetching block list:', error);

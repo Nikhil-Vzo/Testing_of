@@ -87,7 +87,7 @@ export const Matches: React.FC = () => {
     if (!isBackground && chats.length === 0) setLoading(true);
 
     try {
-      const blockedUsers = await getBlockList();
+      const blockedUsers = await getBlockList(currentUser.id);
 
       // OPTIMIZED: Use RPC to get matches with latest message only (Server-side)
       const { data: formatted, error } = await supabase
@@ -132,7 +132,7 @@ export const Matches: React.FC = () => {
       // Filter blocked users locally (or add to RPC later, but local is fine for now)
       const visibleChats: ChatPreview[] = [];
       for (const chat of mappedChats) {
-        if (!blockedUsers.includes(chat.partner.id) && !(await isBlockedBy(chat.partner.id))) {
+        if (!blockedUsers.includes(chat.partner.id) && !(await isBlockedBy(chat.partner.id, currentUser.id))) {
           visibleChats.push(chat);
         }
       }
