@@ -19,14 +19,16 @@ self.addEventListener('install', (event) => {
         caches.open(CACHE_NAME)
             .then((cache) => {
                 console.log('[SW] Caching core files');
-                return cache.addAll(CORE_CACHE);
+                // Use allSettled so one failing file doesn't block the entire install
+                return Promise.allSettled(
+                    CORE_CACHE.map((url) => cache.add(url).catch((err) => {
+                        console.warn(`[SW] Failed to cache ${url}:`, err.message);
+                    }))
+                );
             })
             .then(() => {
-                console.log('[SW] Core files cached successfully');
+                console.log('[SW] Install complete, activating immediately');
                 return self.skipWaiting(); // Activate immediately
-            })
-            .catch((err) => {
-                console.error('[SW] Cache failed:', err);
             })
     );
 });
