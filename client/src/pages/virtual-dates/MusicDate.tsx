@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, AlertCircle, Play, Pause, Search, Music, X, Hash, Users, Copy, PlusCircle, LogIn, LogOut, MessageSquare, Send, Mic, MicOff, Video, VideoOff, Loader, Volume2, Maximize, Minimize, FileText, Image as ImageIcon, SkipForward, ListMusic } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useBlocker } from 'react-router-dom';
 import Peer, { DataConnection } from 'peerjs';
 import { useAuth } from '../../context/AuthContext';
 import { analytics } from '../../utils/analytics';
@@ -110,6 +110,25 @@ export const MusicDate = () => {
 
     const peerInstance = useRef<Peer | null>(null);
     const connections = useRef<{ [key: string]: DataConnection }>({});
+    const peerNamesRef = useRef<Record<string, string>>(peerNames);
+    useEffect(() => { peerNamesRef.current = peerNames; }, [peerNames]);
+
+    // Navigation blocker — prevent accidental session loss
+    const blocker = useBlocker(
+        ({ currentLocation, nextLocation }) =>
+            mode === 'room' && currentLocation.pathname !== nextLocation.pathname
+    );
+
+    // Warn on tab close / refresh while in a room
+    useEffect(() => {
+        if (mode !== 'room') return;
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            e.preventDefault();
+            e.returnValue = '';
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [mode]);
 
     // References for callbacks
     const currentTrackRef = useRef(currentTrack);
@@ -213,6 +232,8 @@ export const MusicDate = () => {
 
         conn.on('data', (data: any) => handleDataMessage(data, conn.peer));
         conn.on('close', () => {
+            const leaveName = peerNamesRef.current[conn.peer] || conn.peer.substring(0, 5);
+            setMessages(prev => [...prev, { user: 'System', text: `👋 ${leaveName} left the jam` }]);
             setPeers(prev => prev.filter(p => p.peerId !== conn.peer));
             delete connections.current[conn.peer];
         });
@@ -221,6 +242,7 @@ export const MusicDate = () => {
     const handleDataMessage = (data: any, senderId: string) => {
         if (data.type === 'IDENTITY') {
             setPeerNames(prev => ({ ...prev, [senderId]: data.payload.name }));
+            setMessages(prev => [...prev, { user: 'System', text: `🎵 ${data.payload.name} joined the jam` }]);
         } else if (data.type === 'CHAT') {
             const senderName = peerNames[senderId] || senderId.substring(0, 5);
             setMessages(prev => [...prev, { user: senderName, text: data.text }]);
@@ -960,6 +982,33 @@ export const MusicDate = () => {
                     </div>
                 ))}
             </div>
+
+            {/* Navigation Blocker Modal */}
+            {blocker.state === 'blocked' && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[100]">
+                    <div className="bg-gray-900/95 border border-white/10 rounded-3xl p-8 max-w-sm mx-4 shadow-2xl text-center">
+                        <div className="w-16 h-16 rounded-full bg-violet-500/10 flex items-center justify-center mx-auto mb-5">
+                            <Music className="w-8 h-8 text-violet-400" />
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">Leave Music Jam?</h3>
+                        <p className="text-gray-400 text-sm mb-6">Your current session will end and you'll be disconnected from the room.</p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => blocker.reset?.()}
+                                className="flex-1 py-3 px-4 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors border border-white/10"
+                            >
+                                Stay
+                            </button>
+                            <button
+                                onClick={() => blocker.proceed?.()}
+                                className="flex-1 py-3 px-4 rounded-xl bg-red-500/90 hover:bg-red-500 text-white font-semibold transition-colors"
+                            >
+                                Leave
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Global Error Toast */}
             {error && (
