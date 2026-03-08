@@ -5,7 +5,6 @@ import { supabase } from '../lib/supabase';
 import { MatchProfile } from '../types';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, Ghost, Loader2, BadgeCheck } from 'lucide-react';
-import { getBlockList, isBlockedBy } from '../services/blockService';
 import { getOptimizedUrl } from '../utils/image';
 import { getRandomQuote } from '../data/loadingQuotes';
 import { LoadingState } from '../components/LoadingState';
@@ -18,8 +17,31 @@ interface ChatPreview {
   unreadCount: number;
 }
 
-// v3 Key to force cache clear for the new logic
-const CACHE_KEY = 'otherhalf_matches_cache_v5';
+// v6: localStorage + stale-while-revalidate
+const CACHE_KEY = 'otherhalf_matches_cache_v6';
+const CACHE_EXPIRY_KEY = 'otherhalf_matches_expiry_v6';
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Helper: read cache from localStorage (survives tab close)
+const readCache = (): ChatPreview[] => {
+  try {
+    const expiry = localStorage.getItem(CACHE_EXPIRY_KEY);
+    if (expiry && Date.now() > parseInt(expiry, 10)) {
+      localStorage.removeItem(CACHE_KEY);
+      localStorage.removeItem(CACHE_EXPIRY_KEY);
+      return [];
+    }
+    const cached = localStorage.getItem(CACHE_KEY);
+    return cached ? JSON.parse(cached) : [];
+  } catch { return []; }
+};
+
+const writeCache = (data: ChatPreview[]) => {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+    localStorage.setItem(CACHE_EXPIRY_KEY, String(Date.now() + CACHE_DURATION));
+  } catch { /* quota exceeded — ignore */ }
+};
 
 const MatchSkeleton = () => (
   <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-900/30 border border-gray-800/50 animate-pulse">
@@ -37,11 +59,10 @@ export const Matches: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 1. Load from Cache initially for speed
+  // 1. Load from localStorage cache for instant display
   const [chats, setChats] = useState<ChatPreview[]>(() => {
     try {
-      const cached = sessionStorage.getItem(CACHE_KEY);
-      let initialChats = cached ? JSON.parse(cached) : [];
+      let initialChats = readCache();
 
       // CHECK FOR INSTANT UPDATE FROM CHAT
       // If we just came back from a chat, update that specific match immediately
@@ -63,10 +84,10 @@ export const Matches: React.FC = () => {
         // Re-sort because the timestamp changed
         initialChats.sort((a: ChatPreview, b: ChatPreview) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
 
-        // Update cache immediately so specific effect isn't needed
-        sessionStorage.setItem(CACHE_KEY, JSON.stringify(initialChats));
+        // Update cache immediately
+        writeCache(initialChats);
 
-        // Clear state to prevent re-runs (optional but cleaner)
+        // Clear state to prevent re-runs
         window.history.replaceState({}, document.title);
       }
 
@@ -81,15 +102,13 @@ export const Matches: React.FC = () => {
   // Ref to debounce refreshes
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 2. The Core Loading Function
+  // 2. The Core Loading Function — server-side block filtering via RPC
   const loadMatches = useCallback(async (isBackground = false) => {
     if (!currentUser || !supabase) return;
     if (!isBackground && chats.length === 0) setLoading(true);
 
     try {
-      const blockedUsers = await getBlockList(currentUser.id);
-
-      // OPTIMIZED: Use RPC to get matches with latest message only (Server-side)
+      // Single RPC call — blocked users are filtered server-side
       const { data: formatted, error } = await supabase
         .rpc('get_matches_with_preview', { current_user_id: currentUser.id });
 
@@ -98,7 +117,8 @@ export const Matches: React.FC = () => {
       if (!formatted || formatted.length === 0) {
         setChats([]);
         setLoading(false);
-        sessionStorage.removeItem(CACHE_KEY);
+        localStorage.removeItem(CACHE_KEY);
+        localStorage.removeItem(CACHE_EXPIRY_KEY);
         return;
       }
 
@@ -129,27 +149,17 @@ export const Matches: React.FC = () => {
         };
       });
 
-      // Filter blocked users locally (or add to RPC later, but local is fine for now)
-      const visibleChats: ChatPreview[] = [];
-      for (const chat of mappedChats) {
-        if (!blockedUsers.includes(chat.partner.id) && !(await isBlockedBy(chat.partner.id, currentUser.id))) {
-          visibleChats.push(chat);
-        }
-      }
-
-      // Sort by time
-      visibleChats.sort((a, b) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
+      // Already sorted by RPC, but ensure client-side consistency
+      mappedChats.sort((a, b) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
 
       setChats(prev => {
-        const isDifferent = JSON.stringify(prev) !== JSON.stringify(visibleChats);
+        const isDifferent = JSON.stringify(prev) !== JSON.stringify(mappedChats);
         if (isDifferent) {
-          try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(visibleChats)); } catch (e) { sessionStorage.clear(); }
-          return visibleChats;
+          writeCache(mappedChats);
+          return mappedChats;
         }
         return prev;
       });
-
-
 
     } catch (err) {
       console.error("Matches load error", err);
@@ -190,7 +200,7 @@ export const Matches: React.FC = () => {
           const chat = { ...updated[chatIndex] };
           chat.lastMessage = msg.content || msg.text || '';
           chat.lastMessageTime = msg.created_at ? new Date(msg.created_at).getTime() : Date.now();
-          // Only increment unread if the message is from the partner (not us)
+          // Only increment unread if the message is from the partner
           if (msg.sender_id !== currentUser?.id) {
             chat.unreadCount = (chat.unreadCount || 0) + 1;
           }
@@ -198,7 +208,7 @@ export const Matches: React.FC = () => {
 
           // Re-sort by latest message
           updated.sort((a, b) => (b.lastMessageTime || 0) - (a.lastMessageTime || 0));
-          try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch (e) { }
+          writeCache(updated);
           return updated;
         });
       })
@@ -263,7 +273,7 @@ export const Matches: React.FC = () => {
               // === FIX BUG 2: Optimistic Cache Update ===
               setChats(prev => {
                 const updated = prev.map(c => c.id === chat.id ? { ...c, unreadCount: 0 } : c);
-                try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch (e) { }
+                writeCache(updated);
                 return updated;
               });
               navigate(`/chat/${chat.id}`, { state: { partner: chat.partner } });
