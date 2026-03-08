@@ -16,7 +16,29 @@ type SortOption = 'newest' | 'oldest' | 'popular' | 'discussed';
 
 const REACTIONS = ['❤️', '😂', '🔥', '😮', '😢', '👀'];
 const POSTS_PER_PAGE = 10;
-const CACHE_KEY = 'otherhalf_confessions_v3';
+const CACHE_KEY = 'otherhalf_confessions_v4';
+const CACHE_EXPIRY_KEY = 'otherhalf_confessions_expiry_v4';
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+const readCache = (): Confession[] => {
+    try {
+        const expiry = localStorage.getItem(CACHE_EXPIRY_KEY);
+        if (expiry && Date.now() > parseInt(expiry, 10)) {
+            localStorage.removeItem(CACHE_KEY);
+            localStorage.removeItem(CACHE_EXPIRY_KEY);
+            return [];
+        }
+        const cached = localStorage.getItem(CACHE_KEY);
+        return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+};
+
+const writeCache = (data: Confession[]) => {
+    try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+        localStorage.setItem(CACHE_EXPIRY_KEY, String(Date.now() + CACHE_DURATION));
+    } catch { /* quota exceeded */ }
+};
 
 // --- SKELETON COMPONENT ---
 const ConfessionSkeleton = () => (
@@ -56,12 +78,7 @@ export const Confessions: React.FC = () => {
     const navigate = useNavigate();
 
     // 1. ZERO-FLICKER INIT: Read cache synchronously
-    const [confessions, setConfessions] = useState<Confession[]>(() => {
-        try {
-            const cached = sessionStorage.getItem(CACHE_KEY);
-            return cached ? JSON.parse(cached) : [];
-        } catch { return []; }
-    });
+    const [confessions, setConfessions] = useState<Confession[]>(() => readCache());
 
     const [isLoading, setIsLoading] = useState(() => confessions.length === 0);
 
@@ -119,7 +136,7 @@ export const Confessions: React.FC = () => {
                 };
                 setConfessions(prev => {
                     const updated = [newConfession, ...prev];
-                    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch { }
+                    writeCache(updated);
                     return updated;
                 });
             })
@@ -151,7 +168,7 @@ export const Confessions: React.FC = () => {
                         }
                         return { ...c, reactions: newReactions, likes: newLikes };
                     });
-                    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch { }
+                    writeCache(updated);
                     return updated;
                 });
             })
@@ -199,29 +216,22 @@ export const Confessions: React.FC = () => {
                 confession_comments (
                     id, text, created_at, user_id, 
                     profiles (anonymous_id, avatar)
-                )
+                ),
+                comment_count:confession_comments(count)
             `)
             .order('created_at', { foreignTable: 'confession_comments', ascending: false })
             .limit(3, { foreignTable: 'confession_comments' })
             .range(from, to);
 
-        // Also query total comment counts (lightweight — just IDs)
-        let countQuery = supabase.from('confessions')
-            .select(`id, confession_comments(id)`)
-            .range(from, to);
-
         if (sortType === 'newest') {
             query = query.order('created_at', { ascending: false });
-            countQuery = countQuery.order('created_at', { ascending: false });
         } else if (sortType === 'oldest') {
             query = query.order('created_at', { ascending: true });
-            countQuery = countQuery.order('created_at', { ascending: true });
         } else {
             query = query.order('created_at', { ascending: false });
-            countQuery = countQuery.order('created_at', { ascending: false });
         }
 
-        const [{ data: posts, error }, { data: countData }] = await Promise.all([query, countQuery]);
+        const { data: posts, error } = await query;
 
         if (error || !posts) {
             console.error('Error:', error);
@@ -230,15 +240,13 @@ export const Confessions: React.FC = () => {
             return;
         }
 
-        // Build comment count map
-        const commentCountMap = new Map<string, number>();
-        countData?.forEach((p: any) => commentCountMap.set(p.id, p.confession_comments?.length || 0));
-
         if (posts.length < POSTS_PER_PAGE) setHasMore(false);
 
-        // Fetch votes
+        // Fetch votes in parallel (fire immediately, await result below)
         const postIds = posts.map(p => p.id);
-        const { data: myVotes } = await supabase.from('poll_votes').select('confession_id, option_id').in('confession_id', postIds).eq('user_id', currentUser.id);
+        const votesPromise = supabase.from('poll_votes').select('confession_id, option_id').in('confession_id', postIds).eq('user_id', currentUser.id);
+
+        const { data: myVotes } = await votesPromise;
         const myVoteMap = new Map();
         myVotes?.forEach(v => myVoteMap.set(v.confession_id, v.option_id));
 
@@ -256,7 +264,7 @@ export const Confessions: React.FC = () => {
                     text: c.text,
                     timestamp: new Date(c.created_at).getTime()
                 })) || [],
-                commentCount: commentCountMap.get(p.id) || 0,
+                commentCount: (p as any).comment_count?.[0]?.count || p.confession_comments?.length || 0,
                 university: p.university, type: p.type as 'text' | 'poll',
                 pollOptions: p.poll_options?.map((opt: any) => ({ id: opt.id, text: opt.text, votes: opt.vote_count })),
                 userVote: myVoteMap.get(p.id),
@@ -268,7 +276,7 @@ export const Confessions: React.FC = () => {
             setConfessions(formatted);
             setIsLoading(false);
             // Update Cache (Safely)
-            try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(formatted)); } catch (e) { /* Ignore quota errors */ }
+            writeCache(formatted);
         } else {
             setConfessions(prev => {
                 const existing = new Set(prev.map(c => c.id));
@@ -329,7 +337,7 @@ export const Confessions: React.FC = () => {
 
         setConfessions(prev => {
             const updated = [optimisticPost, ...prev];
-            try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch (e) { }
+            writeCache(updated);
             return updated;
         });
 
@@ -377,7 +385,7 @@ export const Confessions: React.FC = () => {
             // Replace optimistic with real
             setConfessions(prev => {
                 const updated = prev.map(p => p.id === optimisticId ? { ...p, id: post!.id } : p);
-                try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch (e) { }
+                writeCache(updated);
                 return updated;
             });
 
@@ -400,7 +408,7 @@ export const Confessions: React.FC = () => {
                     pollOptions: c.pollOptions!.map(opt => opt.id === optionId ? { ...opt, votes: opt.votes + 1 } : opt)
                 };
             });
-            try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch (e) { }
+            writeCache(updated);
             return updated;
         });
         try { await supabase.from('poll_votes').insert({ confession_id: confessionId, option_id: optionId, user_id: currentUser.id }); } catch (err) { console.error(err); fetchConfessions(0, true); }
@@ -422,7 +430,7 @@ export const Confessions: React.FC = () => {
                 else newReactions[emoji] = (newReactions[emoji] || 0) + 1;
                 return { ...c, userReaction: newUserReaction, reactions: newReactions, likes: Object.values(newReactions).reduce((a, b) => a + b, 0) };
             });
-            try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch (e) { }
+            writeCache(updated);
             return updated;
         });
 
@@ -456,7 +464,7 @@ export const Confessions: React.FC = () => {
                             }))
                         };
                     });
-                    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch (e) { }
+                    writeCache(updated);
                     return updated;
                 });
             }
@@ -479,7 +487,7 @@ export const Confessions: React.FC = () => {
                 if (c.id !== confessionId) return c;
                 return { ...c, comments: [...(c.comments || []), optimisticComment] };
             });
-            try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch (e) { }
+            writeCache(updated);
             return updated;
         });
 
