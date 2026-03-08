@@ -20,6 +20,7 @@ const Chat = lazy(() => import('./pages/Chat').then(m => ({ default: m.Chat })))
 const Notifications = lazy(() => import('./pages/Notifications').then(m => ({ default: m.Notifications })));
 const VirtualDate = lazy(() => import('./pages/VirtualDate').then(m => ({ default: m.VirtualDate })));
 const CinemaDate = lazy(() => import('./pages/virtual-dates/CinemaDate').then(m => ({ default: m.CinemaDate })));
+const MusicDate = lazy(() => import('./pages/virtual-dates/MusicDate').then(m => ({ default: m.MusicDate })));
 const Profile = lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })));
 const Developers = lazy(() => import('./pages/Developers').then(m => ({ default: m.Developers })));
 const Confessions = lazy(() => import('./pages/Confessions').then(m => ({ default: m.Confessions })));
@@ -139,6 +140,7 @@ export default function App() {
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/virtual-date" element={<VirtualDate />} />
             <Route path="/virtual-date/cinema" element={<CinemaDate />} />
+            <Route path="/virtual-date/music" element={<MusicDate />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/:id" element={<Profile />} />
             <Route path="/confessions" element={<Confessions />} />

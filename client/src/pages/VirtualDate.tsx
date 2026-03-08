@@ -18,12 +18,12 @@ export const VirtualDate: React.FC = () => {
     },
     {
       id: 'music',
-      title: 'Soul Sync',
+      title: 'Soul Sync (Music Jam)',
       desc: 'Listen to music in real-time with a shared visualizer and queue system.',
       icon: Music,
       gradient: 'from-violet-500 via-purple-500 to-indigo-500',
       bgGlow: 'rgba(139, 92, 246, 0.3)',
-      available: false,
+      available: true,
     },
     {
       id: 'games',
@@ -58,6 +58,8 @@ export const VirtualDate: React.FC = () => {
     if (available) {
       if (id === 'cinema') {
         navigate('/virtual-date/cinema');
+      } else if (id === 'music') {
+        navigate('/virtual-date/music');
       }
     }
   };
