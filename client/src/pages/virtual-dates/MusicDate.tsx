@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, AlertCircle, Play, Pause, Search, Music, X, Hash, Users, Copy, PlusCircle, LogIn, LogOut, MessageSquare, Send, Mic, MicOff, Video, VideoOff, Loader, Volume2, Maximize, Minimize, FileText, Image as ImageIcon, SkipForward } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Play, Pause, Search, Music, X, Hash, Users, Copy, PlusCircle, LogIn, LogOut, MessageSquare, Send, Mic, MicOff, Video, VideoOff, Loader, Volume2, Maximize, Minimize, FileText, Image as ImageIcon, SkipForward, ListMusic } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Peer, { DataConnection } from 'peerjs';
 import { useAuth } from '../../context/AuthContext';
@@ -69,6 +69,7 @@ export const MusicDate = () => {
     const [musicVolume, setMusicVolume] = useState(1);
     const [partnerVolume, setPartnerVolume] = useState(1);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [showMobileSearch, setShowMobileSearch] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
     type LyricLine = { time: number; text: string };
@@ -559,34 +560,34 @@ export const MusicDate = () => {
 
     if (mode === 'landing') {
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen w-full bg-black relative overflow-hidden">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-violet-600/20 rounded-full blur-[120px] pointer-events-none -z-0 animate-pulse" style={{ animationDuration: '4s' }} />
+            <div className="flex flex-col items-center justify-center min-h-screen w-full bg-black relative overflow-hidden pb-24 md:pb-0">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] md:w-[800px] h-[600px] md:h-[800px] bg-violet-600/20 rounded-full blur-[120px] pointer-events-none -z-0 animate-pulse" style={{ animationDuration: '4s' }} />
 
-                <button onClick={() => navigate('/virtual-date')} className="absolute top-6 left-6 p-3 bg-gray-900/50 hover:bg-gray-800 rounded-full transition-colors z-20 border border-gray-800">
-                    <ArrowLeft className="w-6 h-6 text-gray-400 hover:text-white" />
+                <button onClick={() => navigate('/virtual-date')} className="absolute top-4 md:top-6 left-4 md:left-6 p-2 md:p-3 bg-gray-900/50 hover:bg-gray-800 rounded-full transition-colors z-20 border border-gray-800">
+                    <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 text-gray-400 hover:text-white" />
                 </button>
 
-                <div className="text-center mb-16 relative z-10">
-                    <h2 className="text-5xl md:text-7xl font-black mb-4 text-white tracking-tighter">
+                <div className="text-center mb-10 md:mb-16 relative z-10 px-4">
+                    <h2 className="text-4xl md:text-7xl font-black mb-4 text-white tracking-tighter">
                         SOUL <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-600">SYNC</span>
                     </h2>
-                    <p className="text-gray-400 max-w-md mx-auto">Listen to your favorite tracks together in perfect harmony.</p>
+                    <p className="text-gray-400 max-w-md mx-auto text-sm md:text-base">Listen to your favorite tracks together in perfect harmony.</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full px-4 max-w-2xl relative z-10">
-                    <button onClick={() => setMode('create_room')} className="group flex flex-col items-center p-10 bg-gray-900/40 backdrop-blur-md hover:bg-gray-800/80 border-2 border-gray-800 hover:border-violet-500 rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-violet-500/20">
-                        <div className="p-6 rounded-full bg-violet-500/10 text-violet-500 mb-6 group-hover:scale-110 transition-transform shadow-lg">
-                            <PlusCircle className="w-12 h-12" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 w-full px-4 max-w-2xl relative z-10">
+                    <button onClick={() => setMode('create_room')} className="group flex flex-col items-center p-8 md:p-10 bg-gray-900/40 backdrop-blur-md hover:bg-gray-800/80 border-2 border-gray-800 hover:border-violet-500 rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-violet-500/20">
+                        <div className="p-5 md:p-6 rounded-full bg-violet-500/10 text-violet-500 mb-4 md:mb-6 group-hover:scale-110 transition-transform shadow-lg">
+                            <PlusCircle className="w-10 h-10 md:w-12 md:h-12" />
                         </div>
-                        <h3 className="text-2xl font-bold text-white mb-2">Create Jam</h3>
+                        <h3 className="text-xl md:text-2xl font-bold text-white mb-2">Create Jam</h3>
                         <p className="text-gray-400 text-sm">Host a new music session</p>
                     </button>
 
-                    <button onClick={() => setMode('join_room')} className="group flex flex-col items-center p-10 bg-gray-900/40 backdrop-blur-md hover:bg-gray-800/80 border-2 border-gray-800 hover:border-indigo-500 rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-500/20">
-                        <div className="p-6 rounded-full bg-indigo-500/10 text-indigo-500 mb-6 group-hover:scale-110 transition-transform shadow-lg">
-                            <LogIn className="w-12 h-12" />
+                    <button onClick={() => setMode('join_room')} className="group flex flex-col items-center p-8 md:p-10 bg-gray-900/40 backdrop-blur-md hover:bg-gray-800/80 border-2 border-gray-800 hover:border-indigo-500 rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-500/20">
+                        <div className="p-5 md:p-6 rounded-full bg-indigo-500/10 text-indigo-500 mb-4 md:mb-6 group-hover:scale-110 transition-transform shadow-lg">
+                            <LogIn className="w-10 h-10 md:w-12 md:h-12" />
                         </div>
-                        <h3 className="text-2xl font-bold text-white mb-2">Join Jam</h3>
+                        <h3 className="text-xl md:text-2xl font-bold text-white mb-2">Join Jam</h3>
                         <p className="text-gray-400 text-sm">Enter a room code</p>
                     </button>
                 </div>
@@ -597,28 +598,28 @@ export const MusicDate = () => {
     if (mode === 'create_room' || mode === 'join_room') {
         const isCreate = mode === 'create_room';
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen w-full bg-black relative px-4">
+            <div className="flex flex-col items-center justify-center min-h-screen w-full bg-black relative px-4 pb-24 md:pb-0">
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none" />
-                <button onClick={() => setMode('landing')} className="absolute top-6 left-6 p-3 bg-gray-900/50 hover:bg-gray-800 rounded-full z-20 border border-gray-800">
-                    <ArrowLeft className="w-6 h-6 text-gray-400 hover:text-white" />
+                <button onClick={() => setMode('landing')} className="absolute top-4 md:top-6 left-4 md:left-6 p-2 md:p-3 bg-gray-900/50 hover:bg-gray-800 rounded-full z-20 border border-gray-800">
+                    <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 text-gray-400 hover:text-white" />
                 </button>
 
-                <div className="bg-gray-900/60 backdrop-blur-xl border border-gray-800 rounded-3xl p-8 w-full max-w-md shadow-2xl relative z-10">
-                    <div className="text-center mb-8">
-                        <h2 className="text-3xl font-bold text-white mb-2">{isCreate ? 'Create Jam Room' : 'Join Jam Room'}</h2>
+                <div className="bg-gray-900/60 backdrop-blur-xl border border-gray-800 rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl relative z-10">
+                    <div className="text-center mb-6 md:mb-8">
+                        <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">{isCreate ? 'Create Jam Room' : 'Join Jam Room'}</h2>
                         <p className="text-sm text-gray-400">{isCreate ? 'Give your room a fun name' : 'Enter the host\'s code'}</p>
                     </div>
                     {error && <div className="mb-4 text-red-500 text-sm text-center bg-red-500/10 py-2 rounded-xl">{error}</div>}
                     <div className="space-y-4">
                         {isCreate ? (
-                            <input type="text" value={roomName} onChange={e => setRoomName(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleCreateRoom()} placeholder="e.g., Midnight Vibes 🌙" maxLength={30} className="w-full bg-black/50 border-2 border-gray-700 rounded-xl px-4 py-4 text-white focus:border-violet-500 focus:outline-none transition-colors" autoFocus />
+                            <input type="text" value={roomName} onChange={e => setRoomName(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleCreateRoom()} placeholder="e.g., Midnight Vibes 🌙" maxLength={30} className="w-full bg-black/50 border-2 border-gray-700 rounded-xl px-4 py-3 md:py-4 text-white focus:border-violet-500 focus:outline-none transition-colors" autoFocus />
                         ) : (
                             <input type="text" value={joinCode} onChange={e => {
                                 const val = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
                                 setJoinCode(val.length === 3 && !val.includes('-') ? val + '-' : val.slice(0, 7));
-                            }} onKeyPress={e => e.key === 'Enter' && handleJoinRoom()} placeholder="ABC-123" className="w-full bg-black/50 border-2 border-gray-700 rounded-xl px-4 py-4 text-center text-2xl tracking-widest text-white focus:border-indigo-500 focus:outline-none transition-colors font-mono" autoFocus />
+                            }} onKeyPress={e => e.key === 'Enter' && handleJoinRoom()} placeholder="ABC-123" className="w-full bg-black/50 border-2 border-gray-700 rounded-xl px-4 py-3 md:py-4 text-center text-xl md:text-2xl tracking-widest text-white focus:border-indigo-500 focus:outline-none transition-colors font-mono" autoFocus />
                         )}
-                        <button onClick={isCreate ? handleCreateRoom : handleJoinRoom} disabled={isConnecting} className={`w-full bg-gradient-to-r text-white font-bold py-4 rounded-xl shadow-lg transition-all hover:scale-[1.02] flex items-center justify-center gap-2 ${isCreate ? 'from-violet-500 to-indigo-500 shadow-violet-500/20' : 'from-indigo-500 to-purple-500 shadow-indigo-500/20'}`}>
+                        <button onClick={isCreate ? handleCreateRoom : handleJoinRoom} disabled={isConnecting} className={`w-full bg-gradient-to-r text-white font-bold py-3 md:py-4 rounded-xl shadow-lg transition-all hover:scale-[1.02] flex items-center justify-center gap-2 ${isCreate ? 'from-violet-500 to-indigo-500 shadow-violet-500/20' : 'from-indigo-500 to-purple-500 shadow-indigo-500/20'}`}>
                             {isConnecting ? <Loader className="w-5 h-5 animate-spin" /> : (isCreate ? 'Start Jam' : 'Join Jam')}
                         </button>
                     </div>
@@ -628,20 +629,24 @@ export const MusicDate = () => {
     }
 
     return (
-        <div ref={containerRef} className="flex flex-col h-full w-full bg-[#050510] text-white overflow-hidden font-sans relative">
+        <div ref={containerRef} className="flex flex-col h-full w-full bg-[#050510] text-white overflow-hidden font-sans relative pb-20 md:pb-0">
             <audio ref={audioRef} src={currentTrack?.media_url} onTimeUpdate={handleTimeUpdate} onEnded={handleSongEnded} />
 
             {/* Header / Nav Bar */}
             {!isFullscreen && (
-                <div className="h-16 border-b border-white/5 flex items-center justify-between px-6 bg-black/40 backdrop-blur-md relative z-30">
-                    <div className="flex items-center gap-4 border border-violet-500/30 bg-violet-500/10 px-4 py-1.5 rounded-full">
-                        <span className="font-bold text-gray-200">{roomName}</span>
-                        <div className="w-px h-4 bg-white/20" />
-                        <span className="font-mono text-neon font-bold flex items-center gap-1 cursor-pointer">
+                <div className="h-14 md:h-16 border-b border-white/5 flex items-center justify-between px-3 md:px-6 bg-black/40 backdrop-blur-md relative z-30">
+                    <div className="flex items-center gap-2 md:gap-4 border border-violet-500/30 bg-violet-500/10 px-3 md:px-4 py-1.5 rounded-full overflow-hidden">
+                        <span className="font-bold text-gray-200 text-sm md:text-base truncate max-w-[80px] md:max-w-[200px]">{roomName}</span>
+                        <div className="w-px h-4 bg-white/20 shrink-0" />
+                        <span className="font-mono text-neon font-bold flex items-center gap-1 cursor-pointer text-xs md:text-sm shrink-0">
                             <Hash className="w-3 h-3" /> {roomCode}
                         </span>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 md:gap-3">
+                        {/* Mobile search toggle */}
+                        <button onClick={() => setShowMobileSearch(!showMobileSearch)} className={`p-2 rounded-xl transition-colors md:hidden ${showMobileSearch ? 'bg-violet-500/20 text-violet-400' : 'hover:bg-gray-800 text-gray-400'}`}>
+                            <ListMusic className="w-5 h-5" />
+                        </button>
                         <div className="relative">
                             <button onClick={() => setShowVolumeControls(!showVolumeControls)} className={`p-2 rounded-xl transition-colors ${showVolumeControls ? 'bg-violet-500/20 text-violet-400' : 'hover:bg-gray-800 text-gray-400'}`}>
                                 <Volume2 className="w-5 h-5" />
@@ -668,7 +673,7 @@ export const MusicDate = () => {
                         <button onClick={() => setShowChat(!showChat)} className={`p-2 rounded-xl transition-colors ${showChat ? 'bg-violet-500/20 text-violet-400' : 'hover:bg-gray-800 text-gray-400'}`}>
                             <MessageSquare className="w-5 h-5" />
                         </button>
-                        <button onClick={toggleFullscreen} className="p-2 rounded-xl hover:bg-gray-800 text-gray-400 transition-colors">
+                        <button onClick={toggleFullscreen} className="p-2 rounded-xl hover:bg-gray-800 text-gray-400 transition-colors hidden md:block">
                             <Maximize className="w-5 h-5" />
                         </button>
                         <button onClick={() => setMode('landing')} className="p-2 rounded-xl hover:bg-red-500/10 text-red-500 transition-colors">
@@ -721,7 +726,7 @@ export const MusicDate = () => {
                 </div>
 
                 {/* Left Side: Now Playing */}
-                <div className="flex-1 overflow-y-auto p-4 md:p-8 z-10 flex flex-col items-center justify-center relative">
+                <div className="flex-1 overflow-y-auto p-3 md:p-8 z-10 flex flex-col items-center justify-center relative">
                     {showLyrics ? (
                         <div ref={lyricsContainerRef} className="absolute inset-0 w-full h-full bg-[#050510]/95 backdrop-blur-3xl p-8 md:p-16 overflow-y-auto custom-scrollbar flex flex-col items-center scroll-smooth z-40">
                             {isLoadingLyrics ? (
@@ -753,7 +758,7 @@ export const MusicDate = () => {
                         </div>
                     ) : (
                         <div className="w-full max-w-2xl mx-auto flex flex-col items-center text-center transition-all my-auto z-10">
-                            <div className="relative w-80 h-80 sm:w-96 sm:h-96 shrink-0 shadow-[0_0_60px_rgba(139,92,246,0.15)] rounded-[2.5rem] overflow-hidden mb-12 border border-white/5 group">
+                            <div className="relative w-56 h-56 sm:w-80 sm:h-80 md:w-96 md:h-96 shrink-0 shadow-[0_0_60px_rgba(139,92,246,0.15)] rounded-[2rem] md:rounded-[2.5rem] overflow-hidden mb-6 md:mb-12 border border-white/5 group">
                                 {currentTrack ? (
                                     <img src={currentTrack.image.replace('150x150', '500x500')} alt={currentTrack.song} className="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-105" />
                                 ) : (
@@ -783,9 +788,9 @@ export const MusicDate = () => {
                                 )}
                             </div>
 
-                            <div className="w-full flex flex-col items-center px-4">
-                                <h1 className="text-4xl sm:text-5xl font-black text-white mb-4 line-clamp-2 tracking-tight drop-shadow-xl">{currentTrack?.song || 'Select a track'}</h1>
-                                <p className="text-xl sm:text-2xl text-violet-300 mb-12 font-medium tracking-wide opacity-90">{currentTrack?.singers || 'JioSaavnAPI Jam'}</p>
+                            <div className="w-full flex flex-col items-center px-2 md:px-4">
+                                <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-white mb-2 md:mb-4 line-clamp-2 tracking-tight drop-shadow-xl">{currentTrack?.song || 'Select a track'}</h1>
+                                <p className="text-base sm:text-xl md:text-2xl text-violet-300 mb-6 md:mb-12 font-medium tracking-wide opacity-90">{currentTrack?.singers || 'JioSaavnAPI Jam'}</p>
 
                                 {/* Playback Controls */}
                                 <div className="w-full max-w-lg mt-auto">
@@ -803,13 +808,13 @@ export const MusicDate = () => {
                                         <span>{currentTrack ? formatTime(Number(currentTrack.duration)) : '0:00'}</span>
                                     </div>
 
-                                    <div className="flex items-center justify-center gap-8 mt-8">
+                                    <div className="flex items-center justify-center gap-6 md:gap-8 mt-4 md:mt-8">
                                         <button
                                             onClick={handlePlayPause}
                                             disabled={!isHost || !currentTrack}
-                                            className="w-20 h-20 flex items-center justify-center bg-white text-black rounded-full hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed shadow-[0_0_30px_rgba(255,255,255,0.15)] hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]"
+                                            className="w-16 h-16 md:w-20 md:h-20 flex items-center justify-center bg-white text-black rounded-full hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed shadow-[0_0_30px_rgba(255,255,255,0.15)] hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]"
                                         >
-                                            {isPlaying ? <Pause className="w-10 h-10 fill-current" /> : <Play className="w-10 h-10 fill-current ml-2" />}
+                                            {isPlaying ? <Pause className="w-8 h-8 md:w-10 md:h-10 fill-current" /> : <Play className="w-8 h-8 md:w-10 md:h-10 fill-current ml-1 md:ml-2" />}
                                         </button>
                                         <button
                                             onClick={handleSkip}
@@ -827,11 +832,16 @@ export const MusicDate = () => {
                     )}
                 </div>
 
-                {/* Right Panel: Search & Queue (Hidden in Fullscreen) */}
-                {!isFullscreen && (
-                    <div className="w-96 border-l border-white/5 bg-black/40 backdrop-blur-md z-20 flex flex-col flex-shrink-0">
-                        <div className="p-4 border-b border-white/5 bg-gray-950/50">
-                            <form onSubmit={handleSearch} className="relative">
+                {/* Right Panel: Search & Queue — desktop sidebar, mobile bottom sheet */}
+                {!isFullscreen && (showMobileSearch || window.innerWidth >= 768) && (
+                    <div className={`${showMobileSearch ? 'fixed inset-x-0 bottom-20 top-auto h-[55vh] z-50 rounded-t-3xl border-t-2 border-violet-500/30' : 'w-96 border-l'} border-white/5 bg-black/95 md:bg-black/40 backdrop-blur-md md:backdrop-blur-md z-20 flex flex-col flex-shrink-0`}>
+                        <div className="p-3 md:p-4 border-b border-white/5 bg-gray-950/50 flex items-center gap-2">
+                            {showMobileSearch && (
+                                <button onClick={() => setShowMobileSearch(false)} className="p-2 rounded-xl hover:bg-gray-800 text-gray-400 shrink-0 md:hidden">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            )}
+                            <form onSubmit={handleSearch} className="relative flex-1">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                 <input
                                     type="text"
@@ -887,9 +897,9 @@ export const MusicDate = () => {
                     </div>
                 )}
 
-                {/* Chat Panel - Absolutely Positioned if open */}
+                {/* Chat Panel — desktop: positioned left of sidebar, mobile: bottom sheet */}
                 {showChat && (
-                    <div className="absolute right-96 top-0 bottom-0 w-80 border-l border-white/5 bg-gray-950/95 backdrop-blur-2xl flex flex-col z-30 shadow-2xl transition-all">
+                    <div className="fixed inset-x-0 bottom-20 h-[60vh] md:absolute md:inset-x-auto md:right-96 md:top-0 md:bottom-0 md:h-auto md:w-80 border-t-2 border-violet-500/30 md:border-t-0 md:border-l border-white/5 bg-gray-950/95 backdrop-blur-2xl flex flex-col z-30 shadow-2xl transition-all rounded-t-3xl md:rounded-none">
                         <div className="h-14 border-b border-white/5 flex items-center justify-between px-4">
                             <span className="font-bold text-gray-300 flex items-center gap-2"><MessageSquare className="w-4 h-4 text-violet-400" /> Chat</span>
                             <button onClick={() => setShowChat(false)} className="text-gray-500 hover:text-white"><X className="w-4 h-4" /></button>
