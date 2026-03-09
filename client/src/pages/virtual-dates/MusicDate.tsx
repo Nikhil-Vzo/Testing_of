@@ -13,6 +13,7 @@ interface Track {
     singers: string;
     image: string;
     media_url: string;
+    media_preview_url?: string;
     duration: string;
 }
 
@@ -335,25 +336,51 @@ export const MusicDate = () => {
         setActiveLyricIndex(-1);
     }, [currentTrack]);
 
-    // Search JioSaavn API
-    const handleSearch = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!searchQuery.trim()) return;
+    // Search JioSaavn API — live debounced search
+    const searchAbortRef = useRef<AbortController | null>(null);
+
+    const performSearch = async (query: string) => {
+        if (!query.trim()) {
+            setSearchResults([]);
+            setIsSearching(false);
+            return;
+        }
+        // Cancel any in-flight request
+        if (searchAbortRef.current) searchAbortRef.current.abort();
+        const controller = new AbortController();
+        searchAbortRef.current = controller;
+
         setIsSearching(true);
+        setError(null);
         try {
-            const res = await fetch(`https://saavnapi-nine.vercel.app/result/?query=${encodeURIComponent(searchQuery)}`);
+            const timeout = setTimeout(() => controller.abort(), 10000);
+            const res = await fetch(`https://saavnapi-nine.vercel.app/result/?query=${encodeURIComponent(query)}`, { signal: controller.signal });
+            clearTimeout(timeout);
+            if (!res.ok) throw new Error(`API error: ${res.status}`);
             const data = await res.json();
-            if (Array.isArray(data)) {
+            if (Array.isArray(data) && data.length > 0) {
                 setSearchResults(data);
             } else {
                 setSearchResults([]);
             }
-        } catch (err) {
-            setError('Failed to search music. Try again.');
+        } catch (err: any) {
+            if (err.name === 'AbortError') return; // Silently ignore aborted requests
+            setError('Failed to search. Try again.');
+            setTimeout(() => setError(null), 4000);
         } finally {
             setIsSearching(false);
         }
     };
+
+    // Auto-search as user types (400ms debounce)
+    useEffect(() => {
+        if (!searchQuery.trim()) {
+            setSearchResults([]);
+            return;
+        }
+        const timer = setTimeout(() => performSearch(searchQuery), 400);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     const parseLyrics = (lrcString: string) => {
         const lines = lrcString.split('\n');
@@ -407,12 +434,43 @@ export const MusicDate = () => {
         }
     };
 
+    const handleAudioError = () => {
+        // If the main media_url fails (DRM/CORS), try the preview URL
+        if (audioRef.current && currentTrackRef.current?.media_preview_url) {
+            const previewUrl = currentTrackRef.current.media_preview_url;
+            if (audioRef.current.src !== previewUrl) {
+                console.warn('Main audio URL failed, falling back to preview URL');
+                audioRef.current.src = previewUrl;
+                audioRef.current.play().catch(() => {
+                    setError('This track is unavailable. Try another song.');
+                    setTimeout(() => setError(null), 4000);
+                });
+                return;
+            }
+        }
+        setError('This track is unavailable. Try another song.');
+        setTimeout(() => setError(null), 4000);
+    };
+
     const playSelectedTrack = (track: Track) => {
         setCurrentTrack(track);
         setIsPlaying(true);
         if (audioRef.current) {
             audioRef.current.src = track.media_url;
-            audioRef.current.play().catch(e => console.error("Audio play error", e));
+            audioRef.current.play().catch(e => {
+                console.error("Audio play error", e);
+                // Try preview URL on play failure
+                if (track.media_preview_url) {
+                    audioRef.current!.src = track.media_preview_url;
+                    audioRef.current!.play().catch(() => {
+                        setError('This track is unavailable. Try another song.');
+                        setTimeout(() => setError(null), 4000);
+                    });
+                } else {
+                    setError('This track is unavailable. Try another song.');
+                    setTimeout(() => setError(null), 4000);
+                }
+            });
         }
         broadcastSync('track', { payload: track });
         broadcastSync('play');
@@ -540,30 +598,59 @@ export const MusicDate = () => {
         }
     };
 
-    // Draggable Cam logic
+    // Draggable Cam logic — shared position update
+    const startDrag = (id: string, startX: number, startY: number) => {
+        const pos = camPositions[id] || { x: 0, y: 0 };
+        dragInfo.current = { id, startX, startY, initialX: pos.x, initialY: pos.y };
+    };
+
+    const moveDrag = (clientX: number, clientY: number) => {
+        if (!dragInfo.current.id) return;
+        const dx = clientX - dragInfo.current.startX;
+        const dy = clientY - dragInfo.current.startY;
+        setCamPositions(prev => ({
+            ...prev,
+            [dragInfo.current.id as string]: { x: dragInfo.current.initialX + dx, y: dragInfo.current.initialY + dy }
+        }));
+    };
+
+    const endDrag = () => {
+        dragInfo.current.id = null;
+    };
+
     const handleCamMouseDown = (e: React.MouseEvent, id: string) => {
         e.preventDefault();
-        const pos = camPositions[id] || { x: 0, y: 0 };
-        dragInfo.current = { id, startX: e.clientX, startY: e.clientY, initialX: pos.x, initialY: pos.y };
+        startDrag(id, e.clientX, e.clientY);
 
-        const handleMouseMove = (mvEvent: MouseEvent) => {
-            if (!dragInfo.current.id) return;
-            const dx = mvEvent.clientX - dragInfo.current.startX;
-            const dy = mvEvent.clientY - dragInfo.current.startY;
-            setCamPositions(prev => ({
-                ...prev,
-                [dragInfo.current.id as string]: { x: dragInfo.current.initialX + dx, y: dragInfo.current.initialY + dy }
-            }));
-        };
-
+        const handleMouseMove = (mvEvent: MouseEvent) => moveDrag(mvEvent.clientX, mvEvent.clientY);
         const handleMouseUp = () => {
-            dragInfo.current.id = null;
+            endDrag();
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mouseup', handleMouseUp);
         };
 
         window.addEventListener('mousemove', handleMouseMove);
         window.addEventListener('mouseup', handleMouseUp);
+    };
+
+    const handleCamTouchStart = (e: React.TouchEvent, id: string) => {
+        if (e.touches.length !== 1) return;
+        const touch = e.touches[0];
+        startDrag(id, touch.clientX, touch.clientY);
+
+        const handleTouchMove = (mvEvent: TouchEvent) => {
+            mvEvent.preventDefault(); // Prevent page scroll while dragging
+            if (mvEvent.touches.length !== 1) return;
+            moveDrag(mvEvent.touches[0].clientX, mvEvent.touches[0].clientY);
+        };
+        const handleTouchEnd = () => {
+            endDrag();
+            window.removeEventListener('touchmove', handleTouchMove);
+            window.removeEventListener('touchend', handleTouchEnd);
+        };
+
+        window.addEventListener('touchmove', handleTouchMove, { passive: false });
+        window.addEventListener('touchend', handleTouchEnd);
     };
 
     const handleSendMessage = (e: React.FormEvent) => {
@@ -652,7 +739,7 @@ export const MusicDate = () => {
 
     return (
         <div ref={containerRef} className="flex flex-col h-full w-full bg-[#050510] text-white overflow-hidden font-sans relative pb-20 md:pb-0">
-            <audio ref={audioRef} src={currentTrack?.media_url} onTimeUpdate={handleTimeUpdate} onEnded={handleSongEnded} />
+            <audio ref={audioRef} src={currentTrack?.media_url} onTimeUpdate={handleTimeUpdate} onEnded={handleSongEnded} onError={handleAudioError} />
 
             {/* Header / Nav Bar */}
             {!isFullscreen && (
@@ -863,16 +950,18 @@ export const MusicDate = () => {
                                     <X className="w-5 h-5" />
                                 </button>
                             )}
-                            <form onSubmit={handleSearch} className="relative flex-1">
+                            <div className="relative flex-1">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                {isSearching && <Loader className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-violet-400 animate-spin" />}
                                 <input
                                     type="text"
                                     value={searchQuery}
                                     onChange={e => setSearchQuery(e.target.value)}
                                     placeholder="Search for a song..."
-                                    className="w-full bg-gray-900/60 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-violet-500 transition-colors"
+                                    className="w-full bg-gray-900/60 border border-white/10 rounded-xl py-3 pl-10 pr-10 text-sm text-white focus:outline-none focus:border-violet-500 transition-colors"
+                                    autoFocus
                                 />
-                            </form>
+                            </div>
                         </div>
 
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
@@ -951,6 +1040,7 @@ export const MusicDate = () => {
                 {myStream && (
                     <div
                         onMouseDown={(e) => handleCamMouseDown(e, 'me')}
+                        onTouchStart={(e) => handleCamTouchStart(e, 'me')}
                         style={{
                             transform: `translate(${camPositions['me']?.x || 24}px, ${camPositions['me']?.y || 24}px)`,
                             position: 'absolute', top: 0, left: 0
@@ -971,6 +1061,7 @@ export const MusicDate = () => {
                     <div
                         key={peer.peerId}
                         onMouseDown={(e) => handleCamMouseDown(e, peer.peerId)}
+                        onTouchStart={(e) => handleCamTouchStart(e, peer.peerId)}
                         style={{
                             transform: `translate(${camPositions[peer.peerId]?.x || 24}px, ${camPositions[peer.peerId]?.y || 24 + ((i + 1) * 140)}px)`,
                             position: 'absolute', top: 0, left: 0

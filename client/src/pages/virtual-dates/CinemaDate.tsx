@@ -951,6 +951,18 @@ export const CinemaDate: React.FC = () => {
         };
     };
 
+    const handleCamTouchStart = (e: React.TouchEvent, id: string) => {
+        if ((e.target as HTMLElement).closest('.resize-handle')) return;
+        if (e.touches.length !== 1) return;
+        activeDragId.current = id;
+        const touch = e.touches[0];
+        const pos = camPositions[id] || { x: 0, y: 0 };
+        dragOffset.current = {
+            x: touch.clientX - pos.x,
+            y: touch.clientY - pos.y
+        };
+    };
+
     const handleCamResizeMouseDown = (e: React.MouseEvent, id: string) => {
         e.stopPropagation();
         activeResizeId.current = id;
@@ -963,35 +975,40 @@ export const CinemaDate: React.FC = () => {
         };
     };
 
+    const handleCamResizeTouchStart = (e: React.TouchEvent, id: string) => {
+        e.stopPropagation();
+        if (e.touches.length !== 1) return;
+        activeResizeId.current = id;
+        const touch = e.touches[0];
+        const size = camSizes[id] || { width: 96, height: 64 };
+        resizeStart.current = {
+            width: size.width,
+            height: size.height,
+            mouseX: touch.clientX,
+            mouseY: touch.clientY
+        };
+    };
+
     useEffect(() => {
-        const handleMouseMove = (e: MouseEvent) => {
+        const updateDragPosition = (clientX: number, clientY: number) => {
             if (activeDragId.current) {
                 const id = activeDragId.current;
-
-                // Calculate raw new position
-                let newX = e.clientX - dragOffset.current.x;
-                let newY = e.clientY - dragOffset.current.y;
-
-                // Clamp to screen edges
+                let newX = clientX - dragOffset.current.x;
+                let newY = clientY - dragOffset.current.y;
                 const size = camSizes[id] || { width: 96, height: 64 };
                 const maxX = window.innerWidth - size.width;
                 const maxY = window.innerHeight - size.height;
-
                 newX = Math.max(0, Math.min(newX, maxX));
                 newY = Math.max(0, Math.min(newY, maxY));
+                setCamPositions(prev => ({ ...prev, [id]: { x: newX, y: newY } }));
+            }
+        };
 
-                setCamPositions(prev => ({
-                    ...prev,
-                    [id]: {
-                        x: newX,
-                        y: newY
-                    }
-                }));
-            } else if (activeResizeId.current) {
+        const updateResizeSize = (clientX: number, clientY: number) => {
+            if (activeResizeId.current) {
                 const id = activeResizeId.current;
-                const deltaX = e.clientX - resizeStart.current.mouseX;
-                const deltaY = e.clientY - resizeStart.current.mouseY;
-
+                const deltaX = clientX - resizeStart.current.mouseX;
+                const deltaY = clientY - resizeStart.current.mouseY;
                 setCamSizes(prev => ({
                     ...prev,
                     [id]: {
@@ -1001,15 +1018,36 @@ export const CinemaDate: React.FC = () => {
                 }));
             }
         };
-        const handleMouseUp = () => {
+
+        const handleMouseMove = (e: MouseEvent) => {
+            updateDragPosition(e.clientX, e.clientY);
+            updateResizeSize(e.clientX, e.clientY);
+        };
+
+        const handleTouchMove = (e: TouchEvent) => {
+            if (e.touches.length !== 1) return;
+            if (activeDragId.current || activeResizeId.current) {
+                e.preventDefault(); // Prevent page scroll while dragging
+            }
+            const touch = e.touches[0];
+            updateDragPosition(touch.clientX, touch.clientY);
+            updateResizeSize(touch.clientX, touch.clientY);
+        };
+
+        const handleEnd = () => {
             activeDragId.current = null;
             activeResizeId.current = null;
         };
+
         window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('mouseup', handleMouseUp);
+        window.addEventListener('mouseup', handleEnd);
+        window.addEventListener('touchmove', handleTouchMove, { passive: false });
+        window.addEventListener('touchend', handleEnd);
         return () => {
             window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
+            window.removeEventListener('mouseup', handleEnd);
+            window.removeEventListener('touchmove', handleTouchMove);
+            window.removeEventListener('touchend', handleEnd);
         };
     }, [camPositions, camSizes]);
 
@@ -1568,6 +1606,7 @@ export const CinemaDate: React.FC = () => {
                 {myStream && (
                     <div
                         onMouseDown={(e) => handleCamMouseDown(e, 'YOU')}
+                        onTouchStart={(e) => handleCamTouchStart(e, 'YOU')}
                         style={{
                             position: 'absolute',
                             left: '20px',
@@ -1576,17 +1615,18 @@ export const CinemaDate: React.FC = () => {
                             width: `${camSizes['YOU']?.width || 96}px`,
                             height: `${camSizes['YOU']?.height || 64}px`
                         }}
-                        className="bg-black rounded-lg overflow-hidden border border-gray-800 shadow-xl select-none pointer-events-auto opacity-90 hover:opacity-100 transition-opacity cursor-move"
+                        className="bg-black rounded-lg overflow-hidden border border-gray-800 shadow-xl select-none pointer-events-auto opacity-90 hover:opacity-100 transition-opacity cursor-move touch-none"
                     >
                         <StreamVideo stream={myStream} muted={true} mirrored={true} />
                         <div className="absolute bottom-1 right-1 text-[8px] bg-black/50 px-1 rounded text-white font-bold pointer-events-none">{displayName}</div>
-                        <div onMouseDown={(e) => handleCamResizeMouseDown(e, 'YOU')} className="resize-handle absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize z-10"></div>
+                        <div onMouseDown={(e) => handleCamResizeMouseDown(e, 'YOU')} onTouchStart={(e) => handleCamResizeTouchStart(e, 'YOU')} className="resize-handle absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize z-10"></div>
                     </div>
                 )}
                 {peers.map((peer) => (
                     <div
                         key={peer.peerId}
                         onMouseDown={(e) => handleCamMouseDown(e, peer.peerId)}
+                        onTouchStart={(e) => handleCamTouchStart(e, peer.peerId)}
                         style={{
                             position: 'absolute',
                             left: '20px',
@@ -1595,11 +1635,11 @@ export const CinemaDate: React.FC = () => {
                             width: `${camSizes[peer.peerId]?.width || 96}px`,
                             height: `${camSizes[peer.peerId]?.height || 64}px`
                         }}
-                        className="bg-black rounded-lg overflow-hidden border border-gray-800 shadow-xl select-none pointer-events-auto opacity-90 hover:opacity-100 transition-opacity cursor-move"
+                        className="bg-black rounded-lg overflow-hidden border border-gray-800 shadow-xl select-none pointer-events-auto opacity-90 hover:opacity-100 transition-opacity cursor-move touch-none"
                     >
                         <StreamVideo stream={peer.stream} mirrored={true} />
                         <div className="absolute bottom-1 right-1 text-[8px] bg-black/50 px-1 rounded text-white font-bold pointer-events-none">{peerNames[peer.peerId] || peer.peerId.substring(0, 4)}</div>
-                        <div onMouseDown={(e) => handleCamResizeMouseDown(e, peer.peerId)} className="resize-handle absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize z-10"></div>
+                        <div onMouseDown={(e) => handleCamResizeMouseDown(e, peer.peerId)} onTouchStart={(e) => handleCamResizeTouchStart(e, peer.peerId)} className="resize-handle absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize z-10"></div>
                     </div>
                 ))}
             </div>
