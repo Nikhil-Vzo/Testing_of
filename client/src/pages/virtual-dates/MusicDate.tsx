@@ -16,6 +16,7 @@ interface Track {
     media_url: string;
     media_preview_url?: string;
     duration: string;
+    is_drm?: boolean;
 }
 
 interface PeerStream {
@@ -303,11 +304,17 @@ export const MusicDate = () => {
 
     useEffect(() => {
         const handleFullscreenChange = () => {
-            setIsFullscreen(!!document.fullscreenElement);
+            const isFs = !!document.fullscreenElement;
+            setIsFullscreen(isFs);
+            // Fix 4: Re-trigger audio play after fullscreen transition
+            if (audioRef.current && isPlayingRef.current) {
+                audioRef.current.volume = musicVolume;
+                audioRef.current.play().catch(e => console.warn('Fullscreen play resume:', e));
+            }
         };
         document.addEventListener('fullscreenchange', handleFullscreenChange);
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    }, []);
+    }, [musicVolume]);
 
     const toggleFullscreen = async () => {
         if (!document.fullscreenElement) {
@@ -375,7 +382,23 @@ export const MusicDate = () => {
             if (!res.ok) throw new Error(`API error: ${res.status}`);
             const data = await res.json();
             if (Array.isArray(data) && data.length > 0) {
-                setSearchResults(data);
+                // Fix 1: For DRM tracks, swap media_url to use preview URL as primary
+                const mappedTracks: Track[] = data.map((t: any) => {
+                    const isDrm = t.is_drm === 1 || t.is_drm === true;
+                    return {
+                        id: t.id,
+                        song: t.song,
+                        singers: t.singers || t.primary_artists || '',
+                        image: t.image,
+                        // If DRM, use preview URL as primary (always playable)
+                        media_url: isDrm ? (t.media_preview_url || t.media_url) : t.media_url,
+                        // Keep the original URLs as fallback
+                        media_preview_url: t.media_preview_url,
+                        duration: t.duration,
+                        is_drm: isDrm,
+                    };
+                });
+                setSearchResults(mappedTracks);
             } else {
                 setSearchResults([]);
             }
@@ -451,11 +474,11 @@ export const MusicDate = () => {
     };
 
     const handleAudioError = () => {
-        // If the main media_url fails (DRM/CORS), try the preview URL
+        // If the current src fails, try the preview URL as last resort
         if (audioRef.current && currentTrackRef.current?.media_preview_url) {
             const previewUrl = currentTrackRef.current.media_preview_url;
             if (audioRef.current.src !== previewUrl) {
-                console.warn('Main audio URL failed, falling back to preview URL');
+                console.warn('Audio URL failed, falling back to preview URL');
                 audioRef.current.src = previewUrl;
                 audioRef.current.play().catch(() => {
                     setError('This track is unavailable. Try another song.');
@@ -472,12 +495,15 @@ export const MusicDate = () => {
         setCurrentTrack(track);
         setIsPlaying(true);
         if (audioRef.current) {
+            // media_url is already set to preview URL for DRM tracks by performSearch
             audioRef.current.src = track.media_url;
+            audioRef.current.volume = musicVolume;
             audioRef.current.play().catch(e => {
                 console.error("Audio play error", e);
-                // Try preview URL on play failure
-                if (track.media_preview_url) {
+                // Last-resort fallback: try raw preview URL
+                if (track.media_preview_url && audioRef.current!.src !== track.media_preview_url) {
                     audioRef.current!.src = track.media_preview_url;
+                    audioRef.current!.volume = musicVolume;
                     audioRef.current!.play().catch(() => {
                         setError('This track is unavailable. Try another song.');
                         setTimeout(() => setError(null), 4000);
@@ -753,8 +779,39 @@ export const MusicDate = () => {
         );
     }
 
+    // Fix 2: State for center panel search
+    const [centerSearchQuery, setCenterSearchQuery] = useState('');
+    const [centerSearchResults, setCenterSearchResults] = useState<Track[]>([]);
+    const [isCenterSearching, setIsCenterSearching] = useState(false);
+
+    const performCenterSearch = async (query: string) => {
+        if (!query.trim()) { setCenterSearchResults([]); setIsCenterSearching(false); return; }
+        setIsCenterSearching(true);
+        try {
+            const res = await fetch(`https://saavnapi-nine.vercel.app/result/?query=${encodeURIComponent(query)}`);
+            if (!res.ok) throw new Error('API error');
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0) {
+                setCenterSearchResults(data.map((t: any) => {
+                    const isDrm = t.is_drm === 1 || t.is_drm === true;
+                    return {
+                        id: t.id, song: t.song, singers: t.singers || t.primary_artists || '', image: t.image,
+                        media_url: isDrm ? (t.media_preview_url || t.media_url) : t.media_url,
+                        media_preview_url: t.media_preview_url, duration: t.duration, is_drm: isDrm,
+                    };
+                }));
+            } else { setCenterSearchResults([]); }
+        } catch { setCenterSearchResults([]); } finally { setIsCenterSearching(false); }
+    };
+
+    useEffect(() => {
+        if (!centerSearchQuery.trim()) { setCenterSearchResults([]); return; }
+        const t = setTimeout(() => performCenterSearch(centerSearchQuery), 400);
+        return () => clearTimeout(t);
+    }, [centerSearchQuery]);
+
     return (
-        <div ref={containerRef} className="flex flex-col h-full w-full bg-[#050510] text-white overflow-hidden font-sans relative pb-20 md:pb-0">
+        <div ref={containerRef} className="flex flex-col h-[100dvh] w-full bg-[#050510] text-white overflow-hidden font-sans relative">
             <audio ref={audioRef} src={currentTrack?.media_url} onTimeUpdate={handleTimeUpdate} onEnded={handleSongEnded} onError={handleAudioError} />
 
             {/* Header / Nav Bar */}
@@ -843,7 +900,7 @@ export const MusicDate = () => {
                 </div>
             )}
 
-            <div className="flex-1 flex overflow-hidden relative">
+            <div className="flex-1 flex overflow-hidden relative min-h-0">
 
                 {/* Visualizer Background */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none overflow-hidden">
@@ -851,7 +908,7 @@ export const MusicDate = () => {
                 </div>
 
                 {/* Left Side: Now Playing */}
-                <div className="flex-1 overflow-y-auto p-3 md:p-8 z-10 flex flex-col items-center justify-center relative">
+                <div className="flex-1 overflow-y-auto p-3 md:p-8 z-10 flex flex-col items-center justify-center relative min-h-0">
                     {showLyrics ? (
                         <div ref={lyricsContainerRef} className="absolute inset-0 w-full h-full bg-[#050510]/95 backdrop-blur-3xl p-8 md:p-16 overflow-y-auto custom-scrollbar flex flex-col items-center scroll-smooth z-40">
                             {isLoadingLyrics ? (
@@ -881,16 +938,54 @@ export const MusicDate = () => {
                                 <ImageIcon className="w-6 h-6" />
                             </button>
                         </div>
+                    ) : !currentTrack ? (
+                        /* Fix 2: Prominent search prompt when no track is playing */
+                        <div className="w-full max-w-xl mx-auto flex flex-col items-center text-center transition-all my-auto z-10 px-4">
+                            <div className="relative w-40 h-40 sm:w-52 sm:h-52 md:w-64 md:h-64 shrink-0 rounded-[2rem] overflow-hidden mb-8 border border-white/5">
+                                <div className="w-full h-full bg-gradient-to-br from-violet-900/40 to-indigo-900/40 backdrop-blur flex items-center justify-center">
+                                    <Music className="w-16 h-16 sm:w-20 sm:h-20 text-violet-400/60" />
+                                </div>
+                            </div>
+                            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white mb-3 tracking-tight">What do you want to listen to?</h1>
+                            <p className="text-gray-400 text-sm md:text-base mb-8">Search for a song to start the jam 🎵</p>
+
+                            {/* Center Search Bar */}
+                            <div className="w-full max-w-md relative mb-6">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                {isCenterSearching && <Loader className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-violet-400 animate-spin" />}
+                                <input
+                                    type="text"
+                                    value={centerSearchQuery}
+                                    onChange={e => setCenterSearchQuery(e.target.value)}
+                                    placeholder="Search songs, artists..."
+                                    className="w-full bg-gray-900/60 border-2 border-white/10 focus:border-violet-500 rounded-2xl py-4 pl-12 pr-12 text-base text-white focus:outline-none transition-all placeholder-gray-500 shadow-lg"
+                                    autoFocus
+                                />
+                            </div>
+
+                            {/* Center Search Results */}
+                            {centerSearchResults.length > 0 && (
+                                <div className="w-full max-w-md max-h-72 overflow-y-auto custom-scrollbar bg-gray-900/80 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl">
+                                    {centerSearchResults.map((track) => (
+                                        <div key={track.id} onClick={() => { handleTrackSelect(track, true); setCenterSearchQuery(''); setCenterSearchResults([]); }} className="flex items-center gap-3 hover:bg-white/5 p-3 cursor-pointer transition-colors group border-b border-white/5 last:border-b-0">
+                                            <img src={track.image} alt={track.song} className="w-12 h-12 rounded-lg object-cover shadow-md" />
+                                            <div className="flex-1 min-w-0 text-left">
+                                                <h4 className="text-white text-sm font-bold truncate group-hover:text-violet-300 transition-colors">{track.song}</h4>
+                                                <p className="text-gray-400 text-xs truncate">{track.singers}</p>
+                                            </div>
+                                            <Play className="w-5 h-5 text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Hint to use sidebar on desktop */}
+                            <p className="hidden md:block text-xs text-gray-600 mt-6">You can also use the sidebar search on the right →</p>
+                        </div>
                     ) : (
                         <div className="w-full max-w-2xl mx-auto flex flex-col items-center text-center transition-all my-auto z-10">
-                            <div className="relative w-56 h-56 sm:w-80 sm:h-80 md:w-96 md:h-96 shrink-0 shadow-[0_0_60px_rgba(139,92,246,0.15)] rounded-[2rem] md:rounded-[2.5rem] overflow-hidden mb-6 md:mb-12 border border-white/5 group">
-                                {currentTrack ? (
-                                    <img src={currentTrack.image.replace('150x150', '500x500')} alt={currentTrack.song} className="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-105" />
-                                ) : (
-                                    <div className="w-full h-full bg-gray-900/50 backdrop-blur flex items-center justify-center">
-                                        <Music className="w-24 h-24 text-gray-700" />
-                                    </div>
-                                )}
+                            <div className="relative w-48 h-48 sm:w-72 sm:h-72 md:w-80 md:h-80 lg:w-96 lg:h-96 shrink-0 shadow-[0_0_60px_rgba(139,92,246,0.15)] rounded-[2rem] md:rounded-[2.5rem] overflow-hidden mb-6 md:mb-10 border border-white/5 group">
+                                <img src={currentTrack.image.replace('150x150', '500x500')} alt={currentTrack.song} className="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-105" />
 
                                 {isPlaying && (
                                     <div className="absolute inset-0 bg-black/30 backdrop-blur-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -902,55 +997,53 @@ export const MusicDate = () => {
                                     </div>
                                 )}
 
-                                {currentTrack && (
-                                    <button
-                                        onClick={toggleLyrics}
-                                        className="absolute bottom-5 right-5 bg-black/60 hover:bg-black/80 backdrop-blur-md p-3.5 rounded-2xl text-white shadow-xl transition-all hover:scale-110 active:scale-95 border border-white/20 z-20 group/btn"
-                                        title="Show Lyrics"
-                                    >
-                                        <FileText className="w-6 h-6 group-hover/btn:text-violet-400 transition-colors" />
-                                    </button>
-                                )}
+                                <button
+                                    onClick={toggleLyrics}
+                                    className="absolute bottom-5 right-5 bg-black/60 hover:bg-black/80 backdrop-blur-md p-3.5 rounded-2xl text-white shadow-xl transition-all hover:scale-110 active:scale-95 border border-white/20 z-20 group/btn"
+                                    title="Show Lyrics"
+                                >
+                                    <FileText className="w-6 h-6 group-hover/btn:text-violet-400 transition-colors" />
+                                </button>
                             </div>
 
                             <div className="w-full flex flex-col items-center px-2 md:px-4">
-                                <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-white mb-2 md:mb-4 line-clamp-2 tracking-tight drop-shadow-xl">{currentTrack?.song || 'Select a track'}</h1>
-                                <p className="text-base sm:text-xl md:text-2xl text-violet-300 mb-6 md:mb-12 font-medium tracking-wide opacity-90">{currentTrack?.singers || 'JioSaavnAPI Jam'}</p>
+                                <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white mb-2 md:mb-3 line-clamp-2 tracking-tight drop-shadow-xl">{currentTrack.song}</h1>
+                                <p className="text-base sm:text-lg md:text-xl text-violet-300 mb-6 md:mb-10 font-medium tracking-wide opacity-90">{currentTrack.singers}</p>
 
                                 {/* Playback Controls */}
-                                <div className="w-full max-w-lg mt-auto">
+                                <div className="w-full max-w-lg mt-auto relative z-20">
                                     <input
                                         type="range"
                                         min="0"
-                                        max={currentTrack ? Number(currentTrack.duration) : 100}
+                                        max={Number(currentTrack.duration) || 100}
                                         value={currentTime}
                                         onChange={handleProgressChange}
-                                        disabled={!isHost || !currentTrack}
+                                        disabled={!isHost}
                                         className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-violet-500 hover:accent-violet-400 transition-all mb-3"
                                     />
                                     <div className="flex justify-between text-sm text-gray-400 font-mono font-medium">
                                         <span>{formatTime(currentTime)}</span>
-                                        <span>{currentTrack ? formatTime(Number(currentTrack.duration)) : '0:00'}</span>
+                                        <span>{formatTime(Number(currentTrack.duration))}</span>
                                     </div>
 
-                                    <div className="flex items-center justify-center gap-6 md:gap-8 mt-4 md:mt-8">
+                                    <div className="flex items-center justify-center gap-6 md:gap-8 mt-4 md:mt-6">
                                         <button
                                             onClick={handlePlayPause}
-                                            disabled={!isHost || !currentTrack}
+                                            disabled={!isHost}
                                             className="w-16 h-16 md:w-20 md:h-20 flex items-center justify-center bg-white text-black rounded-full hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed shadow-[0_0_30px_rgba(255,255,255,0.15)] hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]"
                                         >
                                             {isPlaying ? <Pause className="w-8 h-8 md:w-10 md:h-10 fill-current" /> : <Play className="w-8 h-8 md:w-10 md:h-10 fill-current ml-1 md:ml-2" />}
                                         </button>
                                         <button
                                             onClick={handleSkip}
-                                            disabled={!isHost || !currentTrack}
+                                            disabled={!isHost}
                                             className="w-14 h-14 flex items-center justify-center bg-white/10 text-white rounded-full hover:bg-white/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-white/10 backdrop-blur-sm"
                                             title="Skip to next in queue"
                                         >
                                             <SkipForward className="w-6 h-6 fill-current" />
                                         </button>
                                     </div>
-                                    {!isHost && <p className="mt-6 text-xs text-gray-500">Only host can skip tracks or control playback progress.</p>}
+                                    {!isHost && <p className="mt-4 text-xs text-gray-500">Only host can skip tracks or control playback progress.</p>}
                                 </div>
                             </div>
                         </div>
@@ -959,7 +1052,7 @@ export const MusicDate = () => {
 
                 {/* Right Panel: Search & Queue — desktop sidebar, mobile bottom sheet */}
                 {!isFullscreen && (showMobileSearch || window.innerWidth >= 768) && (
-                    <div className={`${showMobileSearch ? 'fixed inset-x-0 bottom-20 top-auto h-[55vh] z-50 rounded-t-3xl border-t-2 border-violet-500/30' : 'w-96 border-l'} border-white/5 bg-black/95 md:bg-black/40 backdrop-blur-md md:backdrop-blur-md z-20 flex flex-col flex-shrink-0`}>
+                    <div className={`${showMobileSearch ? 'fixed inset-x-0 bottom-20 top-auto h-[55vh] z-50 rounded-t-3xl border-t-2 border-violet-500/30' : 'hidden md:flex w-80 lg:w-96 border-l'} border-white/5 bg-black/95 md:bg-black/40 backdrop-blur-md md:backdrop-blur-md z-20 flex flex-col flex-shrink-0`}>
                         <div className="p-3 md:p-4 border-b border-white/5 bg-gray-950/50 flex items-center gap-2">
                             {showMobileSearch && (
                                 <button onClick={() => setShowMobileSearch(false)} className="p-2 rounded-xl hover:bg-gray-800 text-gray-400 shrink-0 md:hidden">
@@ -1051,24 +1144,24 @@ export const MusicDate = () => {
                 )}
             </div>
 
-            {/* Video Grids Overlay - Draggable Absolute Position */}
-            <div className="absolute inset-0 pointer-events-none z-40 overflow-hidden">
+            {/* Fix 3: Video Grids Overlay - only covers top-left area to avoid blocking controls */}
+            <div className="absolute top-0 left-0 w-[220px] md:w-[280px] pointer-events-none z-20 overflow-visible" style={{ height: `${Math.max(160, (1 + peers.length) * 140 + 40)}px` }}>
                 {myStream && (
                     <div
                         onMouseDown={(e) => handleCamMouseDown(e, 'me')}
                         onTouchStart={(e) => handleCamTouchStart(e, 'me')}
                         style={{
-                            transform: `translate(${camPositions['me']?.x || 24}px, ${camPositions['me']?.y || 24}px)`,
+                            transform: `translate(${camPositions['me']?.x || 16}px, ${camPositions['me']?.y || (isFullscreen ? 16 : 72)}px)`,
                             position: 'absolute', top: 0, left: 0
                         }}
-                        className="w-32 h-24 md:w-48 md:h-32 bg-gray-900 rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl pointer-events-auto cursor-move shadow-black/50 group"
+                        className="w-28 h-20 md:w-40 md:h-28 bg-gray-900 rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl pointer-events-auto cursor-move shadow-black/50 group"
                     >
                         <StreamVideo stream={myStream} muted={true} mirrored={true} />
-                        <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center bg-black/40 backdrop-blur-md rounded-md px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <span className="text-xs font-bold text-white">You</span>
+                        <div className="absolute bottom-1.5 left-1.5 right-1.5 flex justify-between items-center bg-black/40 backdrop-blur-md rounded-md px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span className="text-[10px] font-bold text-white">You</span>
                             <div className="flex gap-1">
-                                <button onMouseDown={e => e.stopPropagation()} onClick={toggleMute} className={`p-1 rounded-md ${isMuted ? 'text-red-400' : 'text-gray-300 hover:text-white'}`}>{isMuted ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}</button>
-                                <button onMouseDown={e => e.stopPropagation()} onClick={toggleVideo} className={`p-1 rounded-md ${isVideoOff ? 'text-red-400' : 'text-gray-300 hover:text-white'}`}>{isVideoOff ? <VideoOff className="w-3 h-3" /> : <Video className="w-3 h-3" />}</button>
+                                <button onMouseDown={e => e.stopPropagation()} onClick={toggleMute} className={`p-0.5 rounded-md ${isMuted ? 'text-red-400' : 'text-gray-300 hover:text-white'}`}>{isMuted ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}</button>
+                                <button onMouseDown={e => e.stopPropagation()} onClick={toggleVideo} className={`p-0.5 rounded-md ${isVideoOff ? 'text-red-400' : 'text-gray-300 hover:text-white'}`}>{isVideoOff ? <VideoOff className="w-3 h-3" /> : <Video className="w-3 h-3" />}</button>
                             </div>
                         </div>
                     </div>
@@ -1079,13 +1172,13 @@ export const MusicDate = () => {
                         onMouseDown={(e) => handleCamMouseDown(e, peer.peerId)}
                         onTouchStart={(e) => handleCamTouchStart(e, peer.peerId)}
                         style={{
-                            transform: `translate(${camPositions[peer.peerId]?.x || 24}px, ${camPositions[peer.peerId]?.y || 24 + ((i + 1) * 140)}px)`,
+                            transform: `translate(${camPositions[peer.peerId]?.x || 16}px, ${camPositions[peer.peerId]?.y || (isFullscreen ? 16 : 72) + ((i + 1) * 120)}px)`,
                             position: 'absolute', top: 0, left: 0
                         }}
-                        className="w-32 h-24 md:w-48 md:h-32 bg-gray-900 rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl pointer-events-auto cursor-move shadow-black/50 group"
+                        className="w-28 h-20 md:w-40 md:h-28 bg-gray-900 rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl pointer-events-auto cursor-move shadow-black/50 group"
                     >
                         <StreamVideo stream={peer.stream} mirrored={true} volume={partnerVolume} />
-                        <span className="absolute bottom-2 left-2 text-xs font-bold text-white bg-black/50 px-2 py-0.5 rounded-md backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity">{peerNames[peer.peerId] || 'Peer'}</span>
+                        <span className="absolute bottom-1.5 left-1.5 text-[10px] font-bold text-white bg-black/50 px-2 py-0.5 rounded-md backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity">{peerNames[peer.peerId] || 'Peer'}</span>
                     </div>
                 ))}
             </div>
