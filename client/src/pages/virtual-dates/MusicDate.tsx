@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, AlertCircle, Play, Pause, Search, Music, X, Hash, Users, Copy, PlusCircle, LogIn, LogOut, MessageSquare, Send, Mic, MicOff, Video, VideoOff, Loader, Volume2, Maximize, Minimize, FileText, Image as ImageIcon, SkipForward, ListMusic } from 'lucide-react';
-import { useNavigate, useLocation, useBlocker } from 'react-router-dom';
+import { useNavigate, useBlocker } from 'react-router-dom';
 import Peer, { DataConnection } from 'peerjs';
 import { useAuth } from '../../context/AuthContext';
 import { analytics } from '../../utils/analytics';
 
 type DateMode = 'landing' | 'create_room' | 'join_room' | 'room';
+type LyricLine = { time: number; text: string };
 
 interface Track {
     id: string;
@@ -73,7 +74,6 @@ export const MusicDate = () => {
     const [showMobileSearch, setShowMobileSearch] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    type LyricLine = { time: number; text: string };
 
     // Lyrics State
     const [showLyrics, setShowLyrics] = useState(false);
