@@ -86,6 +86,8 @@ export const MusicDate = () => {
 
     const audioRef = useRef<HTMLAudioElement>(null);
     const audioBlobUrlRef = useRef<string | null>(null);
+    const activeLoadTokenRef = useRef<number>(0);
+    const [audioReadyUrl, setAudioReadyUrl] = useState<string | null>(null);
 
     // Center panel search state (must be declared before any early returns)
     const [centerSearchQuery, setCenterSearchQuery] = useState('');
@@ -335,15 +337,85 @@ export const MusicDate = () => {
         }
     };
 
-    // Audio Sync Effects — only controls play/pause, src is managed by playSelectedTrack
+    // Fetch Blob whenever track changes
     useEffect(() => {
-    if (!audioRef.current || !audioBlobUrlRef.current) return; // ← guard: only act if blob is loaded
-    if (isPlaying) {
-        audioRef.current.play().catch(e => console.error("Audio play error", e));
-    } else {
-        audioRef.current.pause();
-    }
-}, [isPlaying]);
+        if (!currentTrack) return;
+        
+        const loadToken = Date.now();
+        activeLoadTokenRef.current = loadToken;
+        
+        // Reset readiness
+        setAudioReadyUrl(null);
+        if (audioBlobUrlRef.current) {
+            URL.revokeObjectURL(audioBlobUrlRef.current);
+            audioBlobUrlRef.current = null;
+        }
+
+        const tryUrl = async (url: string): Promise<string | null> => {
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const contentType = res.headers.get('content-type');
+                if (contentType && contentType.includes('text/html')) {
+                    throw new Error('Received HTML instead of audio data');
+                }
+                const blob = await res.blob();
+                return URL.createObjectURL(blob);
+            } catch (error) {
+                return null;
+            }
+        };
+
+        const loadAudio = async () => {
+            let playableUrl = await tryUrl(currentTrack.media_url);
+            
+            if (activeLoadTokenRef.current !== loadToken) {
+                if (playableUrl) URL.revokeObjectURL(playableUrl);
+                return;
+            }
+
+            if (!playableUrl && currentTrack.media_preview_url && currentTrack.media_preview_url !== currentTrack.media_url) {
+                playableUrl = await tryUrl(currentTrack.media_preview_url);
+                if (activeLoadTokenRef.current !== loadToken) {
+                    if (playableUrl) URL.revokeObjectURL(playableUrl);
+                    return;
+                }
+            }
+
+            if (!playableUrl) {
+                setError('Track unavailable. Try another song.');
+                setTimeout(() => setError(null), 4000);
+                if (isHost) setIsPlaying(false);
+                return;
+            }
+
+            audioBlobUrlRef.current = playableUrl;
+            
+            if (audioRef.current) {
+                audioRef.current.src = playableUrl;
+                audioRef.current.volume = musicVolume;
+            }
+            
+            setAudioReadyUrl(playableUrl);
+        };
+
+        loadAudio();
+    }, [currentTrack]);
+
+    // Audio Sync Effects — only controls play/pause
+    useEffect(() => {
+        if (!audioRef.current || !audioReadyUrl) return; // guard: only act if blob is loaded and src is set
+        if (isPlaying) {
+            const playPromise = audioRef.current.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(e => {
+                    if (e.name !== 'AbortError') console.error("Audio play error", e);
+                });
+            }
+        } else {
+            audioRef.current.pause();
+        }
+    }, [isPlaying, audioReadyUrl]);
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
@@ -487,54 +559,9 @@ export const MusicDate = () => {
     };
 
     const playSelectedTrack = async (track: Track) => {
-        setCurrentTrack(track);
         setIsPlaying(false);
-
-        if (!audioRef.current) return;
-
-        // Revoke previous blob to free memory
-        if (audioBlobUrlRef.current) {
-            URL.revokeObjectURL(audioBlobUrlRef.current);
-            audioBlobUrlRef.current = null;
-        }
-
-        const tryUrl = async (url: string): Promise<string | null> => {
-            try {
-                const res = await fetch(url);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                
-                // Prevent HTML error pages (like 429 limits) from being parsed as valid audio blobs
-                const contentType = res.headers.get('content-type');
-                if (contentType && contentType.includes('text/html')) {
-                    throw new Error('Received HTML instead of audio data');
-                }
-
-                const blob = await res.blob();
-                const blobUrl = URL.createObjectURL(blob);
-                audioBlobUrlRef.current = blobUrl;
-                return blobUrl;
-            } catch (error) {
-                console.warn("Failed to fetch audio url stream", url, error);
-                return null;
-            }
-        };
-
-        // Try primary URL first, then preview URL as fallback
-        let playableUrl = await tryUrl(track.media_url);
-        if (!playableUrl && track.media_preview_url && track.media_preview_url !== track.media_url) {
-            playableUrl = await tryUrl(track.media_preview_url);
-        }
-
-        if (!playableUrl) {
-            setError('Track unavailable. Try another song.');
-            setTimeout(() => setError(null), 4000);
-            return;
-        }
-
-        audioRef.current.src = playableUrl;
-        audioRef.current.volume = musicVolume;
+        setCurrentTrack(track);
         setIsPlaying(true);
-
         broadcastSync('track', { payload: track });
         broadcastSync('play');
     };
@@ -572,10 +599,6 @@ export const MusicDate = () => {
         if (!currentTrack) return;
         const newPlayingState = !isPlaying;
         setIsPlaying(newPlayingState);
-        if (audioRef.current) {
-            if (newPlayingState) audioRef.current.play().catch(e => console.error("Audio play error", e));
-            else audioRef.current.pause();
-        }
         broadcastSync(newPlayingState ? 'play' : 'pause');
     };
 
