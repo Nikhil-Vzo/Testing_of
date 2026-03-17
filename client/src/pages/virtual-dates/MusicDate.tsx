@@ -85,6 +85,7 @@ export const MusicDate = () => {
     const lyricsContainerRef = useRef<HTMLDivElement>(null);
 
     const audioRef = useRef<HTMLAudioElement>(null);
+    const audioBlobUrlRef = useRef<string | null>(null);
 
     // Center panel search state (must be declared before any early returns)
     const [centerSearchQuery, setCenterSearchQuery] = useState('');
@@ -334,22 +335,15 @@ export const MusicDate = () => {
         }
     };
 
-    // Audio Sync Effects — single source of truth for src + play/pause
+    // Audio Sync Effects — only controls play/pause, src is managed by playSelectedTrack
     useEffect(() => {
-        if (!audioRef.current) return;
-        if (currentTrack) {
-            // Only update src if it actually changed (avoids unnecessary reload)
-            if (audioRef.current.src !== currentTrack.media_url) {
-                audioRef.current.src = currentTrack.media_url;
-            }
-            audioRef.current.volume = musicVolume;
-        }
+        if (!audioRef.current || !currentTrack) return;
         if (isPlaying) {
             audioRef.current.play().catch(e => console.error("Audio play error", e));
         } else {
             audioRef.current.pause();
         }
-    }, [isPlaying, currentTrack]);
+    }, [isPlaying]); // ← removed currentTrack from deps to avoid double-play
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
@@ -486,41 +480,53 @@ export const MusicDate = () => {
     };
 
     const handleAudioError = () => {
-        const audio = audioRef.current;
-        const track = currentTrackRef.current;
-        if (!audio || !track) return;
+        // Blob fetch already handles fallback — this is only a last resort
+        setIsPlaying(false);
+        setError('Track failed to load. Try selecting the song again.');
+        setTimeout(() => setError(null), 4000);
+    };
 
-        // Try preview URL fallback only if not already using it
-        const previewUrl = track.media_preview_url;
-        if (previewUrl && audio.src !== previewUrl) {
-            console.warn('Primary URL failed, retrying preview URL in 1s...');
-            setTimeout(() => {
-                audio.src = previewUrl;
-                audio.load();
-                audio.play().catch(() => {
-                    setIsPlaying(false);
-                    setError('Track unavailable (rate limited). Try again in a moment.');
-                    setTimeout(() => setError(null), 5000);
-                });
-            }, 1000); // wait 1s before retry to avoid immediate 429 again
+    const playSelectedTrack = async (track: Track) => {
+        setCurrentTrack(track);
+        setIsPlaying(false);
+
+        if (!audioRef.current) return;
+
+        // Revoke previous blob to free memory
+        if (audioBlobUrlRef.current) {
+            URL.revokeObjectURL(audioBlobUrlRef.current);
+            audioBlobUrlRef.current = null;
+        }
+
+        const tryUrl = async (url: string): Promise<string | null> => {
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const blob = await res.blob();
+                const blobUrl = URL.createObjectURL(blob);
+                audioBlobUrlRef.current = blobUrl;
+                return blobUrl;
+            } catch {
+                return null;
+            }
+        };
+
+        // Try primary URL first, then preview URL as fallback
+        let playableUrl = await tryUrl(track.media_url);
+        if (!playableUrl && track.media_preview_url && track.media_preview_url !== track.media_url) {
+            playableUrl = await tryUrl(track.media_preview_url);
+        }
+
+        if (!playableUrl) {
+            setError('Track unavailable. Try another song.');
+            setTimeout(() => setError(null), 4000);
             return;
         }
 
-        setIsPlaying(false);
-        setError('Track unavailable. Try another song or wait a moment.');
-        setTimeout(() => setError(null), 5000);
-    };
-
-    const playSelectedTrack = (track: Track) => {
-        // Debounce: ignore rapid clicks (< 800ms apart) to prevent CDN rate-limiting
-        const now = Date.now();
-        if (now - lastPlayRef.current < 800) return;
-        lastPlayRef.current = now;
-
-        // Let the useEffect([isPlaying, currentTrack]) own src-setting + play()
-        // Do NOT call audioRef.current.play() here — it causes AbortError race conditions
-        setCurrentTrack(track);
+        audioRef.current.src = playableUrl;
+        audioRef.current.volume = musicVolume;
         setIsPlaying(true);
+
         broadcastSync('track', { payload: track });
         broadcastSync('play');
     };
