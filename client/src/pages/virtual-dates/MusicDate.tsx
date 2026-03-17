@@ -85,12 +85,7 @@ export const MusicDate = () => {
     const lyricsContainerRef = useRef<HTMLDivElement>(null);
 
     const audioRef = useRef<HTMLAudioElement>(null);
-    const audioBlobUrlRef = useRef<string | null>(null);
-    const activeLoadTokenRef = useRef<number>(0);
-    const [audioReadyUrl, setAudioReadyUrl] = useState<string | null>(null);
-
-    // In-memory blob cache: maps CDN URL → blob URL so same song is never fetched twice
-    const audioBlobCacheRef = useRef<Map<string, string>>(new Map());
+    const [audioReady, setAudioReady] = useState(false);
 
     // Center panel search state (must be declared before any early returns)
     const [centerSearchQuery, setCenterSearchQuery] = useState('');
@@ -340,103 +335,21 @@ export const MusicDate = () => {
         }
     };
 
-    // Fetch Blob whenever track changes — with cache and retry-with-backoff for 429
+    // Load audio natively whenever track changes — no blob fetch, uses browser streaming
     useEffect(() => {
-        if (!currentTrack) return;
+        if (!currentTrack || !audioRef.current) return;
         
-        const loadToken = Date.now();
-        activeLoadTokenRef.current = loadToken;
+        setAudioReady(false);
         
-        // Reset readiness
-        setAudioReadyUrl(null);
-        if (audioBlobUrlRef.current) {
-            // Don't revoke — it might be in the cache and reusable
-            audioBlobUrlRef.current = null;
-        }
-
-        const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-        const tryUrl = async (url: string, maxRetries = 3): Promise<string | null> => {
-            // Check cache first
-            const cached = audioBlobCacheRef.current.get(url);
-            if (cached) return cached;
-
-            for (let attempt = 0; attempt <= maxRetries; attempt++) {
-                // If a newer track was selected while we were retrying, bail out
-                if (activeLoadTokenRef.current !== loadToken) return null;
-
-                try {
-                    const res = await fetch(url);
-                    
-                    // Handle 429 with exponential backoff
-                    if (res.status === 429) {
-                        const waitTime = Math.pow(2, attempt + 1) * 1000; // 2s, 4s, 8s, 16s
-                        console.warn(`Rate limited (429) on attempt ${attempt + 1}/${maxRetries + 1}. Retrying in ${waitTime / 1000}s...`);
-                        if (attempt < maxRetries) {
-                            await delay(waitTime);
-                            continue;
-                        }
-                        throw new Error(`Still rate limited after ${maxRetries + 1} attempts`);
-                    }
-                    
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                    const contentType = res.headers.get('content-type');
-                    if (contentType && contentType.includes('text/html')) {
-                        throw new Error('Received HTML instead of audio data');
-                    }
-                    const blob = await res.blob();
-                    const blobUrl = URL.createObjectURL(blob);
-                    // Cache it so this exact URL never needs fetching again
-                    audioBlobCacheRef.current.set(url, blobUrl);
-                    return blobUrl;
-                } catch (error) {
-                    if (attempt === maxRetries) {
-                        console.warn("Failed to fetch audio after retries:", url, error);
-                        return null;
-                    }
-                    // For non-429 errors, don't retry
-                    if (!(error instanceof Error && error.message.includes('rate limited'))) {
-                        console.warn("Failed to fetch audio:", url, error);
-                        return null;
-                    }
-                }
-            }
-            return null;
-        };
-
-        const loadAudio = async () => {
-            let playableUrl = await tryUrl(currentTrack.media_url);
-            
-            if (activeLoadTokenRef.current !== loadToken) return;
-
-            if (!playableUrl && currentTrack.media_preview_url && currentTrack.media_preview_url !== currentTrack.media_url) {
-                playableUrl = await tryUrl(currentTrack.media_preview_url);
-                if (activeLoadTokenRef.current !== loadToken) return;
-            }
-
-            if (!playableUrl) {
-                setError('Track unavailable (rate limited). Wait a moment and try again.');
-                setTimeout(() => setError(null), 5000);
-                if (isHost) setIsPlaying(false);
-                return;
-            }
-
-            audioBlobUrlRef.current = playableUrl;
-            
-            if (audioRef.current) {
-                audioRef.current.src = playableUrl;
-                audioRef.current.volume = musicVolume;
-            }
-            
-            setAudioReadyUrl(playableUrl);
-        };
-
-        loadAudio();
+        // Use the original media_url (aac.saavncdn.com) — NOT the preview CDN
+        audioRef.current.src = currentTrack.media_url;
+        audioRef.current.volume = musicVolume;
+        audioRef.current.load();
     }, [currentTrack]);
 
     // Audio Sync Effects — only controls play/pause
     useEffect(() => {
-        if (!audioRef.current || !audioReadyUrl) return; // guard: only act if blob is loaded and src is set
+        if (!audioRef.current || !audioReady) return;
         if (isPlaying) {
             const playPromise = audioRef.current.play();
             if (playPromise !== undefined) {
@@ -447,7 +360,7 @@ export const MusicDate = () => {
         } else {
             audioRef.current.pause();
         }
-    }, [isPlaying, audioReadyUrl]);
+    }, [isPlaying, audioReady]);
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
@@ -492,7 +405,7 @@ export const MusicDate = () => {
             if (!res.ok) throw new Error(`API error: ${res.status}`);
             const data = await res.json();
             if (Array.isArray(data) && data.length > 0) {
-                // Fix 1: For DRM tracks, swap media_url to use preview URL as primary
+                // Always use original media_url (aac.saavncdn.com) — preview CDN is rate-limited
                 const mappedTracks: Track[] = data.map((t: any) => {
                     const isDrm = t.is_drm === 1 || t.is_drm === true;
                     return {
@@ -500,9 +413,7 @@ export const MusicDate = () => {
                         song: t.song,
                         singers: t.singers || t.primary_artists || '',
                         image: t.image,
-                        // If DRM, use preview URL as primary (always playable)
-                        media_url: isDrm ? (t.media_preview_url || t.media_url) : t.media_url,
-                        // Keep the original URLs as fallback
+                        media_url: t.media_url,
                         media_preview_url: t.media_preview_url,
                         duration: t.duration,
                         is_drm: isDrm,
@@ -798,7 +709,7 @@ export const MusicDate = () => {
                     const isDrm = t.is_drm === 1 || t.is_drm === true;
                     return {
                         id: t.id, song: t.song, singers: t.singers || t.primary_artists || '', image: t.image,
-                        media_url: isDrm ? (t.media_preview_url || t.media_url) : t.media_url,
+                        media_url: t.media_url,
                         media_preview_url: t.media_preview_url, duration: t.duration, is_drm: isDrm,
                     };
                 }));
