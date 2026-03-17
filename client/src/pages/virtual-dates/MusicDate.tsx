@@ -86,6 +86,11 @@ export const MusicDate = () => {
 
     const audioRef = useRef<HTMLAudioElement>(null);
 
+    // Center panel search state (must be declared before any early returns)
+    const [centerSearchQuery, setCenterSearchQuery] = useState('');
+    const [centerSearchResults, setCenterSearchResults] = useState<Track[]>([]);
+    const [isCenterSearching, setIsCenterSearching] = useState(false);
+
     // Draggable Cams State
     const [camPositions, setCamPositions] = useState<{ [key: string]: { x: number, y: number } }>({});
     const dragInfo = useRef<{ id: string | null, startX: number, startY: number, initialX: number, initialY: number }>({
@@ -709,6 +714,33 @@ export const MusicDate = () => {
         return `${min}:${sec < 10 ? '0' : ''}${sec}`;
     };
 
+    // Center panel search (declared here so it's before any early returns)
+    const performCenterSearch = async (query: string) => {
+        if (!query.trim()) { setCenterSearchResults([]); setIsCenterSearching(false); return; }
+        setIsCenterSearching(true);
+        try {
+            const res = await fetch(`https://saavnapi-nine.vercel.app/result/?query=${encodeURIComponent(query)}`);
+            if (!res.ok) throw new Error('API error');
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0) {
+                setCenterSearchResults(data.map((t: any) => {
+                    const isDrm = t.is_drm === 1 || t.is_drm === true;
+                    return {
+                        id: t.id, song: t.song, singers: t.singers || t.primary_artists || '', image: t.image,
+                        media_url: isDrm ? (t.media_preview_url || t.media_url) : t.media_url,
+                        media_preview_url: t.media_preview_url, duration: t.duration, is_drm: isDrm,
+                    };
+                }));
+            } else { setCenterSearchResults([]); }
+        } catch { setCenterSearchResults([]); } finally { setIsCenterSearching(false); }
+    };
+
+    useEffect(() => {
+        if (!centerSearchQuery.trim()) { setCenterSearchResults([]); return; }
+        const t = setTimeout(() => performCenterSearch(centerSearchQuery), 400);
+        return () => clearTimeout(t);
+    }, [centerSearchQuery]);
+
     if (mode === 'landing') {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen w-full bg-black relative overflow-hidden pb-24 md:pb-0">
@@ -779,36 +811,6 @@ export const MusicDate = () => {
         );
     }
 
-    // Fix 2: State for center panel search
-    const [centerSearchQuery, setCenterSearchQuery] = useState('');
-    const [centerSearchResults, setCenterSearchResults] = useState<Track[]>([]);
-    const [isCenterSearching, setIsCenterSearching] = useState(false);
-
-    const performCenterSearch = async (query: string) => {
-        if (!query.trim()) { setCenterSearchResults([]); setIsCenterSearching(false); return; }
-        setIsCenterSearching(true);
-        try {
-            const res = await fetch(`https://saavnapi-nine.vercel.app/result/?query=${encodeURIComponent(query)}`);
-            if (!res.ok) throw new Error('API error');
-            const data = await res.json();
-            if (Array.isArray(data) && data.length > 0) {
-                setCenterSearchResults(data.map((t: any) => {
-                    const isDrm = t.is_drm === 1 || t.is_drm === true;
-                    return {
-                        id: t.id, song: t.song, singers: t.singers || t.primary_artists || '', image: t.image,
-                        media_url: isDrm ? (t.media_preview_url || t.media_url) : t.media_url,
-                        media_preview_url: t.media_preview_url, duration: t.duration, is_drm: isDrm,
-                    };
-                }));
-            } else { setCenterSearchResults([]); }
-        } catch { setCenterSearchResults([]); } finally { setIsCenterSearching(false); }
-    };
-
-    useEffect(() => {
-        if (!centerSearchQuery.trim()) { setCenterSearchResults([]); return; }
-        const t = setTimeout(() => performCenterSearch(centerSearchQuery), 400);
-        return () => clearTimeout(t);
-    }, [centerSearchQuery]);
 
     return (
         <div ref={containerRef} className="flex flex-col h-[100dvh] w-full bg-[#050510] text-white overflow-hidden font-sans relative">
