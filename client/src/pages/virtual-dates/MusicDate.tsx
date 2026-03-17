@@ -157,6 +157,7 @@ export const MusicDate = () => {
     const currentTrackRef = useRef(currentTrack);
     const isPlayingRef = useRef(isPlaying);
     const queueRef = useRef(queue);
+    const lastPlayRef = useRef<number>(0);
     useEffect(() => {
         currentTrackRef.current = currentTrack;
         isPlayingRef.current = isPlaying;
@@ -333,14 +334,20 @@ export const MusicDate = () => {
         }
     };
 
-    // Audio Sync Effects
+    // Audio Sync Effects — single source of truth for src + play/pause
     useEffect(() => {
-        if (audioRef.current) {
-            if (isPlaying) {
-                audioRef.current.play().catch(e => console.error("Audio play error", e));
-            } else {
-                audioRef.current.pause();
+        if (!audioRef.current) return;
+        if (currentTrack) {
+            // Only update src if it actually changed (avoids unnecessary reload)
+            if (audioRef.current.src !== currentTrack.media_url) {
+                audioRef.current.src = currentTrack.media_url;
             }
+            audioRef.current.volume = musicVolume;
+        }
+        if (isPlaying) {
+            audioRef.current.play().catch(e => console.error("Audio play error", e));
+        } else {
+            audioRef.current.pause();
         }
     }, [isPlaying, currentTrack]);
 
@@ -479,46 +486,41 @@ export const MusicDate = () => {
     };
 
     const handleAudioError = () => {
-        // If the current src fails, try the preview URL as last resort
-        if (audioRef.current && currentTrackRef.current?.media_preview_url) {
-            const previewUrl = currentTrackRef.current.media_preview_url;
-            if (audioRef.current.src !== previewUrl) {
-                console.warn('Audio URL failed, falling back to preview URL');
-                audioRef.current.src = previewUrl;
-                audioRef.current.play().catch(() => {
-                    setError('This track is unavailable. Try another song.');
-                    setTimeout(() => setError(null), 4000);
+        const audio = audioRef.current;
+        const track = currentTrackRef.current;
+        if (!audio || !track) return;
+
+        // Try preview URL fallback only if not already using it
+        const previewUrl = track.media_preview_url;
+        if (previewUrl && audio.src !== previewUrl) {
+            console.warn('Primary URL failed, retrying preview URL in 1s...');
+            setTimeout(() => {
+                audio.src = previewUrl;
+                audio.load();
+                audio.play().catch(() => {
+                    setIsPlaying(false);
+                    setError('Track unavailable (rate limited). Try again in a moment.');
+                    setTimeout(() => setError(null), 5000);
                 });
-                return;
-            }
+            }, 1000); // wait 1s before retry to avoid immediate 429 again
+            return;
         }
-        setError('This track is unavailable. Try another song.');
-        setTimeout(() => setError(null), 4000);
+
+        setIsPlaying(false);
+        setError('Track unavailable. Try another song or wait a moment.');
+        setTimeout(() => setError(null), 5000);
     };
 
     const playSelectedTrack = (track: Track) => {
+        // Debounce: ignore rapid clicks (< 800ms apart) to prevent CDN rate-limiting
+        const now = Date.now();
+        if (now - lastPlayRef.current < 800) return;
+        lastPlayRef.current = now;
+
+        // Let the useEffect([isPlaying, currentTrack]) own src-setting + play()
+        // Do NOT call audioRef.current.play() here — it causes AbortError race conditions
         setCurrentTrack(track);
         setIsPlaying(true);
-        if (audioRef.current) {
-            // media_url is already set to preview URL for DRM tracks by performSearch
-            audioRef.current.src = track.media_url;
-            audioRef.current.volume = musicVolume;
-            audioRef.current.play().catch(e => {
-                console.error("Audio play error", e);
-                // Last-resort fallback: try raw preview URL
-                if (track.media_preview_url && audioRef.current!.src !== track.media_preview_url) {
-                    audioRef.current!.src = track.media_preview_url;
-                    audioRef.current!.volume = musicVolume;
-                    audioRef.current!.play().catch(() => {
-                        setError('This track is unavailable. Try another song.');
-                        setTimeout(() => setError(null), 4000);
-                    });
-                } else {
-                    setError('This track is unavailable. Try another song.');
-                    setTimeout(() => setError(null), 4000);
-                }
-            });
-        }
         broadcastSync('track', { payload: track });
         broadcastSync('play');
     };
