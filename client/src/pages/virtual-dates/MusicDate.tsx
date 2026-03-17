@@ -337,13 +337,13 @@ export const MusicDate = () => {
 
     // Audio Sync Effects — only controls play/pause, src is managed by playSelectedTrack
     useEffect(() => {
-        if (!audioRef.current || !currentTrack) return;
-        if (isPlaying) {
-            audioRef.current.play().catch(e => console.error("Audio play error", e));
-        } else {
-            audioRef.current.pause();
-        }
-    }, [isPlaying]); // ← removed currentTrack from deps to avoid double-play
+    if (!audioRef.current || !audioBlobUrlRef.current) return; // ← guard: only act if blob is loaded
+    if (isPlaying) {
+        audioRef.current.play().catch(e => console.error("Audio play error", e));
+    } else {
+        audioRef.current.pause();
+    }
+}, [isPlaying]);
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
@@ -822,7 +822,7 @@ export const MusicDate = () => {
 
     return (
         <div ref={containerRef} className="flex flex-col h-[100dvh] w-full bg-[#050510] text-white overflow-hidden font-sans relative">
-            <audio ref={audioRef} src={currentTrack?.media_url} onTimeUpdate={handleTimeUpdate} onEnded={handleSongEnded} onError={handleAudioError} />
+            <audio ref={audioRef} onTimeUpdate={handleTimeUpdate} onEnded={handleSongEnded} onError={handleAudioError} />
 
             {/* Header / Nav Bar */}
             {!isFullscreen && (
