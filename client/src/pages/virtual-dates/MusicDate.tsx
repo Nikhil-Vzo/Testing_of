@@ -502,11 +502,19 @@ export const MusicDate = () => {
             try {
                 const res = await fetch(url);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                
+                // Prevent HTML error pages (like 429 limits) from being parsed as valid audio blobs
+                const contentType = res.headers.get('content-type');
+                if (contentType && contentType.includes('text/html')) {
+                    throw new Error('Received HTML instead of audio data');
+                }
+
                 const blob = await res.blob();
                 const blobUrl = URL.createObjectURL(blob);
                 audioBlobUrlRef.current = blobUrl;
                 return blobUrl;
-            } catch {
+            } catch (error) {
+                console.warn("Failed to fetch audio url stream", url, error);
                 return null;
             }
         };
