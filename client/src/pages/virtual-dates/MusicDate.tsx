@@ -335,16 +335,51 @@ export const MusicDate = () => {
         }
     };
 
-    // Load audio natively whenever track changes — no blob fetch, uses browser streaming
+    // Load audio as Blob to prevent 429 Too Many Requests from excessive browser range requests
     useEffect(() => {
         if (!currentTrack || !audioRef.current) return;
         
         setAudioReady(false);
+        const controller = new AbortController();
         
-        // Use the original media_url (aac.saavncdn.com) — NOT the preview CDN
-        audioRef.current.src = currentTrack.media_url;
-        audioRef.current.volume = musicVolume;
-        audioRef.current.load();
+        const loadAudioAsBlob = async () => {
+            try {
+                // Fetch the full audio file once instead of letting the browser make multiple range requests
+                const response = await fetch(currentTrack.media_url, { signal: controller.signal });
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch audio: ${response.status}`);
+                }
+                const blob = await response.blob();
+                const objectUrl = URL.createObjectURL(blob);
+                
+                if (audioRef.current) {
+                    audioRef.current.src = objectUrl;
+                    audioRef.current.volume = musicVolume;
+                    audioRef.current.load();
+                    setAudioReady(true);
+                }
+            } catch (err: any) {
+                if (err.name === 'AbortError') return;
+                console.error("Blob fetch error:", err);
+                // Fallback to direct streaming if blob setup fails
+                if (audioRef.current) {
+                    audioRef.current.src = currentTrack.media_url;
+                    audioRef.current.volume = musicVolume;
+                    audioRef.current.load();
+                    setAudioReady(true);
+                }
+            }
+        };
+        
+        loadAudioAsBlob();
+
+        return () => {
+            controller.abort();
+            if (audioRef.current?.src?.startsWith('blob:')) {
+                URL.revokeObjectURL(audioRef.current.src);
+                audioRef.current.src = '';
+            }
+        };
     }, [currentTrack]);
 
     // Audio Sync Effects — only controls play/pause
