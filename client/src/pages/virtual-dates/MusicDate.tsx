@@ -760,10 +760,10 @@ export const MusicDate = () => {
 
     if (mode === 'landing') {
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen w-full bg-black relative overflow-hidden pb-24 md:pb-0">
+            <div className="flex flex-col items-center justify-center min-h-[100dvh] w-full bg-black relative overflow-hidden pt-24 pb-32 md:py-8">
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] md:w-[800px] h-[600px] md:h-[800px] bg-violet-600/20 rounded-full blur-[120px] pointer-events-none -z-0 animate-pulse" style={{ animationDuration: '4s' }} />
 
-                <button onClick={() => navigate('/virtual-date')} className="absolute top-4 md:top-6 left-4 md:left-6 p-2 md:p-3 bg-gray-900/50 hover:bg-gray-800 rounded-full transition-colors z-20 border border-gray-800">
+                <button onClick={() => navigate('/virtual-date')} className="absolute top-20 md:top-6 left-4 md:left-6 p-2 md:p-3 bg-gray-900/50 hover:bg-gray-800 rounded-full transition-colors z-20 border border-gray-800 shadow-xl">
                     <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 text-gray-400 hover:text-white" />
                 </button>
 
@@ -798,9 +798,9 @@ export const MusicDate = () => {
     if (mode === 'create_room' || mode === 'join_room') {
         const isCreate = mode === 'create_room';
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen w-full bg-black relative px-4 pb-24 md:pb-0">
+            <div className="flex flex-col items-center justify-center min-h-[100dvh] w-full bg-black relative px-4 pt-24 pb-32 md:py-8">
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none" />
-                <button onClick={() => setMode('landing')} className="absolute top-4 md:top-6 left-4 md:left-6 p-2 md:p-3 bg-gray-900/50 hover:bg-gray-800 rounded-full z-20 border border-gray-800">
+                <button onClick={() => setMode('landing')} className="absolute top-20 md:top-6 left-4 md:left-6 p-2 md:p-3 bg-gray-900/50 hover:bg-gray-800 rounded-full z-20 border border-gray-800 shadow-xl">
                     <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 text-gray-400 hover:text-white" />
                 </button>
 
@@ -929,34 +929,36 @@ export const MusicDate = () => {
                 {/* Left Side: Now Playing */}
                 <div className="flex-1 overflow-y-auto p-3 md:p-8 z-10 flex flex-col items-center justify-center relative min-h-0">
                     {showLyrics ? (
-                        <div ref={lyricsContainerRef} className="absolute inset-0 w-full h-full bg-[#050510]/95 backdrop-blur-3xl p-8 md:p-16 overflow-y-auto custom-scrollbar flex flex-col items-center scroll-smooth z-40">
-                            {isLoadingLyrics ? (
-                                <div className="flex-1 flex items-center justify-center h-full">
-                                    <Loader className="w-10 h-10 text-violet-500 animate-spin" />
-                                </div>
-                            ) : lyricsData ? (
-                                <div className="w-full max-w-5xl mx-auto text-center py-32 space-y-12 transition-all">
-                                    {lyricsData.map((line, idx) => (
-                                        <p key={idx} id={`lyric-${idx}`} className={`transition-all duration-500 leading-tight ${idx === activeLyricIndex ? 'text-white text-4xl md:text-6xl lg:text-7xl font-black drop-shadow-[0_0_20px_rgba(255,255,255,0.4)]' : 'text-gray-600 text-2xl md:text-4xl font-bold opacity-50 hover:opacity-100 hover:text-gray-300'}`}>
-                                            {line.text}
-                                        </p>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div
-                                    className="text-lg md:text-2xl text-gray-300 text-center leading-loose pb-12 mt-4 font-mono w-full px-2 max-w-4xl mx-auto py-32"
-                                    dangerouslySetInnerHTML={{ __html: plainLyrics || '' }}
-                                />
-                            )}
-
+                        <>
+                            <div ref={lyricsContainerRef} className="absolute inset-0 w-full h-full bg-[#050510]/95 backdrop-blur-3xl p-8 md:p-16 overflow-y-auto custom-scrollbar flex flex-col items-center scroll-smooth z-40">
+                                {isLoadingLyrics ? (
+                                    <div className="flex-1 flex items-center justify-center h-full">
+                                        <Loader className="w-10 h-10 text-violet-500 animate-spin" />
+                                    </div>
+                                ) : lyricsData ? (
+                                    <div className="w-full max-w-5xl mx-auto text-center py-32 space-y-12 transition-all">
+                                        {lyricsData.map((line, idx) => (
+                                            <p key={idx} id={`lyric-${idx}`} className={`transition-all duration-500 leading-tight ${idx === activeLyricIndex ? 'text-white text-4xl md:text-6xl lg:text-7xl font-black drop-shadow-[0_0_20px_rgba(255,255,255,0.4)]' : 'text-gray-600 text-2xl md:text-4xl font-bold opacity-50 hover:opacity-100 hover:text-gray-300'}`}>
+                                                {line.text}
+                                            </p>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div
+                                        className="text-lg md:text-2xl text-gray-300 text-center leading-loose pb-12 mt-4 font-mono w-full px-2 max-w-4xl mx-auto py-32"
+                                        dangerouslySetInnerHTML={{ __html: plainLyrics || '' }}
+                                    />
+                                )}
+                            </div>
+                            
                             <button
                                 onClick={toggleLyrics}
-                                className="fixed top-8 right-8 bg-white/10 hover:bg-white/20 backdrop-blur-md p-4 rounded-full text-white shadow-2xl transition-transform hover:scale-105 active:scale-95 border border-white/20 z-50 mix-blend-difference"
+                                className="absolute top-8 right-8 bg-violet-600 hover:bg-violet-500 p-4 rounded-full text-white shadow-[0_0_30px_rgba(139,92,246,0.5)] transition-all duration-300 hover:scale-110 active:scale-95 border border-violet-400 z-50 flex items-center justify-center group"
                                 title="Hide Lyrics"
                             >
-                                <ImageIcon className="w-6 h-6" />
+                                <ImageIcon className="w-6 h-6 drop-shadow-md group-hover:scale-110 transition-transform" />
                             </button>
-                        </div>
+                        </>
                     ) : !currentTrack ? (
                         /* Fix 2: Prominent search prompt when no track is playing */
                         <div className="w-full max-w-xl mx-auto flex flex-col items-center text-center transition-all my-auto z-10 px-4">
