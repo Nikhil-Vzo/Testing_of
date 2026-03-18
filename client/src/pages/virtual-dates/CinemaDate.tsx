@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactPlayer from 'react-player';
 import { ArrowLeft, Link as LinkIcon, AlertCircle, Monitor, FolderOpen, Youtube, X, Hash, Users, Copy, PlusCircle, LogIn, LogOut, MonitorPlay, Home, Gamepad, Settings as SettingsIcon, Mic, MicOff, Video, VideoOff, MonitorUp, Send, MessageSquare, Maximize, Minimize } from 'lucide-react';
-import { useNavigate, useLocation, useBlocker } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Peer, { DataConnection } from 'peerjs';
 import { useAuth } from '../../context/AuthContext';
 import { analytics } from '../../utils/analytics';
@@ -144,10 +144,26 @@ export const CinemaDate: React.FC = () => {
     const inRoom = !['landing', 'create_room', 'join_room'].includes(mode);
 
     // Navigation blocker — prevent accidental session loss
-    const blocker = useBlocker(
-        ({ currentLocation, nextLocation }) =>
-            inRoom && currentLocation.pathname !== nextLocation.pathname
-    );
+    const [showLeaveModal, setShowLeaveModal] = useState(false);
+    const pendingNavRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (!inRoom) return;
+
+        const handlePopState = () => {
+            // User pressed browser back button — push state back and show modal
+            window.history.pushState(null, '', window.location.href);
+            setShowLeaveModal(true);
+        };
+
+        // Push an extra history entry so we can intercept the back button
+        window.history.pushState(null, '', window.location.href);
+        window.addEventListener('popstate', handlePopState);
+
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+        };
+    }, [inRoom]);
 
     // Warn on tab close / refresh while in a room
     useEffect(() => {
@@ -1672,7 +1688,7 @@ export const CinemaDate: React.FC = () => {
             )}
 
             {/* Navigation Blocker Modal */}
-            {blocker.state === 'blocked' && (
+            {showLeaveModal && (
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[100]">
                     <div className="bg-gray-900/95 border border-white/10 rounded-3xl p-8 max-w-sm mx-4 shadow-2xl text-center">
                         <div className="w-16 h-16 rounded-full bg-neon/10 flex items-center justify-center mx-auto mb-5">
@@ -1682,13 +1698,17 @@ export const CinemaDate: React.FC = () => {
                         <p className="text-gray-400 text-sm mb-6">Your current session will end and you'll be disconnected from the room.</p>
                         <div className="flex gap-3">
                             <button
-                                onClick={() => blocker.reset?.()}
+                                onClick={() => setShowLeaveModal(false)}
                                 className="flex-1 py-3 px-4 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-semibold transition-colors border border-white/10"
                             >
                                 Stay
                             </button>
                             <button
-                                onClick={() => blocker.proceed?.()}
+                                onClick={() => {
+                                    setShowLeaveModal(false);
+                                    setMode('landing');
+                                    navigate('/virtual-date');
+                                }}
                                 className="flex-1 py-3 px-4 rounded-xl bg-red-500/90 hover:bg-red-500 text-white font-semibold transition-colors"
                             >
                                 Leave
