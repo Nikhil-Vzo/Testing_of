@@ -376,7 +376,7 @@ export const CinemaDate: React.FC = () => {
                 }
             }
         } else if (roomCode) {
-            window.location.hash = `room=${roomCode}`;
+            window.history.replaceState(null, '', `#room=${roomCode}`);
         }
     }, [roomCode, mode]);
 
@@ -885,6 +885,7 @@ export const CinemaDate: React.FC = () => {
             // If we want to broadcast screen, usually we add it as a stream.
         } catch (err) {
             setError("Screen sharing cancelled or failed.");
+            setTimeout(() => setError(null), 3000);
         }
     };
 
