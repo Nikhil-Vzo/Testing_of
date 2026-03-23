@@ -455,12 +455,12 @@ export const AmisFeed: React.FC = () => {
       </div>
 
       {/* === COMPOSER (Fixed Bottom) === */}
-      <div className="fixed bottom-20 md:bottom-0 left-0 right-0 z-30 pointer-events-none flex justify-center w-full bg-gradient-to-t from-black via-black to-transparent pb-6 pt-10">
+      <div className="fixed bottom-20 md:bottom-0 left-0 right-0 z-30 pointer-events-none flex justify-center w-full bg-gradient-to-t from-black via-black to-transparent pb-4 pt-10">
         <div className="max-w-2xl w-full pointer-events-auto px-4">
 
           {/* Poll creation mode */}
           {isPollMode && (
-            <div className="bg-black/90 backdrop-blur-xl border border-violet-500/20 rounded-2xl p-4 mb-2 shadow-2xl">
+            <div className="bg-black/90 backdrop-blur-xl border border-violet-500/20 rounded-2xl p-4 mb-2 shadow-2xl max-h-[60vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <BarChart3 className="w-4 h-4 text-violet-400" />
