@@ -5,10 +5,10 @@ import { useAmisEvents } from './useAmisData';
 
 // Map structure definition
 const ZONES = [
-  { id: 'A', name: 'Zone A', position: 'top-[10%] left-[10%]', size: 'w-40 h-40', desc: 'Main Stage & Experiences' },
-  { id: 'B', name: 'Zone B', position: 'top-[15%] right-[10%]', size: 'w-32 h-32', desc: 'Intellectual & Tech' },
-  { id: 'C', name: 'Zone C', position: 'bottom-[20%] left-[15%]', size: 'w-36 h-36', desc: 'Cultural & Performing' },
-  { id: 'D', name: 'Zone D', position: 'bottom-[15%] right-[20%]', size: 'w-28 h-28', desc: 'Gaming & Fun' },
+  { id: 'A', name: 'Main Stage', position: 'top-[20%] left-[20%]', size: 'w-16 h-16', desc: 'Main Stage & Experiences' },
+  { id: 'B', name: 'Tech Park', position: 'top-[30%] right-[25%]', size: 'w-16 h-16', desc: 'Intellectual & Tech' },
+  { id: 'C', name: 'Cultural Hub', position: 'bottom-[40%] left-[30%]', size: 'w-16 h-16', desc: 'Cultural & Performing' },
+  { id: 'D', name: 'Gaming Arena', position: 'bottom-[35%] right-[20%]', size: 'w-16 h-16', desc: 'Gaming & Fun' },
 ];
 
 export const AmisHeatmap: React.FC = () => {
@@ -49,9 +49,8 @@ export const AmisHeatmap: React.FC = () => {
       
       {/* === BACKGROUND === */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 bg-black">
-        <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\'/%3E%3C/svg%3E")', backgroundRepeat: 'repeat', backgroundSize: '128px 128px' }} />
-        {/* Animated grid lines mimicking a radar/map */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px]" />
+        <img src="/map.webp" alt="Campus Map" className="absolute inset-0 w-full h-full object-cover opacity-40 blur-[2px]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-black" />
       </div>
 
       {/* === HEADER === */}
@@ -107,40 +106,35 @@ export const AmisHeatmap: React.FC = () => {
                 {/* Mascot Background */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <Ghost 
-                    className={`w-full h-full opacity-40 group-hover:opacity-60 transition-all duration-500 ${isSelected ? 'animate-pulse opacity-80' : ''}`} 
+                    className={`w-full h-full opacity-60 group-hover:opacity-80 transition-all duration-500 ${isSelected ? 'animate-pulse opacity-100 scale-110' : ''}`} 
                     style={{ 
                         color: heat.coreColor,
-                        filter: `drop-shadow(0 0 15px currentColor) drop-shadow(0 0 30px currentColor)`
+                        filter: `drop-shadow(0 0 10px currentColor) drop-shadow(0 0 20px currentColor)`
                     }}
-                    strokeWidth={1}
+                    strokeWidth={2}
                   />
                 </div>
                 
                 {/* Intense Core Glow for selected */}
                 {isSelected && (
-                  <div className="absolute inset-0 rounded-full blur-2xl opacity-40 transition-opacity duration-500 pointer-events-none" style={{ backgroundColor: heat.coreColor }} />
+                  <div className="absolute inset-0 rounded-full blur-xl opacity-60 transition-opacity duration-500 pointer-events-none" style={{ backgroundColor: heat.coreColor }} />
                 )}
 
                 {/* Content */}
-                <div className="relative z-10 flex flex-col items-center justify-center mt-4">
-                  <span className="text-4xl font-black drop-shadow-[0_4px_8px_rgba(0,0,0,1)] text-white/90">
+                <div className="relative z-10 flex flex-col items-center justify-center mt-2">
+                  <span className="text-xl font-black drop-shadow-[0_2px_4px_rgba(0,0,0,1)] text-white/90">
                     {zone.id}
                   </span>
-                  <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/20 shadow-xl mt-1">
-                    <Users className="w-3.5 h-3.5 text-gray-300" />
-                    <span className="text-xs font-bold text-white tracking-widest">{stats?.checkins || 0}</span>
+                  <div className="flex items-center gap-1 bg-black/80 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/20 shadow-xl mt-0.5 pointer-events-none">
+                    <Users className="w-2.5 h-2.5 text-gray-300" />
+                    <span className="text-[9px] font-bold text-white tracking-widest">{stats?.checkins || 0}</span>
                   </div>
                 </div>
               </button>
             )
           })}
           
-          {/* Connection lines (decorative SVG background) */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-20" preserveAspectRatio="none">
-            <polyline points="20%,25% 85%,30%" stroke="white" strokeWidth="1" strokeDasharray="4 4" fill="none" />
-            <polyline points="20%,25% 25%,85%" stroke="white" strokeWidth="1" strokeDasharray="4 4" fill="none" />
-            <polyline points="85%,30% 70%,85%" stroke="white" strokeWidth="1" strokeDasharray="4 4" fill="none" />
-          </svg>
+
         </div>
 
         {/* Selected Zone Sheet (Bottom) */}
