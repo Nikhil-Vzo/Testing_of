@@ -9,6 +9,7 @@ import { analytics } from '../utils/analytics';
 
 import { getRandomQuote } from '../data/loadingQuotes';
 import { safeSetItem } from '../utils/storage';
+import { AmisEntryModal } from '../components/AmisEntryModal';
 
 // Cache key for session storage
 const PROFILES_CACHE_KEY = 'otherhalf_discover_cache_v3';
@@ -48,6 +49,7 @@ export const Home: React.FC = () => {
     const [isSwiping, setIsSwiping] = useState(false);
     const [isRecycleMode, setIsRecycleMode] = useState(false);
     const cardRef = useRef<HTMLDivElement>(null);
+    const [isAmisModalOpen, setIsAmisModalOpen] = useState(false);
 
     const preloadImages = useCallback((profiles: MatchProfile[]) => {
 
@@ -58,6 +60,18 @@ export const Home: React.FC = () => {
                 preloadedImages.current.add(profile.avatar);
             }
         });
+    }, []);
+
+    // Amis Park Auto-Pop Logic
+    useEffect(() => {
+        const hasSeenAmisPromo = sessionStorage.getItem('amis_promo_seen');
+        if (!hasSeenAmisPromo) {
+            const timer = setTimeout(() => {
+                setIsAmisModalOpen(true);
+                sessionStorage.setItem('amis_promo_seen', 'true');
+            }, 1200);
+            return () => clearTimeout(timer);
+        }
     }, []);
 
     const fetchSkippedProfiles = async () => {
@@ -429,6 +443,18 @@ export const Home: React.FC = () => {
                         </button>
                     </div>
 
+                    {/* Amis Park Entry Button */}
+                    <button
+                        onClick={() => setIsAmisModalOpen(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-neon/10 backdrop-blur-md rounded-full border border-neon/40 text-neon hover:bg-neon hover:text-white transition-all shadow-[0_0_10px_rgba(255,0,127,0.2)] hover:shadow-[0_0_20px_rgba(255,0,127,0.5)] active:scale-95"
+                    >
+                        <span className="relative flex h-2 w-2">
+                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon opacity-75" />
+                           <span className="relative inline-flex rounded-full h-2 w-2 bg-neon" />
+                        </span>
+                        <span className="text-[10px] font-black tracking-widest uppercase">Fest</span>
+                    </button>
+
                     {/* Notification Button - Now rightmost for better mobile reach */}
                     <button
                         onClick={() => navigate('/notifications')}
@@ -686,6 +712,9 @@ export const Home: React.FC = () => {
                     animation: pulse-fast 0.3s ease-in-out 2;
                 }
             `}</style>
+            
+            {/* Amis Park Modal */}
+            <AmisEntryModal isOpen={isAmisModalOpen} onClose={() => setIsAmisModalOpen(false)} />
         </div >
     );
 };
