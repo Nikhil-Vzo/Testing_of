@@ -66,12 +66,10 @@ export const AmisLanding: React.FC = () => {
         </div>
 
         {/* Hero Title */}
-        <div className={`text-center mb-3 transition-all duration-700 delay-100 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
-          <h1 className="text-6xl md:text-9xl font-black tracking-[-0.06em] leading-[0.85] uppercase">
-            <span className="bg-gradient-to-r from-white via-gray-100 to-gray-400 bg-clip-text text-transparent drop-shadow-[0_0_40px_rgba(255,255,255,0.1)]">AMIS</span>
-          </h1>
-          <h1 className="text-6xl md:text-9xl font-black tracking-[-0.06em] leading-[0.85] uppercase">
-            <span className="bg-gradient-to-r from-neon via-pink-400 to-purple-400 bg-clip-text text-transparent drop-shadow-[0_0_60px_rgba(255,0,127,0.3)]">PARK</span>
+        <div className={`text-center mb-4 transition-all duration-700 delay-100 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
+          <h1 className="text-5xl md:text-7xl font-black tracking-[-0.04em] leading-tight uppercase flex items-center justify-center gap-3 md:gap-4">
+            <span className="bg-gradient-to-r from-white via-gray-100 to-gray-400 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">AMIS</span>
+            <span className="bg-gradient-to-r from-neon via-pink-400 to-purple-400 bg-clip-text text-transparent drop-shadow-[0_0_40px_rgba(255,0,127,0.3)]">PARK</span>
           </h1>
         </div>
 
