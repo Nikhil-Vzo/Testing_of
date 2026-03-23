@@ -11,9 +11,9 @@ export const AmisLanding: React.FC = () => {
   }, []);
 
   const actions = [
-    { label: 'Explore Events', desc: 'Browse all fest events by category', icon: Sparkles, path: '/amis-park/events', accentClass: 'from-neon to-pink-600', glow: 'rgba(255,0,127,0.4)' },
-    { label: 'Live Heatmap', desc: 'Check which zones are buzzing right now', icon: Radio, path: '/amis-park/heatmap', accentClass: 'from-purple-500 to-indigo-500', glow: 'rgba(139,92,246,0.4)' },
-    { label: 'Live Polls', desc: 'Vote on events and drop your opinions', icon: BarChart2, path: '/amis-park/polls', accentClass: 'from-blue-500 to-cyan-500', glow: 'rgba(59,130,246,0.4)' },
+    { label: 'Explore Events', desc: 'Browse all fest events by category', icon: Sparkles, path: '/amis-park/events', accentClass: 'from-neon to-pink-600', glow: 'rgba(255,0,127,0.4)', badge: 'TRENDING', badgeColor: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+    { label: 'Live Heatmap', desc: 'Check which zones are buzzing right now', icon: Radio, path: '/amis-park/heatmap', accentClass: 'from-purple-500 to-indigo-500', glow: 'rgba(139,92,246,0.4)', badge: 'LIVE', badgeColor: 'bg-red-500/20 text-red-400 border-red-500/30' },
+    { label: 'Live Polls', desc: 'Vote on events and drop your opinions', icon: BarChart2, path: '/amis-park/polls', accentClass: 'from-blue-500 to-cyan-500', glow: 'rgba(59,130,246,0.4)', badge: 'NEW', badgeColor: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   ];
 
   return (
@@ -43,6 +43,9 @@ export const AmisLanding: React.FC = () => {
         <div className="absolute top-[60%] left-[15%] w-1 h-1 bg-blue-400/30 rounded-full animate-bounce" style={{ animationDuration: '5s', animationDelay: '2s' }} />
         <div className="absolute top-[45%] right-[10%] w-0.5 h-0.5 bg-neon/30 rounded-full animate-bounce" style={{ animationDuration: '3.5s', animationDelay: '0.5s' }} />
         <div className="absolute top-[70%] left-[60%] w-1 h-1 bg-orange-400/20 rounded-full animate-bounce" style={{ animationDuration: '4.5s', animationDelay: '1.5s' }} />
+
+        {/* Grid overlay */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:40px_40px]" />
 
         {/* Grain overlay */}
         <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\'/%3E%3C/svg%3E")', backgroundRepeat: 'repeat', backgroundSize: '256px 256px' }} />
@@ -76,11 +79,17 @@ export const AmisLanding: React.FC = () => {
         <p className={`text-gray-400 text-center text-base md:text-lg max-w-md mb-2 leading-relaxed transition-all duration-700 delay-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
           Your digital festival map. Explore events, feel the crowd energy, and find your vibe.
         </p>
-        <div className={`flex items-center gap-2 mb-12 transition-all duration-700 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <Ghost className="w-3.5 h-3.5 text-neon/50" />
-          <p className="text-gray-600 text-[10px] tracking-[0.3em] uppercase font-bold">
-            Powered by OthrHalff
-          </p>
+        <div className={`flex items-center gap-2 mb-12 px-5 py-2 bg-gray-900/40 backdrop-blur-xl rounded-full border border-gray-800 shadow-[0_4px_20px_rgba(0,0,0,0.5)] transition-all duration-700 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <Ghost className="w-3.5 h-3.5 text-neon/70 drop-shadow-[0_0_8px_rgba(255,0,127,0.5)]" />
+          <div className="flex items-center gap-2">
+            <p className="text-gray-400 text-[9px] md:text-[10px] tracking-[0.2em] uppercase font-bold">
+              Monitored by OthrHalff
+            </p>
+            <span className="w-1 h-1 rounded-full bg-gray-600" />
+            <p className="text-gray-500 text-[9px] md:text-[10px] tracking-[0.2em] uppercase font-bold">
+              Not Sponsored
+            </p>
+          </div>
         </div>
 
         {/* Action Cards */}
@@ -91,30 +100,40 @@ export const AmisLanding: React.FC = () => {
               <button
                 key={action.label}
                 onClick={() => navigate(action.path)}
-                className={`group relative bg-black/40 backdrop-blur-2xl border border-white/[0.06] hover:border-neon/30 rounded-2xl p-6 text-left transition-all duration-500 hover:scale-[1.03] overflow-hidden ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+                className={`group relative bg-black/50 backdrop-blur-3xl border border-white/10 hover:border-white/20 rounded-[24px] p-6 text-left transition-all duration-500 hover:scale-[1.03] hover:-translate-y-1 overflow-hidden shadow-xl hover:shadow-2xl ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
                 style={{ transitionDelay: `${400 + i * 120}ms` }}
               >
                 {/* Hover glow */}
                 <div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl"
-                  style={{ background: `radial-gradient(circle at 30% 30%, ${action.glow.replace('0.4', '0.08')} 0%, transparent 70%)` }}
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-[24px]"
+                  style={{ background: `radial-gradient(circle at 50% 120%, ${action.glow.replace('0.4', '0.15')} 0%, transparent 60%)` }}
                 />
 
-                {/* Hover border glow */}
-                <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                  style={{ boxShadow: `inset 0 0 30px ${action.glow.replace('0.4', '0.05')}, 0 0 40px ${action.glow.replace('0.4', '0.08')}` }}
+                {/* Hover inner border glow */}
+                <div className="absolute inset-0 rounded-[24px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                  style={{ boxShadow: `inset 0 0 20px ${action.glow.replace('0.4', '0.1')}, inset 0 1px 1px rgba(255,255,255,0.2)` }}
                 />
 
-                <div className="relative z-10">
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${action.accentClass} flex items-center justify-center mb-4 group-hover:scale-110 group-hover:shadow-[0_0_25px] transition-all duration-300`}
-                    style={{ '--tw-shadow-color': action.glow } as React.CSSProperties}>
-                    <Icon className="w-6 h-6 text-white" />
+                <div className="relative z-10 flex flex-col h-full">
+                  <div className="flex justify-between items-start mb-6">
+                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${action.accentClass} flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-[0_0_30px] transition-all duration-500 relative`}
+                      style={{ '--tw-shadow-color': action.glow } as React.CSSProperties}>
+                      <div className="absolute inset-0 rounded-2xl bg-white/20 mix-blend-overlay border inset-ring border-white/30" />
+                      <Icon className="w-7 h-7 text-white drop-shadow-md relative z-10" />
+                    </div>
+                    
+                    {action.badge && (
+                      <span className={`text-[9px] font-black tracking-widest uppercase px-2 py-0.5 rounded-md border ${action.badgeColor}`}>
+                        {action.badge}
+                      </span>
+                    )}
                   </div>
-                  <h3 className="text-base font-bold text-white mb-1 flex items-center gap-2 tracking-tight">
+                  
+                  <h3 className="text-lg font-black text-white mb-2 flex items-center gap-2 tracking-tight group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-gray-300 transition-colors duration-300">
                     {action.label}
-                    <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300 text-neon" />
+                    <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1.5 transition-all duration-300 text-white" />
                   </h3>
-                  <p className="text-gray-500 text-xs leading-relaxed">{action.desc}</p>
+                  <p className="text-gray-400 text-sm leading-relaxed font-medium">{action.desc}</p>
                 </div>
 
                 {/* Corner accent */}
