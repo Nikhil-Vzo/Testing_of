@@ -155,7 +155,8 @@ export function useAmisPolls() {
     const { data: pollsData } = await supabase
       .from('amis_polls')
       .select(`
-        id, question, is_active, created_at,
+        id, question, is_active, created_at, block_tag, event_id,
+        amis_events(name),
         amis_poll_options (id, poll_id, text, vote_count)
       `)
       .eq('is_active', true)
@@ -181,6 +182,9 @@ export function useAmisPolls() {
           question: p.question,
           is_active: p.is_active,
           created_at: p.created_at,
+          block_tag: p.block_tag || null,
+          event_id: p.event_id || null,
+          event_name: p.amis_events?.name || null,
           options: p.amis_poll_options.sort((a: any, b: any) => a.text.localeCompare(b.text)),
           user_voted_option_id: userVotes[p.id] || null
         })));
@@ -190,6 +194,9 @@ export function useAmisPolls() {
           question: p.question,
           is_active: p.is_active,
           created_at: p.created_at,
+          block_tag: p.block_tag || null,
+          event_id: p.event_id || null,
+          event_name: p.amis_events?.name || null,
           options: p.amis_poll_options.sort((a: any, b: any) => a.text.localeCompare(b.text)),
           user_voted_option_id: null
         })));
@@ -226,14 +233,14 @@ export function useAmisPolls() {
     // Trigger is handling the option's vote_count increment in DB
   };
 
-  const createPoll = async (question: string, optionTexts: string[]) => {
+  const createPoll = async (question: string, optionTexts: string[], blockTag?: string | null, eventId?: string | null) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user || !question.trim() || optionTexts.length < 2) return false;
 
     // 1. Insert Poll
     const { data: pollData, error: pollError } = await supabase
       .from('amis_polls')
-      .insert({ question: question.trim(), user_id: user.id })
+      .insert({ question: question.trim(), user_id: user.id, block_tag: blockTag || null, event_id: eventId || null })
       .select('id')
       .single();
 

@@ -63,9 +63,11 @@ export const AmisFeed: React.FC = () => {
       const validOptions = pollOptions.filter(o => o.trim());
       if (!pollQuestion.trim() || validOptions.length < 2) return;
       setIsPosting(true);
-      await createPoll(pollQuestion.trim(), validOptions);
+      await createPoll(pollQuestion.trim(), validOptions, blockTag || null, eventId || null);
       setPollQuestion('');
       setPollOptions(['', '']);
+      setBlockTag('');
+      setEventId('');
       setIsPollMode(false);
       setIsPosting(false);
       return;
@@ -230,6 +232,20 @@ export const AmisFeed: React.FC = () => {
                                 <span className="text-[9px] font-bold text-white/30">{totalVotes} vote{totalVotes !== 1 ? 's' : ''}</span>
                               </div>
                               <h3 className="text-sm font-bold text-white leading-snug">{poll.question}</h3>
+                              {(poll.block_tag || poll.event_name) && (
+                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                  {poll.block_tag && (
+                                    <span className="text-[9px] font-bold text-neon/70 uppercase bg-neon/10 px-1.5 py-0.5 rounded-md border border-neon/20">
+                                      {poll.block_tag === 'A' ? '🏛️' : poll.block_tag === 'B' ? '🏗️' : '🎓'} {BLOCK_LABELS[poll.block_tag!] || `Block ${poll.block_tag}`}
+                                    </span>
+                                  )}
+                                  {poll.event_name && (
+                                    <span className="text-[9px] font-bold text-purple-400/70 uppercase bg-purple-500/10 px-1.5 py-0.5 rounded-md border border-purple-500/20 truncate max-w-[140px]">
+                                      {'🎪'} {poll.event_name}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
                           
@@ -490,6 +506,38 @@ export const AmisFeed: React.FC = () => {
                   <Plus className="w-3.5 h-3.5" /> Add option
                 </button>
               )}
+
+              {/* Block & Event tag for poll */}
+              <div className="flex gap-2 mb-3 flex-wrap">
+                <div className="flex gap-1.5 flex-wrap">
+                  {BLOCK_OPTIONS.filter(o => o.value).map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => { setBlockTag(blockTag === opt.value ? '' : opt.value); if (blockTag === opt.value) setEventId(''); }}
+                      className={`text-[9px] font-bold px-2 py-1 rounded-lg border transition-all ${
+                        blockTag === opt.value
+                          ? 'bg-neon/10 border-neon/30 text-neon'
+                          : 'bg-white/[0.03] border-white/[0.06] text-gray-500 hover:text-gray-300'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {blockTag && filteredEvents.length > 0 && (
+                  <select
+                    value={eventId}
+                    onChange={e => setEventId(e.target.value)}
+                    className="text-[10px] bg-black/60 border border-purple-500/20 text-purple-400 rounded-lg px-2 py-1 focus:outline-none"
+                  >
+                    <option value="">🎪 Tag event (optional)</option>
+                    {filteredEvents.map(ev => (
+                      <option key={ev.id} value={ev.id}>{ev.name}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
               <button
                 onClick={handlePost}
                 disabled={isPosting || !pollQuestion.trim() || pollOptions.filter(o => o.trim()).length < 2}

@@ -70,4 +70,7 @@ export interface AmisPoll {
   created_at: string;
   options: AmisPollOption[];
   user_voted_option_id?: string | null;
+  block_tag?: string | null;
+  event_id?: string | null;
+  event_name?: string | null;
 }
