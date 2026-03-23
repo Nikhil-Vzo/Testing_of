@@ -11,10 +11,9 @@ export const AmisLanding: React.FC = () => {
   }, []);
 
   const actions = [
-    { label: 'Live Feed', desc: 'Share your fest moments with everyone', icon: MessageSquare, path: '/amis-park/feed', accentClass: 'from-orange-500 to-red-500', glow: 'rgba(249,115,22,0.4)', badge: 'NEW', badgeColor: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+    { label: 'Live Feed', desc: 'Posts, polls & fest moments — all in one', icon: MessageSquare, path: '/amis-park/feed', accentClass: 'from-orange-500 to-red-500', glow: 'rgba(249,115,22,0.4)', badge: 'NEW', badgeColor: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
     { label: 'Explore Events', desc: 'Browse all fest events by block', icon: Sparkles, path: '/amis-park/events', accentClass: 'from-neon to-pink-600', glow: 'rgba(255,0,127,0.4)', badge: 'TRENDING', badgeColor: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
     { label: 'Live Heatmap', desc: 'Check which zones are buzzing right now', icon: Radio, path: '/amis-park/heatmap', accentClass: 'from-purple-500 to-indigo-500', glow: 'rgba(139,92,246,0.4)', badge: 'LIVE', badgeColor: 'bg-red-500/20 text-red-400 border-red-500/30' },
-    { label: 'Live Polls', desc: 'Vote on events and drop your opinions', icon: BarChart2, path: '/amis-park/polls', accentClass: 'from-blue-500 to-cyan-500', glow: 'rgba(59,130,246,0.4)', badge: 'NEW', badgeColor: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   ];
 
   return (
