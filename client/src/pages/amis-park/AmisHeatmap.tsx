@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Flame, Users, MapPin, Loader2, Info } from 'lucide-react';
+import { ArrowLeft, Flame, Users, MapPin, Loader2, Info, Ghost } from 'lucide-react';
 import { useAmisEvents } from './useAmisData';
 
 // Map structure definition
@@ -35,10 +35,10 @@ export const AmisHeatmap: React.FC = () => {
   }, [events]);
 
   const getHeatStyle = (checkins: number) => {
-    if (checkins >= 30) return { color: 'from-red-500 to-rose-600', shadow: 'shadow-[0_0_40px_rgba(239,68,68,0.8)]', border: 'border-red-400', level: 'Packed', icon: '🔥🔥🔥' };
-    if (checkins >= 15) return { color: 'from-orange-500 to-amber-600', shadow: 'shadow-[0_0_30px_rgba(249,115,22,0.6)]', border: 'border-orange-400', level: 'Hot', icon: '🔥🔥' };
-    if (checkins >= 5) return { color: 'from-yellow-400 to-orange-400', shadow: 'shadow-[0_0_20px_rgba(234,179,8,0.4)]', border: 'border-yellow-400', level: 'Warm', icon: '🔥' };
-    return { color: 'from-emerald-400 to-teal-500', shadow: 'shadow-[0_0_15px_rgba(16,185,129,0.2)]', border: 'border-emerald-400/50', level: 'Chill', icon: '✨' };
+    if (checkins >= 30) return { coreColor: '#ef4444', shadow: 'shadow-[0_0_40px_currentColor]', level: 'Packed', icon: '🔥🔥🔥' };
+    if (checkins >= 15) return { coreColor: '#f97316', shadow: 'shadow-[0_0_30px_currentColor]', level: 'Hot', icon: '🔥🔥' };
+    if (checkins >= 5) return { coreColor: '#eab308', shadow: 'shadow-[0_0_20px_currentColor]', level: 'Warm', icon: '🔥' };
+    return { coreColor: '#10b981', shadow: 'shadow-[0_0_15px_currentColor]', level: 'Chill', icon: '✨' };
   };
 
   const selectedZoneData = ZONES.find(z => z.id === selectedZone);
@@ -83,8 +83,6 @@ export const AmisHeatmap: React.FC = () => {
               {[
                 { label: 'Packed', color: 'bg-red-500' },
                 { label: 'Hot', color: 'bg-orange-500' },
-                { label: 'Warm', color: 'bg-yellow-400' },
-                { label: 'Chill', color: 'bg-emerald-400' }
               ].map(l => (
                 <div key={l.label} className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${l.color} shadow-[0_0_8px]`} style={{ color: l.color.replace('bg-', '') }} />
@@ -104,19 +102,34 @@ export const AmisHeatmap: React.FC = () => {
               <button
                 key={zone.id}
                 onClick={() => setSelectedZone(isSelected ? null : zone.id)}
-                className={`absolute ${zone.position} ${zone.size} rounded-[40%] flex flex-col items-center justify-center transition-all duration-500 ease-out z-20 hover:scale-110 active:scale-95 group ${isSelected ? 'scale-110 z-30' : ''}`}
+                className={`absolute ${zone.position} ${zone.size} flex flex-col items-center justify-center transition-all duration-500 ease-out z-20 hover:scale-110 active:scale-95 group ${isSelected ? 'scale-110 z-30' : ''}`}
               >
-                {/* Heat glow layer */}
-                <div className={`absolute inset-0 rounded-[40%] blur-md bg-gradient-to-br ${heat.color} opacity-40 group-hover:opacity-60 transition-opacity duration-300 ${isSelected ? 'animate-pulse' : ''}`} />
-                <div className={`absolute inset-0 rounded-[40%] bg-gradient-to-br ${heat.color} opacity-20 border-2 ${heat.border} ${isSelected ? heat.shadow : ''} backdrop-blur-sm`} />
+                {/* Mascot Background */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <Ghost 
+                    className={`w-full h-full opacity-40 group-hover:opacity-60 transition-all duration-500 ${isSelected ? 'animate-pulse opacity-80' : ''}`} 
+                    style={{ 
+                        color: heat.coreColor,
+                        filter: `drop-shadow(0 0 15px currentColor) drop-shadow(0 0 30px currentColor)`
+                    }}
+                    strokeWidth={1}
+                  />
+                </div>
                 
+                {/* Intense Core Glow for selected */}
+                {isSelected && (
+                  <div className="absolute inset-0 rounded-full blur-2xl opacity-40 transition-opacity duration-500 pointer-events-none" style={{ backgroundColor: heat.coreColor }} />
+                )}
+
                 {/* Content */}
-                <span className="relative z-10 text-3xl font-black drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] mb-1">
-                  {zone.id}
-                </span>
-                <div className="relative z-10 flex items-center gap-1 bg-black/50 px-2 py-0.5 rounded-full border border-white/20">
-                  <Users className="w-3 h-3" />
-                  <span className="text-[10px] font-bold">{stats?.checkins || 0}</span>
+                <div className="relative z-10 flex flex-col items-center justify-center mt-4">
+                  <span className="text-4xl font-black drop-shadow-[0_4px_8px_rgba(0,0,0,1)] text-white/90">
+                    {zone.id}
+                  </span>
+                  <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/20 shadow-xl mt-1">
+                    <Users className="w-3.5 h-3.5 text-gray-300" />
+                    <span className="text-xs font-bold text-white tracking-widest">{stats?.checkins || 0}</span>
+                  </div>
                 </div>
               </button>
             )
@@ -146,13 +159,16 @@ export const AmisHeatmap: React.FC = () => {
                 </div>
               </div>
 
+              {(() => {
+                const heatStyle = getHeatStyle(selectedZoneStats.checkins);
+                return (
               <div className="flex gap-4 items-center">
                 <div className="flex flex-col">
                   <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Status</span>
                   <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 border border-gray-800 rounded-lg">
-                    <span className="text-sm">{getHeatStyle(selectedZoneStats.checkins).icon}</span>
-                    <span className={`text-xs font-bold uppercase tracking-wider ${getHeatStyle(selectedZoneStats.checkins).color.replace('from-', 'text-').split(' ')[0]}`}>
-                      {getHeatStyle(selectedZoneStats.checkins).level}
+                    <span className="text-sm">{heatStyle.icon}</span>
+                    <span className="text-xs font-bold uppercase tracking-wider" style={{ color: heatStyle.coreColor }}>
+                      {heatStyle.level}
                     </span>
                   </div>
                 </div>
@@ -173,6 +189,8 @@ export const AmisHeatmap: React.FC = () => {
                   View Events
                 </button>
               </div>
+              );
+            })()}
 
               <button 
                 onClick={() => navigate(`/amis-park/events`)}
