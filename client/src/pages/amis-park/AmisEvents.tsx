@@ -45,7 +45,7 @@ export const AmisEvents: React.FC = () => {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const renderEventCard = (event: any, i: number) => {
-    const meta = CATEGORY_META[event.category];
+    const meta = CATEGORY_META[event.category as EventCategory];
     const crowd = getCrowdLevel(event.checkin_count || 0);
     return (
       <div
