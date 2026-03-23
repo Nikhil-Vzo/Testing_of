@@ -576,9 +576,9 @@ export const AmisFeed: React.FC = () => {
 
           {/* Main composer bar */}
           {!isPollMode && (
-            <div className="bg-black border border-gray-800 rounded-full p-2 shadow-2xl flex items-center gap-2">
+            <div className="bg-black border border-gray-800 rounded-full p-1.5 shadow-2xl flex items-center gap-1.5 overflow-hidden">
               {/* Block tag button */}
-              <div className="relative">
+              <div className="relative shrink-0">
                 <button
                   onClick={() => { setShowBlockPicker(!showBlockPicker); setShowEventPicker(false); }}
                   className={`p-2 rounded-full transition-all ${blockTag ? 'text-neon bg-neon/10' : 'text-gray-500 hover:text-gray-300'}`}
@@ -642,12 +642,12 @@ export const AmisFeed: React.FC = () => {
                 )}
               </div>
 
-              <div className="h-4 w-px bg-gray-800" />
+              <div className="h-4 w-px bg-gray-800 shrink-0" />
 
               {/* Poll toggle */}
               <button
                 onClick={() => setIsPollMode(true)}
-                className="p-2 text-gray-500 hover:text-violet-400 transition-colors"
+                className="p-2 text-gray-500 hover:text-violet-400 transition-colors shrink-0"
                 title="Create Poll"
               >
                 <BarChart3 className="w-5 h-5" />
@@ -655,7 +655,7 @@ export const AmisFeed: React.FC = () => {
 
               {/* Image upload */}
               <input id="feed-image-input" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-              <button onClick={() => document.getElementById('feed-image-input')?.click()} className="p-2 text-gray-500 hover:text-gray-300 transition-colors">
+              <button onClick={() => document.getElementById('feed-image-input')?.click()} className="p-2 text-gray-500 hover:text-gray-300 transition-colors shrink-0">
                 <ImageIcon className="w-5 h-5" />
               </button>
 
@@ -665,14 +665,14 @@ export const AmisFeed: React.FC = () => {
                 onChange={e => setNewText(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handlePost()}
                 placeholder="What's happening at the fest?"
-                className="flex-1 bg-transparent text-white px-2 outline-none text-xs font-medium placeholder:text-gray-600"
+                className="flex-1 min-w-0 bg-transparent text-white px-1.5 outline-none text-xs font-medium placeholder:text-gray-600"
               />
 
               {/* Send */}
               <button
                 onClick={handlePost}
                 disabled={isPosting || (!newText.trim() && !newImage)}
-                className="p-2.5 bg-neon rounded-full text-white hover:bg-pink-600 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(255,0,127,0.3)]"
+                className="p-2.5 bg-neon rounded-full text-white hover:bg-pink-600 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(255,0,127,0.3)] shrink-0"
               >
                 {isPosting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </button>
