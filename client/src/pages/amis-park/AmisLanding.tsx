@@ -79,17 +79,13 @@ export const AmisLanding: React.FC = () => {
         <p className={`text-gray-400 text-center text-base md:text-lg max-w-md mb-2 leading-relaxed transition-all duration-700 delay-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
           Your digital festival map. Explore events, feel the crowd energy, and find your vibe.
         </p>
-        <div className={`flex items-center gap-2 mb-12 px-5 py-2 bg-gray-900/40 backdrop-blur-xl rounded-full border border-gray-800 shadow-[0_4px_20px_rgba(0,0,0,0.5)] transition-all duration-700 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <Ghost className="w-3.5 h-3.5 text-neon/70 drop-shadow-[0_0_8px_rgba(255,0,127,0.5)]" />
-          <div className="flex items-center gap-2">
-            <p className="text-gray-400 text-[9px] md:text-[10px] tracking-[0.2em] uppercase font-bold">
-              Monitored by OthrHalff
-            </p>
-            <span className="w-1 h-1 rounded-full bg-gray-600" />
-            <p className="text-gray-500 text-[9px] md:text-[10px] tracking-[0.2em] uppercase font-bold">
-              Not Sponsored
-            </p>
+        <div className={`inline-flex items-center justify-center gap-2 mb-12 px-5 py-2.5 bg-gray-900/40 backdrop-blur-xl rounded-full border border-gray-800 shadow-[0_4px_20px_rgba(0,0,0,0.5)] transition-all duration-700 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'} max-w-[90vw]`}>
+          <div className="flex-shrink-0">
+            <Ghost className="w-4 h-4 text-neon/70 drop-shadow-[0_0_8px_rgba(255,0,127,0.5)]" />
           </div>
+          <p className="text-gray-400 text-[10px] tracking-[0.15em] md:tracking-[0.2em] uppercase font-bold text-center leading-tight">
+            Monitored by OthrHalff <span className="opacity-50 mx-1.5 md:mx-2">&bull;</span> Not Sponsored
+          </p>
         </div>
 
         {/* Action Cards */}
@@ -115,11 +111,11 @@ export const AmisLanding: React.FC = () => {
                 />
 
                 <div className="relative z-10 flex flex-col h-full">
-                  <div className="flex justify-between items-start mb-6">
-                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${action.accentClass} flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-[0_0_30px] transition-all duration-500 relative`}
+                  <div className="flex justify-between items-start mb-5">
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${action.accentClass} flex items-center justify-center group-hover:scale-110 group-hover:rotate-[2deg] group-hover:shadow-[0_0_20px] transition-all duration-500 relative`}
                       style={{ '--tw-shadow-color': action.glow } as React.CSSProperties}>
-                      <div className="absolute inset-0 rounded-2xl bg-white/20 mix-blend-overlay border inset-ring border-white/30" />
-                      <Icon className="w-7 h-7 text-white drop-shadow-md relative z-10" />
+                      <div className="absolute inset-0 rounded-xl bg-white/20 mix-blend-overlay border inset-ring border-white/30" />
+                      <Icon className="w-6 h-6 text-white drop-shadow-md relative z-10" />
                     </div>
                     
                     {action.badge && (
@@ -129,11 +125,11 @@ export const AmisLanding: React.FC = () => {
                     )}
                   </div>
                   
-                  <h3 className="text-lg font-black text-white mb-2 flex items-center gap-2 tracking-tight group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-gray-300 transition-colors duration-300">
+                  <h3 className="text-base font-bold text-white mb-1.5 flex items-center gap-2 tracking-tight group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-gray-300 transition-colors duration-300">
                     {action.label}
-                    <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1.5 transition-all duration-300 text-white" />
+                    <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300 text-white" />
                   </h3>
-                  <p className="text-gray-400 text-sm leading-relaxed font-medium">{action.desc}</p>
+                  <p className="text-gray-400 text-xs leading-relaxed font-medium">{action.desc}</p>
                 </div>
 
                 {/* Corner accent */}
