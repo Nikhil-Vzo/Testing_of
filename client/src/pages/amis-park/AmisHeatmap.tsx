@@ -48,7 +48,7 @@ export const AmisHeatmap: React.FC = () => {
       
       {/* === BACKGROUND === */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 bg-[#05000a]">
-        <img src="/map.webp" alt="Campus Map" className="absolute inset-0 w-full h-full object-cover opacity-80" />
+        <img src="/map.webp" alt="Campus Map" className="absolute inset-0 w-full h-full object-contain opacity-80" />
         <div className="absolute inset-0 bg-gradient-to-b from-[#05000a] via-transparent to-[#05000a] opacity-90" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-black/60" />
       </div>
