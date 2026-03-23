@@ -5,10 +5,9 @@ import { useAmisEvents } from './useAmisData';
 
 // Map structure definition
 const ZONES = [
-  { id: 'A', name: 'Main Stage', position: 'top-[20%] left-[20%]', size: 'w-16 h-16', desc: 'Main Stage & Experiences' },
-  { id: 'B', name: 'Tech Park', position: 'top-[30%] right-[25%]', size: 'w-16 h-16', desc: 'Intellectual & Tech' },
-  { id: 'C', name: 'Cultural Hub', position: 'bottom-[40%] left-[30%]', size: 'w-16 h-16', desc: 'Cultural & Performing' },
-  { id: 'D', name: 'Gaming Arena', position: 'bottom-[35%] right-[20%]', size: 'w-16 h-16', desc: 'Gaming & Fun' },
+  { id: 'A', name: 'High Energy', position: 'top-[35%] left-[12%]', size: '', desc: 'Main Stage & Experiences' },
+  { id: 'B', name: 'Interactive', position: 'top-[16%] left-[45%]', size: '', desc: 'Creative & Interactive' },
+  { id: 'C', name: 'Chill Hub', position: 'top-[28%] left-[80%]', size: '', desc: 'Cultural & Intellectual' },
 ];
 
 export const AmisHeatmap: React.FC = () => {
@@ -48,9 +47,10 @@ export const AmisHeatmap: React.FC = () => {
     <div className="h-full w-full bg-transparent text-white flex flex-col relative overflow-hidden">
       
       {/* === BACKGROUND === */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 bg-black">
-        <img src="/map.webp" alt="Campus Map" className="absolute inset-0 w-full h-full object-cover opacity-40 blur-[2px]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-black" />
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 bg-[#05000a]">
+        <img src="/map.webp" alt="Campus Map" className="absolute inset-0 w-full h-full object-cover opacity-80" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#05000a] via-transparent to-[#05000a] opacity-90" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-black/60" />
       </div>
 
       {/* === HEADER === */}
@@ -101,33 +101,25 @@ export const AmisHeatmap: React.FC = () => {
               <button
                 key={zone.id}
                 onClick={() => setSelectedZone(isSelected ? null : zone.id)}
-                className={`absolute ${zone.position} ${zone.size} flex flex-col items-center justify-center transition-all duration-500 ease-out z-20 hover:scale-110 active:scale-95 group ${isSelected ? 'scale-110 z-30' : ''}`}
+                className={`absolute ${zone.position} flex flex-col items-center justify-center transition-all duration-300 ease-out z-20 hover:scale-105 active:scale-95 group -translate-x-1/2 -translate-y-1/2 ${isSelected ? 'scale-[1.15] z-30' : ''}`}
               >
-                {/* Mascot Background */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <Ghost 
-                    className={`w-full h-full opacity-60 group-hover:opacity-80 transition-all duration-500 ${isSelected ? 'animate-pulse opacity-100 scale-110' : ''}`} 
-                    style={{ 
-                        color: heat.coreColor,
-                        filter: `drop-shadow(0 0 10px currentColor) drop-shadow(0 0 20px currentColor)`
-                    }}
-                    strokeWidth={2}
-                  />
-                </div>
-                
-                {/* Intense Core Glow for selected */}
-                {isSelected && (
-                  <div className="absolute inset-0 rounded-full blur-xl opacity-60 transition-opacity duration-500 pointer-events-none" style={{ backgroundColor: heat.coreColor }} />
-                )}
-
-                {/* Content */}
-                <div className="relative z-10 flex flex-col items-center justify-center mt-2">
-                  <span className="text-xl font-black drop-shadow-[0_2px_4px_rgba(0,0,0,1)] text-white/90">
-                    {zone.id}
-                  </span>
-                  <div className="flex items-center gap-1 bg-black/80 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/20 shadow-xl mt-0.5 pointer-events-none">
-                    <Users className="w-2.5 h-2.5 text-gray-300" />
-                    <span className="text-[9px] font-bold text-white tracking-widest">{stats?.checkins || 0}</span>
+                {/* HUD Marker Pill */}
+                <div className={`relative flex items-center gap-2 bg-black/60 backdrop-blur-md border border-white/10 rounded-full pr-3 pl-1.5 py-1.5 shadow-2xl transition-all duration-300 ${isSelected ? 'bg-black/80 border-white/30 shadow-[0_10px_40px_rgba(0,0,0,0.8)]' : 'group-hover:border-white/20'}`}>
+                  
+                  {/* Glowing Core Dot */}
+                  <div className="relative flex items-center justify-center w-7 h-7 rounded-full shrink-0" 
+                       style={{ backgroundColor: `${heat.coreColor}20`, boxShadow: `0 0 15px ${heat.coreColor}40` }}>
+                    <div className="absolute inset-0 rounded-full animate-ping opacity-60" style={{ backgroundColor: heat.coreColor, animationDuration: '2.5s' }} />
+                    <div className="w-2.5 h-2.5 rounded-full relative z-10" style={{ backgroundColor: heat.coreColor, boxShadow: `0 0 10px ${heat.coreColor}` }} />
+                  </div>
+                  
+                  {/* Zone Text Info */}
+                  <div className="flex flex-col items-start pr-1">
+                    <span className="text-[9px] font-black tracking-widest uppercase text-white/95 leading-tight mb-0.5">BLOCK {zone.id}</span>
+                    <div className="flex items-center gap-1">
+                      <Users className="w-3 h-3 text-gray-400" />
+                      <span className="text-[10px] font-bold text-gray-300">{stats?.checkins || 0}</span>
+                    </div>
                   </div>
                 </div>
               </button>
