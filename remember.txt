@@ -1,0 +1,25 @@
+# REMEMBER: Restore this when fest event is over
+
+## What was removed from Home.tsx top navbar (left side):
+The Ghost logo icon + "Discover"/"Second Chance" title text was on the left side of the top header.
+
+## Original code (Home.tsx, inside the TOP HEADER section):
+```tsx
+<div className="flex items-center gap-2">
+    <Ghost className={`w-7 h-7 drop-shadow-[0_0_12px_rgba(255,0,127,0.6)] ${isRecycleMode ? 'text-yellow-400' : 'text-neon'}`} />
+    <span className="text-xl font-black text-white tracking-tighter uppercase hidden sm:block">
+        {isRecycleMode ? 'Second Chance' : 'Discover'}
+    </span>
+</div>
+```
+
+## Where it was:
+- File: `client/src/pages/Home.tsx`
+- Inside the `{/* === TOP HEADER === */}` section
+- It was the first child inside the header `<div>`, before the flex container with tabs + fest + bell
+
+## Why removed:
+The Ghost logo + Campus/Global tabs + Fest button + Bell icon were too crowded on mobile, causing the notification bell to be cropped off screen.
+
+## When to restore:
+When the Fest feature is removed/disabled, restore the logo to the left side of the top navbar.
