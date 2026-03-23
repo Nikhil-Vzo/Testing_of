@@ -1,20 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, Image as ImageIcon, X, Loader2, MessageCircle, SmilePlus, MapPin, Ghost, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Send, Image as ImageIcon, X, Loader2, MessageCircle, SmilePlus, MapPin, Ghost, ChevronDown, BarChart3, Plus, Minus } from 'lucide-react';
 import { useAmisFeed, REACTIONS } from './useAmisFeed';
-import { useAmisEvents } from './useAmisData';
+import { useAmisEvents, useAmisPolls } from './useAmisData';
 
 const BLOCK_OPTIONS = [
   { value: '', label: 'No tag' },
-  { value: 'A', label: '📍 Block A' },
-  { value: 'B', label: '📍 Block B' },
-  { value: 'C', label: '📍 Block C' },
+  { value: 'A', label: '🏛️ Main Building' },
+  { value: 'B', label: '🏗️ Architecture Building' },
+  { value: 'C', label: '🎓 ABS' },
 ];
+
+const BLOCK_LABELS: Record<string, string> = {
+  A: 'Main Building',
+  B: 'Architecture Building',
+  C: 'ABS',
+};
 
 export const AmisFeed: React.FC = () => {
   const navigate = useNavigate();
   const { posts, loading, loadingMore, hasMore, loadMore, createPost, toggleReaction, addComment, fetchFullComments } = useAmisFeed();
   const { events } = useAmisEvents('all', '');
+  const { polls, vote, createPoll } = useAmisPolls();
   const [mounted, setMounted] = useState(false);
 
   // Post composer state
@@ -25,6 +32,11 @@ export const AmisFeed: React.FC = () => {
   const [isPosting, setIsPosting] = useState(false);
   const [showBlockPicker, setShowBlockPicker] = useState(false);
   const [showEventPicker, setShowEventPicker] = useState(false);
+
+  // Poll creation mode
+  const [isPollMode, setIsPollMode] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState('');
+  const [pollOptions, setPollOptions] = useState(['', '']);
 
   // Interaction state
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
@@ -47,6 +59,17 @@ export const AmisFeed: React.FC = () => {
   }, [loadMore]);
 
   const handlePost = async () => {
+    if (isPollMode) {
+      const validOptions = pollOptions.filter(o => o.trim());
+      if (!pollQuestion.trim() || validOptions.length < 2) return;
+      setIsPosting(true);
+      await createPoll(pollQuestion.trim(), validOptions);
+      setPollQuestion('');
+      setPollOptions(['', '']);
+      setIsPollMode(false);
+      setIsPosting(false);
+      return;
+    }
     if (!newText.trim() && !newImage) return;
     setIsPosting(true);
     await createPost(newText.trim(), newImage, blockTag || null, eventId || null);
@@ -133,7 +156,7 @@ export const AmisFeed: React.FC = () => {
             >
               All Posts
             </button>
-            {['A', 'B', 'C'].map(b => (
+            {(['A', 'B', 'C'] as const).map(b => (
               <button
                 key={b}
                 onClick={() => setFilterBlock(filterBlock === b ? '' : b)}
@@ -141,7 +164,7 @@ export const AmisFeed: React.FC = () => {
                   filterBlock === b ? 'bg-neon/10 border-neon/30 text-neon' : 'bg-black/40 border-white/[0.06] text-gray-500 hover:text-gray-400'
                 }`}
               >
-                📍 Block {b}
+                {b === 'A' ? '🏛️' : b === 'B' ? '🏗️' : '🎓'} {BLOCK_LABELS[b]}
               </button>
             ))}
           </div>
@@ -171,9 +194,101 @@ export const AmisFeed: React.FC = () => {
             </div>
           )}
 
-          {/* Feed Cards */}
+          {/* Feed Cards + Poll Cards interleaved */}
           {!loading && (
             <div className="space-y-4">
+              {/* Live Polls Section — visually distinct */}
+              {polls.length > 0 && !filterBlock && (
+                <div className="space-y-4">
+                  {polls.map((poll, pi) => {
+                    const totalVotes = poll.options.reduce((sum: number, opt: any) => sum + (opt.vote_count || 0), 0);
+                    const POLL_GRADIENTS = [
+                      'from-violet-500 to-fuchsia-500',
+                      'from-cyan-500 to-blue-500',
+                      'from-amber-500 to-orange-500',
+                      'from-emerald-500 to-teal-500',
+                    ];
+                    return (
+                      <div
+                        key={poll.id}
+                        className={`relative overflow-hidden rounded-2xl border border-white/[0.08] transition-all duration-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
+                        style={{ transitionDelay: `${pi * 80}ms` }}
+                      >
+                        {/* Gradient top accent */}
+                        <div className={`h-1 bg-gradient-to-r ${POLL_GRADIENTS[pi % POLL_GRADIENTS.length]}`} />
+                        
+                        <div className="bg-black/50 backdrop-blur-2xl p-5">
+                          {/* Poll header */}
+                          <div className="flex items-start gap-3 mb-4">
+                            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${POLL_GRADIENTS[pi % POLL_GRADIENTS.length]} flex items-center justify-center shrink-0 shadow-lg`}>
+                              <BarChart3 className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-white/40">Live Poll</span>
+                                <span className="text-[9px] font-bold text-white/30">•</span>
+                                <span className="text-[9px] font-bold text-white/30">{totalVotes} vote{totalVotes !== 1 ? 's' : ''}</span>
+                              </div>
+                              <h3 className="text-sm font-bold text-white leading-snug">{poll.question}</h3>
+                            </div>
+                          </div>
+                          
+                          {/* Options with animated bars */}
+                          <div className="space-y-2">
+                            {poll.options.map((opt: any, oi: number) => {
+                              const pct = totalVotes > 0 ? Math.round((opt.vote_count / totalVotes) * 100) : 0;
+                              const isVoted = poll.user_voted_option_id === opt.id;
+                              const hasVoted = !!poll.user_voted_option_id;
+                              const isWinning = totalVotes > 0 && opt.vote_count === Math.max(...poll.options.map((o: any) => o.vote_count || 0));
+                              return (
+                                <button
+                                  key={opt.id}
+                                  onClick={() => !hasVoted && vote(poll.id, opt.id)}
+                                  disabled={hasVoted}
+                                  className={`relative w-full text-left rounded-xl overflow-hidden transition-all duration-300 group ${
+                                    isVoted
+                                      ? 'border-2 border-neon/40 bg-neon/5'
+                                      : hasVoted
+                                        ? 'border border-white/[0.06] bg-white/[0.02]'
+                                        : 'border border-white/[0.08] bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06] cursor-pointer'
+                                  }`}
+                                >
+                                  {/* Background bar */}
+                                  {hasVoted && (
+                                    <div
+                                      className={`absolute inset-y-0 left-0 transition-all duration-700 ease-out rounded-xl ${
+                                        isWinning 
+                                          ? `bg-gradient-to-r ${POLL_GRADIENTS[pi % POLL_GRADIENTS.length]} opacity-15`
+                                          : 'bg-white/[0.04]'
+                                      }`}
+                                      style={{ width: `${pct}%` }}
+                                    />
+                                  )}
+                                  <div className="relative flex items-center justify-between px-4 py-3">
+                                    <div className="flex items-center gap-2">
+                                      {isVoted && <span className="text-neon text-xs">✓</span>}
+                                      <span className={`text-xs font-semibold ${isVoted ? 'text-neon' : isWinning && hasVoted ? 'text-white' : 'text-gray-300'}`}>
+                                        {opt.text}
+                                      </span>
+                                    </div>
+                                    {hasVoted && (
+                                      <span className={`text-xs font-bold tabular-nums ${isWinning ? 'text-white' : 'text-gray-500'}`}>
+                                        {pct}%
+                                      </span>
+                                    )}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Regular Feed Posts */}
               {filteredPosts.map((post, i) => {
                 const totalReactions = Object.values(post.reactions).reduce((a, b) => a + b, 0);
                 
@@ -194,7 +309,7 @@ export const AmisFeed: React.FC = () => {
                           <span className="text-[10px] text-gray-600 font-mono">{getTimeAgo(post.created_at)}</span>
                           {post.block_tag && (
                             <span className="text-[9px] font-bold text-neon/70 uppercase bg-neon/10 px-1.5 py-0.5 rounded-md border border-neon/20">
-                              📍 Block {post.block_tag}
+                              {post.block_tag === 'A' ? '🏛️' : post.block_tag === 'B' ? '🏗️' : '🎓'} {BLOCK_LABELS[post.block_tag] || `Block ${post.block_tag}`}
                             </span>
                           )}
                           {post.event_name && (
@@ -326,12 +441,71 @@ export const AmisFeed: React.FC = () => {
       {/* === COMPOSER (Fixed Bottom) === */}
       <div className="fixed bottom-20 md:bottom-0 left-0 right-0 z-30 pointer-events-none flex justify-center w-full bg-gradient-to-t from-black via-black to-transparent pb-6 pt-10">
         <div className="max-w-2xl w-full pointer-events-auto px-4">
+
+          {/* Poll creation mode */}
+          {isPollMode && (
+            <div className="bg-black/90 backdrop-blur-xl border border-violet-500/20 rounded-2xl p-4 mb-2 shadow-2xl">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-violet-400" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-violet-400">Create Poll</span>
+                </div>
+                <button onClick={() => setIsPollMode(false)} className="text-gray-500 hover:text-white"><X className="w-4 h-4" /></button>
+              </div>
+              <input
+                value={pollQuestion}
+                onChange={e => setPollQuestion(e.target.value)}
+                placeholder="Ask a question..."
+                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-gray-600 focus:border-violet-500/30 focus:outline-none mb-3"
+              />
+              <div className="space-y-2 mb-3">
+                {pollOptions.map((opt, i) => (
+                  <div key={i} className="flex gap-2">
+                    <input
+                      value={opt}
+                      onChange={e => {
+                        const next = [...pollOptions];
+                        next[i] = e.target.value;
+                        setPollOptions(next);
+                      }}
+                      placeholder={`Option ${i + 1}`}
+                      className="flex-1 bg-white/[0.03] border border-white/[0.06] rounded-lg px-3 py-2 text-xs text-white placeholder:text-gray-700 focus:border-violet-500/30 focus:outline-none"
+                    />
+                    {pollOptions.length > 2 && (
+                      <button
+                        onClick={() => setPollOptions(pollOptions.filter((_, j) => j !== i))}
+                        className="p-1.5 text-gray-600 hover:text-red-400"
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {pollOptions.length < 6 && (
+                <button
+                  onClick={() => setPollOptions([...pollOptions, ''])}
+                  className="flex items-center gap-1.5 text-[10px] font-bold text-violet-400 hover:text-violet-300 mb-3"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add option
+                </button>
+              )}
+              <button
+                onClick={handlePost}
+                disabled={isPosting || !pollQuestion.trim() || pollOptions.filter(o => o.trim()).length < 2}
+                className="w-full py-2.5 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white text-xs font-bold rounded-xl hover:opacity-90 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                {isPosting ? 'Creating...' : 'Post Poll'}
+              </button>
+            </div>
+          )}
+
           {/* Tags row */}
-          {(blockTag || eventId) && (
+          {!isPollMode && (blockTag || eventId) && (
             <div className="flex gap-2 mb-2 flex-wrap">
               {blockTag && (
                 <span className="text-[9px] font-bold text-neon bg-neon/10 px-2 py-1 rounded-lg border border-neon/20 flex items-center gap-1">
-                  📍 Block {blockTag}
+                  {blockTag === 'A' ? '🏛️' : blockTag === 'B' ? '🏗️' : '🎓'} {BLOCK_LABELS[blockTag]}
                   <button onClick={() => { setBlockTag(''); setEventId(''); }} className="ml-1"><X className="w-3 h-3" /></button>
                 </span>
               )}
@@ -345,7 +519,7 @@ export const AmisFeed: React.FC = () => {
           )}
 
           {/* Image preview */}
-          {newImage && (
+          {!isPollMode && newImage && (
             <div className="relative w-20 h-20 mb-2 rounded-xl overflow-hidden border border-white/10">
               <img src={newImage} className="w-full h-full object-cover" alt="Preview" />
               <button onClick={() => setNewImage(null)} className="absolute top-1 right-1 bg-black/80 rounded-full p-0.5"><X className="w-3 h-3 text-white" /></button>
@@ -353,98 +527,109 @@ export const AmisFeed: React.FC = () => {
           )}
 
           {/* Main composer bar */}
-          <div className="bg-black border border-gray-800 rounded-full p-2 shadow-2xl flex items-center gap-2">
-            {/* Block tag button */}
-            <div className="relative">
-              <button
-                onClick={() => { setShowBlockPicker(!showBlockPicker); setShowEventPicker(false); }}
-                className={`p-2 rounded-full transition-all ${blockTag ? 'text-neon bg-neon/10' : 'text-gray-500 hover:text-gray-300'}`}
-              >
-                <MapPin className="w-5 h-5" />
-              </button>
-              {showBlockPicker && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setShowBlockPicker(false)} />
-                  <div className="absolute bottom-12 left-0 bg-gray-900 border border-gray-800 rounded-xl shadow-2xl z-20 w-44 overflow-hidden">
-                    <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest px-3 pt-2 pb-1">Tag a Block</p>
-                    {BLOCK_OPTIONS.map(opt => (
-                      <button
-                        key={opt.value}
-                        onClick={() => { setBlockTag(opt.value); setShowBlockPicker(false); if (!opt.value) setEventId(''); }}
-                        className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-800 transition-colors ${blockTag === opt.value ? 'text-neon font-bold' : 'text-gray-400'}`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                    {blockTag && (
-                      <>
-                        <div className="border-t border-gray-800" />
+          {!isPollMode && (
+            <div className="bg-black border border-gray-800 rounded-full p-2 shadow-2xl flex items-center gap-2">
+              {/* Block tag button */}
+              <div className="relative">
+                <button
+                  onClick={() => { setShowBlockPicker(!showBlockPicker); setShowEventPicker(false); }}
+                  className={`p-2 rounded-full transition-all ${blockTag ? 'text-neon bg-neon/10' : 'text-gray-500 hover:text-gray-300'}`}
+                >
+                  <MapPin className="w-5 h-5" />
+                </button>
+                {showBlockPicker && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setShowBlockPicker(false)} />
+                    <div className="absolute bottom-12 left-0 bg-gray-900 border border-gray-800 rounded-xl shadow-2xl z-20 w-52 overflow-hidden">
+                      <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest px-3 pt-2 pb-1">Tag a Location</p>
+                      {BLOCK_OPTIONS.map(opt => (
                         <button
-                          onClick={() => { setShowBlockPicker(false); setShowEventPicker(true); }}
-                          className="w-full text-left px-3 py-2 text-xs text-purple-400 hover:bg-gray-800 font-bold"
+                          key={opt.value}
+                          onClick={() => { setBlockTag(opt.value); setShowBlockPicker(false); if (!opt.value) setEventId(''); }}
+                          className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-800 transition-colors ${blockTag === opt.value ? 'text-neon font-bold' : 'text-gray-400'}`}
                         >
-                          🎪 Tag an Event →
+                          {opt.label}
                         </button>
-                      </>
-                    )}
-                  </div>
-                </>
-              )}
+                      ))}
+                      {blockTag && (
+                        <>
+                          <div className="border-t border-gray-800" />
+                          <button
+                            onClick={() => { setShowBlockPicker(false); setShowEventPicker(true); }}
+                            className="w-full text-left px-3 py-2 text-xs text-purple-400 hover:bg-gray-800 font-bold"
+                          >
+                            🎪 Tag an Event →
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </>
+                )}
 
-              {/* Event picker dropdown */}
-              {showEventPicker && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setShowEventPicker(false)} />
-                  <div className="absolute bottom-12 left-0 bg-gray-900 border border-gray-800 rounded-xl shadow-2xl z-20 w-56 max-h-60 overflow-y-auto">
-                    <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest px-3 pt-2 pb-1 sticky top-0 bg-gray-900">
-                      {blockTag ? `Block ${blockTag} Events` : 'All Events'}
-                    </p>
-                    <button
-                      onClick={() => { setEventId(''); setShowEventPicker(false); }}
-                      className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-800 ${!eventId ? 'text-neon font-bold' : 'text-gray-400'}`}
-                    >
-                      No event tag
-                    </button>
-                    {filteredEvents.map(event => (
+                {/* Event picker dropdown */}
+                {showEventPicker && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setShowEventPicker(false)} />
+                    <div className="absolute bottom-12 left-0 bg-gray-900 border border-gray-800 rounded-xl shadow-2xl z-20 w-56 max-h-60 overflow-y-auto">
+                      <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest px-3 pt-2 pb-1 sticky top-0 bg-gray-900">
+                        {blockTag ? `${BLOCK_LABELS[blockTag]} Events` : 'All Events'}
+                      </p>
                       <button
-                        key={event.id}
-                        onClick={() => { setEventId(event.id); setShowEventPicker(false); }}
-                        className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-800 transition-colors ${eventId === event.id ? 'text-purple-400 font-bold' : 'text-gray-400'}`}
+                        onClick={() => { setEventId(''); setShowEventPicker(false); }}
+                        className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-800 ${!eventId ? 'text-neon font-bold' : 'text-gray-400'}`}
                       >
-                        {event.name}
+                        No event tag
                       </button>
-                    ))}
-                  </div>
-                </>
-              )}
+                      {filteredEvents.map(event => (
+                        <button
+                          key={event.id}
+                          onClick={() => { setEventId(event.id); setShowEventPicker(false); }}
+                          className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-800 transition-colors ${eventId === event.id ? 'text-purple-400 font-bold' : 'text-gray-400'}`}
+                        >
+                          {event.name}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="h-4 w-px bg-gray-800" />
+
+              {/* Poll toggle */}
+              <button
+                onClick={() => setIsPollMode(true)}
+                className="p-2 text-gray-500 hover:text-violet-400 transition-colors"
+                title="Create Poll"
+              >
+                <BarChart3 className="w-5 h-5" />
+              </button>
+
+              {/* Image upload */}
+              <input id="feed-image-input" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+              <button onClick={() => document.getElementById('feed-image-input')?.click()} className="p-2 text-gray-500 hover:text-gray-300 transition-colors">
+                <ImageIcon className="w-5 h-5" />
+              </button>
+
+              {/* Text input */}
+              <input
+                value={newText}
+                onChange={e => setNewText(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handlePost()}
+                placeholder="What's happening at the fest?"
+                className="flex-1 bg-transparent text-white px-2 outline-none text-xs font-medium placeholder:text-gray-600"
+              />
+
+              {/* Send */}
+              <button
+                onClick={handlePost}
+                disabled={isPosting || (!newText.trim() && !newImage)}
+                className="p-2.5 bg-neon rounded-full text-white hover:bg-pink-600 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(255,0,127,0.3)]"
+              >
+                {isPosting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              </button>
             </div>
-
-            <div className="h-4 w-px bg-gray-800" />
-
-            {/* Image upload */}
-            <input id="feed-image-input" type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-            <button onClick={() => document.getElementById('feed-image-input')?.click()} className="p-2 text-gray-500 hover:text-gray-300 transition-colors">
-              <ImageIcon className="w-5 h-5" />
-            </button>
-
-            {/* Text input */}
-            <input
-              value={newText}
-              onChange={e => setNewText(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handlePost()}
-              placeholder="What's happening at the fest?"
-              className="flex-1 bg-transparent text-white px-2 outline-none text-xs font-medium placeholder:text-gray-600"
-            />
-
-            {/* Send */}
-            <button
-              onClick={handlePost}
-              disabled={isPosting || (!newText.trim() && !newImage)}
-              className="p-2.5 bg-neon rounded-full text-white hover:bg-pink-600 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(255,0,127,0.3)]"
-            >
-              {isPosting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            </button>
-          </div>
+          )}
         </div>
       </div>
 

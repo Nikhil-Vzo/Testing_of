@@ -201,9 +201,9 @@ export const AmisEvents: React.FC = () => {
                 /* Default: Group by blocks */
                 <div className="space-y-8">
                   {[
-                    { id: 'A', name: 'Block A — High Energy', desc: 'Main Stage & Experiences', emoji: '🅰️' },
-                    { id: 'B', name: 'Block B — Interactive', desc: 'Creative & Interactive', emoji: '🅱️' },
-                    { id: 'C', name: 'Block C — Chill Hub', desc: 'Cultural & Intellectual', emoji: '🆑' },
+                    { id: 'A', name: 'Main Building', desc: 'Main Stage & Experiences', emoji: '🏛️' },
+                    { id: 'B', name: 'Architecture Building', desc: 'Creative & Interactive', emoji: '🏗️' },
+                    { id: 'C', name: 'ABS', desc: 'Cultural & Intellectual', emoji: '🎓' },
                   ].map(block => {
                     const blockEvents = filteredEvents.filter(e => e.zone === block.id);
                     if (blockEvents.length === 0) return null;
