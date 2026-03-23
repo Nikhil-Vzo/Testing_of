@@ -1,15 +1,15 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, Flame, Zap, Gamepad2, MapPin, Users, ArrowLeft, Loader2, Ghost } from 'lucide-react';
+import { Search, ArrowLeft, Loader2, Ghost, MapPin, Users, Flame, X } from 'lucide-react';
 import { useAmisEvents } from './useAmisData';
 import { EventCategory, CATEGORY_META } from './types';
 
 const ALL_CATEGORIES: (EventCategory | 'all')[] = ['all', 'experience', 'intellectual', 'cultural', 'gaming', 'entertainment', 'special'];
 
-const QUICK_FILTERS = [
-  { id: 'trending', label: '🔥 Trending' },
-  { id: 'intense', label: '😱 Most Intense' },
-  { id: 'gaming', label: '🎮 Gaming Only' },
+const BLOCKS = [
+  { id: 'A', name: 'Main Building', emoji: '🏛️', accent: 'from-rose-500 to-orange-500' },
+  { id: 'B', name: 'Architecture Building', emoji: '🏗️', accent: 'from-blue-500 to-cyan-500' },
+  { id: 'C', name: 'ABS', emoji: '🎓', accent: 'from-violet-500 to-purple-500' },
 ];
 
 export const AmisEvents: React.FC = () => {
@@ -17,233 +17,143 @@ export const AmisEvents: React.FC = () => {
   const [searchParams] = useSearchParams();
   const initialFilter = searchParams.get('filter');
   const [mounted, setMounted] = useState(false);
-
-  useEffect(() => { setTimeout(() => setMounted(true), 50); }, []);
-
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<EventCategory | 'all'>(
     initialFilter === 'gaming' ? 'gaming' : 'all'
   );
-  const [searchQuery, setSearchQuery] = useState('');
-  const [quickFilter, setQuickFilter] = useState<string | null>(initialFilter);
+
+  useEffect(() => { setTimeout(() => setMounted(true), 50); }, []);
 
   const { events, loading } = useAmisEvents(activeCategory, searchQuery);
 
-  const filteredEvents = useMemo(() => {
-    let filtered = events;
-    if (quickFilter === 'trending') filtered = filtered.filter(e => e.is_trending);
-    if (quickFilter === 'intense') filtered = [...filtered].sort((a, b) => (b.checkin_count || 0) - (a.checkin_count || 0));
-    if (quickFilter === 'gaming') filtered = filtered.filter(e => e.category === 'gaming');
-    return filtered;
-  }, [events, quickFilter]);
+  const filteredEvents = useMemo(() => events, [events]);
 
-  const getCrowdLevel = (count: number) => {
-    if (count >= 20) return { label: 'Packed', color: 'text-red-400', flames: '🔥🔥🔥', glow: 'shadow-[0_0_12px_rgba(239,68,68,0.3)]' };
-    if (count >= 10) return { label: 'Hot', color: 'text-orange-400', flames: '🔥🔥', glow: 'shadow-[0_0_8px_rgba(251,146,60,0.2)]' };
-    if (count >= 3) return { label: 'Warm', color: 'text-yellow-400', flames: '🔥', glow: '' };
-    return { label: 'Chill', color: 'text-emerald-400', flames: '✨', glow: '' };
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const renderEventCard = (event: any, i: number) => {
-    const meta = CATEGORY_META[event.category as EventCategory];
-    const crowd = getCrowdLevel(event.checkin_count || 0);
-    return (
-      <div
-        key={event.id}
-        onClick={() => navigate(`/amis-park/event/${event.id}`)}
-        className={`group relative bg-black/40 backdrop-blur-2xl border border-white/[0.06] hover:border-neon/20 rounded-2xl p-5 cursor-pointer transition-all duration-500 hover:scale-[1.02] overflow-hidden ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
-        style={{ transitionDelay: `${Math.min(i, 10) * 50}ms` }}
-      >
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl"
-          style={{ boxShadow: `inset 0 0 40px ${meta.bgGlow.replace('0.3', '0.05')}, 0 0 50px ${meta.bgGlow.replace('0.3', '0.06')}` }} />
-        {event.is_trending && (
-          <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 bg-neon/10 border border-neon/20 rounded-full text-neon text-[9px] font-bold uppercase tracking-wider z-10">
-            <Flame className="w-2.5 h-2.5" /> Hot
-          </div>
-        )}
-        <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gradient-to-r ${meta.gradient} text-white text-[10px] font-bold uppercase tracking-wider mb-3 shadow-sm`}>
-          <span className="text-xs">{meta.emoji}</span>
-          <span>{meta.label}</span>
-        </div>
-        <h3 className="text-base font-bold text-white mb-1.5 group-hover:text-white transition-colors leading-tight tracking-tight">{event.name}</h3>
-        <p className="text-gray-500 text-xs mb-4 line-clamp-2 leading-relaxed">{event.description}</p>
-        <div className="flex items-center justify-between pt-3 border-t border-white/[0.04]">
-          <div className="flex items-center gap-3">
-            <div className={`flex items-center gap-1 ${crowd.glow}`}>
-              <span className="text-xs">{crowd.flames}</span>
-              <span className={`text-[10px] font-bold ${crowd.color}`}>{crowd.label}</span>
-            </div>
-            {event.zone && (
-              <div className="flex items-center gap-1 text-gray-700">
-                <MapPin className="w-3 h-3" />
-                <span className="text-[10px] font-bold uppercase tracking-wider">Block {event.zone}</span>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-1 text-gray-600">
-            <Users className="w-3 h-3" />
-            <span className="text-[10px] font-bold">{event.checkin_count || 0}</span>
-          </div>
-        </div>
-        <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl ${meta.gradient} opacity-[0.02] group-hover:opacity-[0.06] rounded-bl-full transition-opacity duration-500`} />
-      </div>
-    );
-  };
+  const isFilterActive = activeCategory !== 'all' || searchQuery.trim().length > 0;
 
   return (
     <div className="h-full w-full bg-transparent text-white flex flex-col relative overflow-hidden">
 
-      {/* === REACTIVE BACKGROUND === */}
+      {/* Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-[-25%] right-[-15%] w-[55%] h-[55%] rounded-full blur-[130px]"
-          style={{ background: 'radial-gradient(circle, rgba(255,0,127,0.08) 0%, transparent 70%)' }} />
+          style={{ background: 'radial-gradient(circle, rgba(255,0,127,0.06) 0%, transparent 70%)' }} />
         <div className="absolute bottom-[-20%] left-[-10%] w-[45%] h-[45%] rounded-full blur-[100px]"
-          style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%)' }} />
-        {/* Grain */}
-        <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\'/%3E%3C/svg%3E")', backgroundRepeat: 'repeat', backgroundSize: '256px 256px' }} />
+          style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.05) 0%, transparent 70%)' }} />
       </div>
 
-      {/* === STICKY HEADER === */}
-      <div className="flex-none p-4 md:px-8 border-b border-gray-800/50 bg-black/40 backdrop-blur-2xl z-40 sticky top-0">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center gap-3 mb-4">
-            <button onClick={() => navigate('/amis-park')} className="p-2.5 rounded-full bg-black/60 backdrop-blur-xl border border-white/10 hover:border-neon/30 hover:text-neon transition-all">
-              <ArrowLeft className="w-5 h-5 text-gray-400" />
+      {/* === COMPACT HEADER === */}
+      <div className="flex-none px-4 pt-4 pb-2 z-40 sticky top-0 bg-black/70 backdrop-blur-2xl border-b border-white/[0.04]">
+        <div className="max-w-3xl mx-auto">
+          {/* Top row: back + title + search toggle */}
+          <div className="flex items-center gap-3 mb-3">
+            <button onClick={() => navigate('/amis-park')} className="p-2 rounded-full bg-white/[0.04] border border-white/[0.06] hover:border-neon/30 hover:text-neon transition-all shrink-0">
+              <ArrowLeft className="w-4 h-4 text-gray-400" />
             </button>
-            <div className="flex-1">
-              <h1 className="text-xl md:text-2xl font-black tracking-tight uppercase">
-                Events <span className="text-neon">Explorer</span>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-lg font-black tracking-tight">
+                Explore <span className="text-neon">Events</span>
               </h1>
-              <p className="text-[10px] text-gray-600 uppercase font-bold tracking-widest">{filteredEvents.length} events found</p>
             </div>
-            <Ghost className="w-6 h-6 text-neon/30" />
+            <button
+              onClick={() => { setSearchOpen(!searchOpen); if (searchOpen) setSearchQuery(''); }}
+              className={`p-2 rounded-full border transition-all shrink-0 ${searchOpen ? 'bg-neon/10 border-neon/30 text-neon' : 'bg-white/[0.04] border-white/[0.06] text-gray-400 hover:text-white'}`}
+            >
+              {searchOpen ? <X className="w-4 h-4" /> : <Search className="w-4 h-4" />}
+            </button>
           </div>
 
-          {/* Search Bar */}
-          <div className="relative mb-3">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
-            <input
-              type="text"
-              placeholder="Search events..."
-              value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); setQuickFilter(null); }}
-              className="w-full pl-11 pr-4 py-3 rounded-full bg-black/60 backdrop-blur-xl border border-white/[0.06] focus:border-neon/30 focus:outline-none focus:shadow-[0_0_20px_rgba(255,0,127,0.1)] text-white placeholder:text-gray-600 text-xs font-medium transition-all"
-            />
-          </div>
+          {/* Search bar (expandable) */}
+          {searchOpen && (
+            <div className="mb-3">
+              <input
+                autoFocus
+                type="text"
+                placeholder="Search events..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] focus:border-neon/30 focus:outline-none text-white placeholder:text-gray-600 text-xs font-medium transition-all"
+              />
+            </div>
+          )}
 
-          {/* Quick Filters + Category Tabs in one row on desktop */}
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {QUICK_FILTERS.map(f => (
-              <button
-                key={f.id}
-                onClick={() => {
-                  setQuickFilter(quickFilter === f.id ? null : f.id);
-                  if (f.id === 'gaming') setActiveCategory(quickFilter === f.id ? 'all' : 'gaming');
-                }}
-                className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border transition-all duration-300 ${
-                  quickFilter === f.id
-                    ? 'bg-neon/10 border-neon/30 text-neon shadow-[0_0_15px_rgba(255,0,127,0.15)]'
-                    : 'bg-black/40 border-white/[0.06] text-gray-500 hover:border-gray-700 hover:text-gray-400'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
+          {/* Category pills — single scrollable row */}
+          <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
+            {ALL_CATEGORIES.map(cat => {
+              const isActive = activeCategory === cat;
+              const meta = cat === 'all' ? { label: 'All', emoji: '✦' } : CATEGORY_META[cat];
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wide transition-all duration-200 ${
+                    isActive
+                      ? 'bg-white/10 text-white border border-white/15'
+                      : 'text-gray-500 hover:text-gray-300 border border-transparent'
+                  }`}
+                >
+                  <span className="text-xs">{meta.emoji}</span>
+                  {meta.label}
+                </button>
+              );
+            })}
           </div>
-        </div>
-      </div>
-
-      {/* === CATEGORY TABS === */}
-      <div className="flex-none px-4 md:px-8 py-3 bg-black/20 backdrop-blur-md border-b border-gray-900/50 z-30">
-        <div className="max-w-6xl mx-auto flex gap-2 overflow-x-auto scrollbar-hide">
-          {ALL_CATEGORIES.map(cat => {
-            const isActive = activeCategory === cat;
-            const meta = cat === 'all' ? { label: 'All', emoji: '🌐', gradient: 'from-gray-400 to-gray-500' } : CATEGORY_META[cat];
-            return (
-              <button
-                key={cat}
-                onClick={() => { setActiveCategory(cat); setQuickFilter(null); }}
-                className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-wider border transition-all duration-300 ${
-                  isActive
-                    ? 'bg-white/10 border-white/20 text-white shadow-[0_0_15px_rgba(255,255,255,0.05)]'
-                    : 'bg-transparent border-transparent text-gray-600 hover:text-gray-400 hover:bg-white/[0.03]'
-                }`}
-              >
-                <span className="text-sm">{meta.emoji}</span>
-                <span>{meta.label}</span>
-              </button>
-            );
-          })}
         </div>
       </div>
 
       {/* === SCROLLABLE CONTENT === */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar relative z-10">
-        <div className="px-4 md:px-8 py-6 max-w-6xl mx-auto pb-28 md:pb-8">
+        <div className="px-4 py-5 max-w-3xl mx-auto pb-28 md:pb-8">
 
           {/* Loading */}
           {loading && (
-            <div className="flex flex-col items-center justify-center py-20 gap-4">
-              <Loader2 className="w-8 h-8 text-neon animate-spin" />
-              <p className="text-gray-600 text-xs uppercase tracking-widest font-bold">Loading events...</p>
+            <div className="flex flex-col items-center justify-center py-20 gap-3">
+              <Loader2 className="w-7 h-7 text-neon animate-spin" />
+              <p className="text-gray-600 text-[10px] uppercase tracking-widest font-bold">Loading events...</p>
             </div>
           )}
 
-          {/* Event Cards - Grouped by Block */}
+          {/* Events */}
           {!loading && (
             <>
-              {/* If filtering or searching, show flat grid */}
-              {(activeCategory !== 'all' || searchQuery || quickFilter) ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-                  {filteredEvents.map((event, i) => renderEventCard(event, i))}
+              {isFilterActive ? (
+                /* Filtered: flat list */
+                <div className="space-y-3">
+                  <p className="text-[10px] text-gray-600 font-bold uppercase tracking-widest mb-2">
+                    {filteredEvents.length} result{filteredEvents.length !== 1 ? 's' : ''}
+                  </p>
+                  {filteredEvents.map((event, i) => (
+                    <EventCard key={event.id} event={event} i={i} mounted={mounted} navigate={navigate} />
+                  ))}
                 </div>
               ) : (
-                /* Default: Group by blocks */
-                <div className="space-y-8">
-                  {[
-                    { id: 'A', name: 'Main Building', desc: 'Main Stage & Experiences', emoji: '🏛️' },
-                    { id: 'B', name: 'Architecture Building', desc: 'Creative & Interactive', emoji: '🏗️' },
-                    { id: 'C', name: 'ABS', desc: 'Cultural & Intellectual', emoji: '🎓' },
-                  ].map(block => {
+                /* Default: grouped by block — accordion style */
+                <div className="space-y-6">
+                  {BLOCKS.map(block => {
                     const blockEvents = filteredEvents.filter(e => e.zone === block.id);
                     if (blockEvents.length === 0) return null;
                     return (
-                      <div key={block.id}>
-                        {/* Block Header */}
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-neon/20 to-purple-500/20 border border-white/10 flex items-center justify-center font-black text-lg shrink-0">
-                            {block.id}
-                          </div>
-                          <div>
-                            <h2 className="text-sm font-black uppercase tracking-tight text-white">{block.name}</h2>
-                            <p className="text-[10px] text-gray-600 font-bold uppercase tracking-widest">{block.desc} • {blockEvents.length} events</p>
-                          </div>
-                        </div>
-                        {/* Events Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-                          {blockEvents.map((event, i) => renderEventCard(event, i))}
-                        </div>
-                      </div>
+                      <BlockSection
+                        key={block.id}
+                        block={block}
+                        events={blockEvents}
+                        mounted={mounted}
+                        navigate={navigate}
+                      />
                     );
                   })}
-                  
-                  {/* Events without a block */}
+
+                  {/* Unassigned events */}
                   {(() => {
                     const noBlockEvents = filteredEvents.filter(e => !e.zone);
                     if (noBlockEvents.length === 0) return null;
                     return (
-                      <div>
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="w-10 h-10 rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center font-black text-lg shrink-0">?</div>
-                          <div>
-                            <h2 className="text-sm font-black uppercase tracking-tight text-white">Other Events</h2>
-                            <p className="text-[10px] text-gray-600 font-bold uppercase tracking-widest">{noBlockEvents.length} events</p>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-                          {noBlockEvents.map((event, i) => renderEventCard(event, i))}
-                        </div>
-                      </div>
+                      <BlockSection
+                        block={{ id: '?', name: 'Other Events', emoji: '📌', accent: 'from-gray-500 to-gray-600' }}
+                        events={noBlockEvents}
+                        mounted={mounted}
+                        navigate={navigate}
+                      />
                     );
                   })()}
                 </div>
@@ -254,8 +164,8 @@ export const AmisEvents: React.FC = () => {
           {/* Empty state */}
           {!loading && filteredEvents.length === 0 && (
             <div className="text-center py-20 flex flex-col items-center">
-              <div className="w-16 h-16 bg-gray-900/50 rounded-full flex items-center justify-center mb-4 border border-gray-800">
-                <Ghost className="w-8 h-8 text-gray-700" />
+              <div className="w-14 h-14 bg-gray-900/50 rounded-full flex items-center justify-center mb-4 border border-gray-800">
+                <Ghost className="w-7 h-7 text-gray-700" />
               </div>
               <p className="text-gray-500 text-sm font-bold mb-1">No events found</p>
               <p className="text-gray-700 text-xs">Try a different search or category</p>
@@ -266,5 +176,109 @@ export const AmisEvents: React.FC = () => {
     </div>
   );
 };
+
+/* ─── Block Section ─── */
+interface BlockSectionProps {
+  block: { id: string; name: string; emoji: string; accent: string };
+  events: any[];
+  mounted: boolean;
+  navigate: (path: string) => void;
+}
+
+const BlockSection: React.FC<BlockSectionProps> = ({ block, events, mounted, navigate }) => {
+  return (
+    <div>
+      {/* Block header — compact pill style */}
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${block.accent} flex items-center justify-center text-sm shadow-lg`}>
+          {block.emoji}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-sm font-black text-white tracking-tight">{block.name}</h2>
+        </div>
+        <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest shrink-0">
+          {events.length} event{events.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+
+      {/* Events — clean list */}
+      <div className="space-y-2.5">
+        {events.map((event, i) => (
+          <EventCard key={event.id} event={event} i={i} mounted={mounted} navigate={navigate} compact />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/* ─── Event Card ─── */
+interface EventCardProps {
+  event: any;
+  i: number;
+  mounted: boolean;
+  navigate: (path: string) => void;
+  compact?: boolean;
+}
+
+const EventCard: React.FC<EventCardProps> = ({ event, i, mounted, navigate, compact }) => {
+  const meta = CATEGORY_META[event.category as EventCategory];
+  const crowd = getCrowdLevel(event.checkin_count || 0);
+
+  return (
+    <button
+      onClick={() => navigate(`/amis-park/event/${event.id}`)}
+      className={`group w-full text-left relative bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.05] hover:border-white/[0.1] rounded-xl transition-all duration-300 overflow-hidden ${
+        mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+      } ${compact ? 'p-3.5' : 'p-4'}`}
+      style={{ transitionDelay: `${Math.min(i, 8) * 40}ms` }}
+    >
+      <div className="flex items-start gap-3">
+        {/* Left: category badge */}
+        <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${meta.gradient} flex items-center justify-center text-sm shadow-md shrink-0 mt-0.5`}>
+          {meta.emoji}
+        </div>
+
+        {/* Middle: info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <h3 className="text-[13px] font-bold text-white truncate leading-tight">{event.name}</h3>
+            {event.is_trending && (
+              <span className="shrink-0 flex items-center gap-0.5 text-neon text-[8px] font-black uppercase tracking-wider">
+                <Flame className="w-2.5 h-2.5" /> Hot
+              </span>
+            )}
+          </div>
+          {!compact && event.description && (
+            <p className="text-gray-500 text-[11px] line-clamp-1 leading-relaxed mb-1">{event.description}</p>
+          )}
+          <div className="flex items-center gap-3 mt-1">
+            <span className={`text-[9px] font-bold ${crowd.color} flex items-center gap-0.5`}>
+              {crowd.flames} {crowd.label}
+            </span>
+            {event.zone && (
+              <span className="text-[9px] font-bold text-gray-600 flex items-center gap-0.5">
+                <MapPin className="w-2.5 h-2.5" /> Block {event.zone}
+              </span>
+            )}
+            <span className="text-[9px] font-bold text-gray-700 flex items-center gap-0.5">
+              <Users className="w-2.5 h-2.5" /> {event.checkin_count || 0}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Hover accent */}
+      <div className={`absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl ${meta.gradient} opacity-0 group-hover:opacity-[0.04] rounded-bl-full transition-opacity duration-300`} />
+    </button>
+  );
+};
+
+/* ─── Helpers ─── */
+function getCrowdLevel(count: number) {
+  if (count >= 20) return { label: 'Packed', color: 'text-red-400', flames: '🔥🔥🔥' };
+  if (count >= 10) return { label: 'Hot', color: 'text-orange-400', flames: '🔥🔥' };
+  if (count >= 3) return { label: 'Warm', color: 'text-yellow-400', flames: '🔥' };
+  return { label: 'Chill', color: 'text-emerald-400', flames: '✨' };
+}
 
 export default AmisEvents;
