@@ -226,5 +226,36 @@ export function useAmisPolls() {
     // Trigger is handling the option's vote_count increment in DB
   };
 
-  return { polls, loading, vote, refetch: fetchPolls };
+  const createPoll = async (question: string, optionTexts: string[]) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !question.trim() || optionTexts.length < 2) return false;
+
+    // 1. Insert Poll
+    const { data: pollData, error: pollError } = await supabase
+      .from('amis_polls')
+      .insert({ question: question.trim(), user_id: user.id })
+      .select('id')
+      .single();
+
+    if (pollError || !pollData) return false;
+
+    // 2. Insert Options
+    const optionsToInsert = optionTexts
+      .filter(opt => opt.trim() !== '')
+      .map(opt => ({ poll_id: pollData.id, text: opt.trim() }));
+      
+    if (optionsToInsert.length < 2) return false; // Safety check
+
+    const { error: optionsError } = await supabase
+      .from('amis_poll_options')
+      .insert(optionsToInsert);
+
+    if (optionsError) return false;
+
+    // 3. Refetch to show new poll
+    await fetchPolls();
+    return true;
+  };
+
+  return { polls, loading, vote, createPoll, refetch: fetchPolls };
 }

@@ -1,14 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, BarChart2, CheckCircle2, Ghost } from 'lucide-react';
+import { ArrowLeft, Loader2, BarChart2, CheckCircle2, Ghost, Plus, X, ArrowRight } from 'lucide-react';
 import { useAmisPolls } from './useAmisData';
 
 export const AmisPolls: React.FC = () => {
   const navigate = useNavigate();
-  const { polls, loading, vote } = useAmisPolls();
+  const { polls, loading, vote, createPoll } = useAmisPolls();
   const [mounted, setMounted] = useState(false);
 
+  // Create Poll State
+  const [isCreating, setIsCreating] = useState(false);
+  const [newQuestion, setNewQuestion] = useState('');
+  const [newOptions, setNewOptions] = useState<string[]>(['', '']);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => { setTimeout(() => setMounted(true), 50); }, []);
+
+  const handleAddOption = () => {
+    if (newOptions.length < 4) setNewOptions([...newOptions, '']);
+  };
+
+  const handleRemoveOption = (index: number) => {
+    setNewOptions(newOptions.filter((_, i) => i !== index));
+  };
+
+  const handleCreateSubmit = async () => {
+    if (!newQuestion.trim() || newOptions.filter(o => o.trim()).length < 2) return;
+    setIsSubmitting(true);
+    const success = await createPoll(newQuestion, newOptions);
+    setIsSubmitting(false);
+    if (success) {
+      setIsCreating(false);
+      setNewQuestion('');
+      setNewOptions(['', '']);
+    }
+  };
 
   return (
     <div className="h-full w-full bg-transparent text-white flex flex-col relative overflow-hidden">
@@ -43,6 +69,83 @@ export const AmisPolls: React.FC = () => {
       <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar relative z-10 w-full">
         <div className="px-4 md:px-8 py-6 max-w-3xl mx-auto pb-28 md:pb-8">
 
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold tracking-tight text-white/90">Recent Polls</h2>
+            {!isCreating && (
+              <button 
+                onClick={() => setIsCreating(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full transition-all text-sm font-bold uppercase tracking-wider"
+              >
+                <Plus className="w-4 h-4" />
+                New Poll
+              </button>
+            )}
+          </div>
+
+          {/* Create Poll Form */}
+          {isCreating && (
+            <div className="bg-black/40 backdrop-blur-2xl border border-blue-500/30 shadow-[0_0_30px_rgba(59,130,246,0.1)] rounded-3xl p-6 mb-8 transition-all animate-in fade-in slide-in-from-top-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-white">Ask the Crowd</h3>
+                <button onClick={() => setIsCreating(false)} className="text-gray-500 hover:text-white transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  placeholder="What's your question? e.g. Best DJ tonight?"
+                  value={newQuestion}
+                  onChange={e => setNewQuestion(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 transition-colors"
+                />
+                
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Options</label>
+                  {newOptions.map((opt, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder={`Option ${idx + 1}`}
+                        value={opt}
+                        onChange={e => {
+                          const updated = [...newOptions];
+                          updated[idx] = e.target.value;
+                          setNewOptions(updated);
+                        }}
+                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 transition-colors"
+                      />
+                      {newOptions.length > 2 && (
+                        <button onClick={() => handleRemoveOption(idx)} className="p-2.5 text-red-400/50 hover:text-red-400 bg-red-400/5 hover:bg-red-400/10 rounded-xl border border-transparent hover:border-red-400/20 transition-all">
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {newOptions.length < 4 && (
+                  <button onClick={handleAddOption} className="text-blue-400 text-xs font-bold uppercase tracking-widest flex items-center gap-1 hover:text-blue-300 transition-colors">
+                    <Plus className="w-3 h-3" /> Add Option
+                  </button>
+                )}
+
+                <button 
+                  onClick={handleCreateSubmit}
+                  disabled={isSubmitting || !newQuestion.trim() || newOptions.filter(o => o.trim()).length < 2}
+                  className="w-full mt-4 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold py-3 rounded-xl flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                    <>
+                      Post Poll <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
               <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
@@ -54,7 +157,7 @@ export const AmisPolls: React.FC = () => {
                 <Ghost className="w-8 h-8 text-gray-700" />
               </div>
               <p className="text-gray-500 text-sm font-bold mb-1">No active polls</p>
-              <p className="text-gray-700 text-xs">Check back later for new votes</p>
+              <p className="text-gray-700 text-xs">Be the first to ask the crowd!</p>
             </div>
           ) : (
             <div className="space-y-6">

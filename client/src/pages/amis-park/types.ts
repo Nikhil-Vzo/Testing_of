@@ -66,6 +66,7 @@ export interface AmisPoll {
   id: string;
   question: string;
   is_active: boolean;
+  user_id?: string | null;
   created_at: string;
   options: AmisPollOption[];
   user_voted_option_id?: string | null;
