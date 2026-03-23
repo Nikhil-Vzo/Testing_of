@@ -29,6 +29,7 @@ const AmisEvents = lazy(() => import('./pages/amis-park/AmisEvents').then(m => (
 const AmisEventDetail = lazy(() => import('./pages/amis-park/AmisEventDetail').then(m => ({ default: m.AmisEventDetail })));
 const AmisHeatmap = lazy(() => import('./pages/amis-park/AmisHeatmap').then(m => ({ default: m.AmisHeatmap })));
 const AmisPolls = lazy(() => import('./pages/amis-park/AmisPolls').then(m => ({ default: m.AmisPolls })));
+const AmisFeed = lazy(() => import('./pages/amis-park/AmisFeed').then(m => ({ default: m.AmisFeed })));
 
 // Static pages lazy loaded individually
 const About = lazy(() => import('./pages/StaticPages').then(m => ({ default: m.About })));
@@ -154,6 +155,7 @@ export default function App() {
             <Route path="/amis-park/event/:id" element={<AmisEventDetail />} />
             <Route path="/amis-park/heatmap" element={<AmisHeatmap />} />
             <Route path="/amis-park/polls" element={<AmisPolls />} />
+            <Route path="/amis-park/feed" element={<AmisFeed />} />
           </Route>
 
           {/* Catch all */}
