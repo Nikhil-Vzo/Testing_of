@@ -66,8 +66,8 @@ export const AmisEntryModal: React.FC<AmisEntryModalProps> = ({ isOpen, onClose 
           </div>
 
           <h2 className="text-4xl font-black uppercase tracking-tighter leading-none mb-1">
-            <span className="text-white">AMIS</span>
-            <span className="bg-gradient-to-r from-neon to-purple-500 bg-clip-text text-transparent">PARK</span>
+            <span className="text-white">AMI</span>
+            <span className="bg-gradient-to-r from-neon to-purple-500 bg-clip-text text-transparent">SPARK</span>
           </h2>
           <p className="text-gray-400 text-xs font-semibold">The Ultimate College Fest</p>
         </div>
