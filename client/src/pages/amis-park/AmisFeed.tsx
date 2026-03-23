@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, Image as ImageIcon, X, Loader2, MessageCircle, SmilePlus, MapPin, Ghost, ChevronDown, BarChart3, Plus, Minus } from 'lucide-react';
+import { ArrowLeft, Send, Image as ImageIcon, X, Loader2, MessageCircle, SmilePlus, MapPin, Ghost, ChevronDown, BarChart3, Plus, Minus, Building2, Hammer, GraduationCap, Map } from 'lucide-react';
 import { useAmisFeed, REACTIONS } from './useAmisFeed';
 import { useAmisEvents, useAmisPolls } from './useAmisData';
 
 const BLOCK_OPTIONS = [
-  { value: '', label: 'No tag' },
-  { value: 'A', label: '🏛️ Main Building' },
-  { value: 'B', label: '🏗️ Architecture Building' },
-  { value: 'C', label: '🎓 ABS' },
+  { value: '', label: 'No tag', icon: null },
+  { value: 'A', label: 'Main Building', icon: Building2 },
+  { value: 'B', label: 'Architecture Building', icon: Hammer },
+  { value: 'C', label: 'ABS', icon: GraduationCap },
 ];
 
 const BLOCK_LABELS: Record<string, string> = {
@@ -162,11 +162,11 @@ export const AmisFeed: React.FC = () => {
               <button
                 key={b}
                 onClick={() => setFilterBlock(filterBlock === b ? '' : b)}
-                className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border transition-all duration-300 ${
+                className={`flex-shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border transition-all duration-300 ${
                   filterBlock === b ? 'bg-neon/10 border-neon/30 text-neon' : 'bg-black/40 border-white/[0.06] text-gray-500 hover:text-gray-400'
                 }`}
               >
-                {b === 'A' ? '🏛️' : b === 'B' ? '🏗️' : '🎓'} {BLOCK_LABELS[b]}
+                {b === 'A' ? <Building2 className="w-3.5 h-3.5" /> : b === 'B' ? <Hammer className="w-3.5 h-3.5" /> : <GraduationCap className="w-3.5 h-3.5" />} {BLOCK_LABELS[b]}
               </button>
             ))}
           </div>
@@ -235,13 +235,13 @@ export const AmisFeed: React.FC = () => {
                               {(poll.block_tag || poll.event_name) && (
                                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                                   {poll.block_tag && (
-                                    <span className="text-[9px] font-bold text-neon/70 uppercase bg-neon/10 px-1.5 py-0.5 rounded-md border border-neon/20">
-                                      {poll.block_tag === 'A' ? '🏛️' : poll.block_tag === 'B' ? '🏗️' : '🎓'} {BLOCK_LABELS[poll.block_tag!] || `Block ${poll.block_tag}`}
+                                    <span className="flex items-center gap-1 text-[9px] font-bold text-neon/70 uppercase bg-neon/10 px-1.5 py-0.5 rounded-md border border-neon/20">
+                                      {poll.block_tag === 'A' ? <Building2 className="w-2.5 h-2.5" /> : poll.block_tag === 'B' ? <Hammer className="w-2.5 h-2.5" /> : <GraduationCap className="w-2.5 h-2.5" />} {BLOCK_LABELS[poll.block_tag!] || `Block ${poll.block_tag}`}
                                     </span>
                                   )}
                                   {poll.event_name && (
-                                    <span className="text-[9px] font-bold text-purple-400/70 uppercase bg-purple-500/10 px-1.5 py-0.5 rounded-md border border-purple-500/20 truncate max-w-[140px]">
-                                      {'🎪'} {poll.event_name}
+                                    <span className="flex items-center gap-1 text-[9px] font-bold text-purple-400/70 uppercase bg-purple-500/10 px-1.5 py-0.5 rounded-md border border-purple-500/20 truncate max-w-[140px]">
+                                      <Map className="w-2.5 h-2.5" /> {poll.event_name}
                                     </span>
                                   )}
                                 </div>
@@ -324,13 +324,13 @@ export const AmisFeed: React.FC = () => {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-[10px] text-gray-600 font-mono">{getTimeAgo(post.created_at)}</span>
                           {post.block_tag && (
-                            <span className="text-[9px] font-bold text-neon/70 uppercase bg-neon/10 px-1.5 py-0.5 rounded-md border border-neon/20">
-                              {post.block_tag === 'A' ? '🏛️' : post.block_tag === 'B' ? '🏗️' : '🎓'} {BLOCK_LABELS[post.block_tag] || `Block ${post.block_tag}`}
+                            <span className="flex items-center gap-1 text-[9px] font-bold text-neon/70 uppercase bg-neon/10 px-1.5 py-0.5 rounded-md border border-neon/20">
+                              {post.block_tag === 'A' ? <Building2 className="w-2.5 h-2.5" /> : post.block_tag === 'B' ? <Hammer className="w-2.5 h-2.5" /> : <GraduationCap className="w-2.5 h-2.5" />} {BLOCK_LABELS[post.block_tag] || `Block ${post.block_tag}`}
                             </span>
                           )}
                           {post.event_name && (
-                            <span className="text-[9px] font-bold text-purple-400/70 uppercase bg-purple-500/10 px-1.5 py-0.5 rounded-md border border-purple-500/20 truncate max-w-[120px]">
-                              🎪 {post.event_name}
+                            <span className="flex items-center gap-1 text-[9px] font-bold text-purple-400/70 uppercase bg-purple-500/10 px-1.5 py-0.5 rounded-md border border-purple-500/20 truncate max-w-[120px]">
+                              <Map className="w-2.5 h-2.5" /> {post.event_name}
                             </span>
                           )}
                         </div>
@@ -514,12 +514,13 @@ export const AmisFeed: React.FC = () => {
                     <button
                       key={opt.value}
                       onClick={() => { setBlockTag(blockTag === opt.value ? '' : opt.value); if (blockTag === opt.value) setEventId(''); }}
-                      className={`text-[9px] font-bold px-2 py-1 rounded-lg border transition-all ${
+                      className={`flex items-center gap-1.5 text-[9px] font-bold px-2 py-1 rounded-lg border transition-all ${
                         blockTag === opt.value
                           ? 'bg-neon/10 border-neon/30 text-neon'
                           : 'bg-white/[0.03] border-white/[0.06] text-gray-500 hover:text-gray-300'
                       }`}
                     >
+                      {opt.icon && <opt.icon className="w-3 h-3" />}
                       {opt.label}
                     </button>
                   ))}
@@ -530,7 +531,7 @@ export const AmisFeed: React.FC = () => {
                     onChange={e => setEventId(e.target.value)}
                     className="text-[10px] bg-black/60 border border-purple-500/20 text-purple-400 rounded-lg px-2 py-1 focus:outline-none"
                   >
-                    <option value="">🎪 Tag event (optional)</option>
+                    <option value="">Tag event (optional)</option>
                     {filteredEvents.map(ev => (
                       <option key={ev.id} value={ev.id}>{ev.name}</option>
                     ))}
@@ -553,13 +554,13 @@ export const AmisFeed: React.FC = () => {
             <div className="flex gap-2 mb-2 flex-wrap">
               {blockTag && (
                 <span className="text-[9px] font-bold text-neon bg-neon/10 px-2 py-1 rounded-lg border border-neon/20 flex items-center gap-1">
-                  {blockTag === 'A' ? '🏛️' : blockTag === 'B' ? '🏗️' : '🎓'} {BLOCK_LABELS[blockTag]}
+                  {blockTag === 'A' ? <Building2 className="w-3 h-3" /> : blockTag === 'B' ? <Hammer className="w-3 h-3" /> : <GraduationCap className="w-3 h-3" />} {BLOCK_LABELS[blockTag]}
                   <button onClick={() => { setBlockTag(''); setEventId(''); }} className="ml-1"><X className="w-3 h-3" /></button>
                 </span>
               )}
               {eventId && (
                 <span className="text-[9px] font-bold text-purple-400 bg-purple-500/10 px-2 py-1 rounded-lg border border-purple-500/20 flex items-center gap-1">
-                  🎪 {events.find(e => e.id === eventId)?.name || 'Event'}
+                  <Map className="w-3 h-3" /> {events.find(e => e.id === eventId)?.name || 'Event'}
                   <button onClick={() => setEventId('')} className="ml-1"><X className="w-3 h-3" /></button>
                 </span>
               )}
@@ -604,9 +605,9 @@ export const AmisFeed: React.FC = () => {
                           <div className="border-t border-gray-800" />
                           <button
                             onClick={() => { setShowBlockPicker(false); setShowEventPicker(true); }}
-                            className="w-full text-left px-3 py-2 text-xs text-purple-400 hover:bg-gray-800 font-bold"
+                            className="w-full flex items-center gap-2 text-left px-3 py-2 text-xs text-purple-400 hover:bg-gray-800 font-bold"
                           >
-                            🎪 Tag an Event →
+                            <Map className="w-3.5 h-3.5" /> Tag an Event →
                           </button>
                         </>
                       )}

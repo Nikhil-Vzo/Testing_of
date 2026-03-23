@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, MapPin, Radio, ArrowRight, Flame, Ghost, Zap, BarChart2, MessageSquare } from 'lucide-react';
+import { Sparkles, MapPin, Radio, ArrowRight, Flame, Ghost, Zap, BarChart2, MessageSquare, Map } from 'lucide-react';
 
 export const AmisLanding: React.FC = () => {
   const navigate = useNavigate();
@@ -153,8 +153,8 @@ export const AmisLanding: React.FC = () => {
         </div>
 
         {/* Bottom tag */}
-        <p className={`mt-12 text-gray-700 text-[10px] tracking-[0.3em] uppercase font-bold text-center transition-all duration-700 delay-[800ms] ${mounted ? 'opacity-100' : 'opacity-0'}`}>
-          🎪 Walk through a digital festival map
+        <p className={`mt-12 text-gray-700 text-[10px] tracking-[0.3em] uppercase font-bold flex justify-center items-center gap-2 transition-all duration-700 delay-[800ms] ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+          <Map className="w-3.5 h-3.5" /> Walk through a digital festival map
         </p>
       </div>
 

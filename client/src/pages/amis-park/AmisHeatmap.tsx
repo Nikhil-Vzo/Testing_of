@@ -34,10 +34,10 @@ export const AmisHeatmap: React.FC = () => {
   }, [events]);
 
   const getHeatStyle = (checkins: number) => {
-    if (checkins >= 30) return { coreColor: '#ef4444', shadow: 'shadow-[0_0_40px_currentColor]', level: 'Packed', icon: '🔥🔥🔥' };
-    if (checkins >= 15) return { coreColor: '#f97316', shadow: 'shadow-[0_0_30px_currentColor]', level: 'Hot', icon: '🔥🔥' };
-    if (checkins >= 5) return { coreColor: '#eab308', shadow: 'shadow-[0_0_20px_currentColor]', level: 'Warm', icon: '🔥' };
-    return { coreColor: '#10b981', shadow: 'shadow-[0_0_15px_currentColor]', level: 'Chill', icon: '✨' };
+    if (checkins >= 30) return { coreColor: '#ef4444', shadow: 'shadow-[0_0_40px_currentColor]', level: 'Packed', icon: <Flame className="w-4 h-4" /> };
+    if (checkins >= 15) return { coreColor: '#f97316', shadow: 'shadow-[0_0_30px_currentColor]', level: 'Hot', icon: <Flame className="w-4 h-4 opacity-80" /> };
+    if (checkins >= 5) return { coreColor: '#eab308', shadow: 'shadow-[0_0_20px_currentColor]', level: 'Warm', icon: <Flame className="w-4 h-4 opacity-60" /> };
+    return { coreColor: '#10b981', shadow: 'shadow-[0_0_15px_currentColor]', level: 'Chill', icon: <MapPin className="w-4 h-4" /> };
   };
 
   const selectedZoneData = ZONES.find(z => z.id === selectedZone);
@@ -163,7 +163,7 @@ export const AmisHeatmap: React.FC = () => {
                 <div className="flex flex-col">
                   <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Status</span>
                   <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 border border-gray-800 rounded-lg">
-                    <span className="text-sm">{heatStyle.icon}</span>
+                    <span className="flex items-center text-sm" style={{ color: heatStyle.coreColor }}>{heatStyle.icon}</span>
                     <span className="text-xs font-bold uppercase tracking-wider" style={{ color: heatStyle.coreColor }}>
                       {heatStyle.level}
                     </span>

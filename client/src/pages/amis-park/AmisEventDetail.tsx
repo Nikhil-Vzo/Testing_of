@@ -43,10 +43,10 @@ export const AmisEventDetail: React.FC = () => {
   const meta = CATEGORY_META[event.category];
 
   const getCrowdLevel = (count: number) => {
-    if (count >= 20) return { label: 'Packed', sublabel: '🔥🔥🔥', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' };
-    if (count >= 10) return { label: 'Hot', sublabel: '🔥🔥', color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20' };
-    if (count >= 3) return { label: 'Warm', sublabel: '🔥', color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/20' };
-    return { label: 'Chill', sublabel: '✨', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' };
+    if (count >= 20) return { label: 'Packed', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' };
+    if (count >= 10) return { label: 'Hot', color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20' };
+    if (count >= 3) return { label: 'Warm', color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/20' };
+    return { label: 'Chill', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' };
   };
   const crowd = getCrowdLevel(checkinCount);
   const totalReactions = Object.values(reactionCounts).reduce((a, b) => a + b, 0);
@@ -94,7 +94,7 @@ export const AmisEventDetail: React.FC = () => {
             {/* Category + Zone badges */}
             <div className="flex items-center flex-wrap gap-2 mb-4">
               <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r ${meta.gradient} text-white text-[10px] font-bold uppercase tracking-wider shadow-md`}>
-                <span>{meta.emoji}</span>
+                <meta.icon className="w-3.5 h-3.5" />
                 <span>{meta.label}</span>
               </div>
               {event.zone && (
@@ -134,7 +134,7 @@ export const AmisEventDetail: React.FC = () => {
                 <Users className="w-3.5 h-3.5" />
                 Crowd
               </div>
-              <p className={`text-xl font-black ${crowd.color}`}>{crowd.sublabel} {crowd.label}</p>
+              <p className={`text-xl font-black ${crowd.color} flex items-center gap-1.5`}><Flame className="w-5 h-5" /> {crowd.label}</p>
               <p className="text-gray-600 text-[10px] mt-1 font-bold">{checkinCount} checked in</p>
             </div>
             <div className="bg-black/40 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-4">

@@ -1,15 +1,15 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, ArrowLeft, Loader2, Ghost, MapPin, Users, Flame, X } from 'lucide-react';
+import { Search, ArrowLeft, Loader2, Ghost, MapPin, Users, Flame, X, Building2, Hammer, GraduationCap, LayoutGrid, AlertCircle } from 'lucide-react';
 import { useAmisEvents } from './useAmisData';
 import { EventCategory, CATEGORY_META } from './types';
 
 const ALL_CATEGORIES: (EventCategory | 'all')[] = ['all', 'experience', 'intellectual', 'cultural', 'gaming', 'entertainment', 'special'];
 
 const BLOCKS = [
-  { id: 'A', name: 'Main Building', emoji: '🏛️', accent: 'from-rose-500 to-orange-500' },
-  { id: 'B', name: 'Architecture Building', emoji: '🏗️', accent: 'from-blue-500 to-cyan-500' },
-  { id: 'C', name: 'ABS', emoji: '🎓', accent: 'from-violet-500 to-purple-500' },
+  { id: 'A', name: 'Main Building', icon: Building2, accent: 'from-rose-500 to-orange-500' },
+  { id: 'B', name: 'Architecture Building', icon: Hammer, accent: 'from-blue-500 to-cyan-500' },
+  { id: 'C', name: 'ABS', icon: GraduationCap, accent: 'from-violet-500 to-purple-500' },
 ];
 
 export const AmisEvents: React.FC = () => {
@@ -81,18 +81,19 @@ export const AmisEvents: React.FC = () => {
           <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
             {ALL_CATEGORIES.map(cat => {
               const isActive = activeCategory === cat;
-              const meta = cat === 'all' ? { label: 'All', emoji: '✦' } : CATEGORY_META[cat];
+              const meta = cat === 'all' ? { label: 'All', icon: LayoutGrid } : CATEGORY_META[cat];
+              const Icon = meta.icon;
               return (
                 <button
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
-                  className={`flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wide transition-all duration-200 ${
+                  className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wide transition-all duration-200 ${
                     isActive
                       ? 'bg-white/10 text-white border border-white/15'
                       : 'text-gray-500 hover:text-gray-300 border border-transparent'
                   }`}
                 >
-                  <span className="text-xs">{meta.emoji}</span>
+                  <Icon className="w-3.5 h-3.5" />
                   {meta.label}
                 </button>
               );
@@ -149,7 +150,7 @@ export const AmisEvents: React.FC = () => {
                     if (noBlockEvents.length === 0) return null;
                     return (
                       <BlockSection
-                        block={{ id: '?', name: 'Other Events', emoji: '📌', accent: 'from-gray-500 to-gray-600' }}
+                        block={{ id: '?', name: 'Other Events', icon: LayoutGrid, accent: 'from-gray-500 to-gray-600' }}
                         events={noBlockEvents}
                         mounted={mounted}
                         navigate={navigate}
@@ -179,19 +180,20 @@ export const AmisEvents: React.FC = () => {
 
 /* ─── Block Section ─── */
 interface BlockSectionProps {
-  block: { id: string; name: string; emoji: string; accent: string };
+  block: { id: string; name: string; icon?: any; accent: string };
   events: any[];
   mounted: boolean;
   navigate: (path: string) => void;
 }
 
 const BlockSection: React.FC<BlockSectionProps> = ({ block, events, mounted, navigate }) => {
+  const Icon = block.icon || AlertCircle;
   return (
     <div>
       {/* Block header — compact pill style */}
       <div className="flex items-center gap-2.5 mb-3">
-        <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${block.accent} flex items-center justify-center text-sm shadow-lg`}>
-          {block.emoji}
+        <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${block.accent} flex items-center justify-center text-white shadow-lg`}>
+          <Icon className="w-4 h-4" />
         </div>
         <div className="flex-1 min-w-0">
           <h2 className="text-sm font-black text-white tracking-tight">{block.name}</h2>
@@ -223,6 +225,7 @@ interface EventCardProps {
 const EventCard: React.FC<EventCardProps> = ({ event, i, mounted, navigate, compact }) => {
   const meta = CATEGORY_META[event.category as EventCategory];
   const crowd = getCrowdLevel(event.checkin_count || 0);
+  const Icon = meta.icon;
 
   return (
     <button
@@ -234,8 +237,8 @@ const EventCard: React.FC<EventCardProps> = ({ event, i, mounted, navigate, comp
     >
       <div className="flex items-start gap-3">
         {/* Left: category badge */}
-        <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${meta.gradient} flex items-center justify-center text-sm shadow-md shrink-0 mt-0.5`}>
-          {meta.emoji}
+        <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${meta.gradient} flex items-center justify-center text-white shadow-md shrink-0 mt-0.5`}>
+          <Icon className="w-4 h-4" />
         </div>
 
         {/* Middle: info */}
@@ -253,7 +256,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, i, mounted, navigate, comp
           )}
           <div className="flex items-center gap-3 mt-1">
             <span className={`text-[9px] font-bold ${crowd.color} flex items-center gap-0.5`}>
-              {crowd.flames} {crowd.label}
+              <Flame className="w-2.5 h-2.5" /> {crowd.label}
             </span>
             {event.zone && (
               <span className="text-[9px] font-bold text-gray-600 flex items-center gap-0.5">
@@ -275,10 +278,10 @@ const EventCard: React.FC<EventCardProps> = ({ event, i, mounted, navigate, comp
 
 /* ─── Helpers ─── */
 function getCrowdLevel(count: number) {
-  if (count >= 20) return { label: 'Packed', color: 'text-red-400', flames: '🔥🔥🔥' };
-  if (count >= 10) return { label: 'Hot', color: 'text-orange-400', flames: '🔥🔥' };
-  if (count >= 3) return { label: 'Warm', color: 'text-yellow-400', flames: '🔥' };
-  return { label: 'Chill', color: 'text-emerald-400', flames: '✨' };
+  if (count >= 20) return { label: 'Packed', color: 'text-red-400' };
+  if (count >= 10) return { label: 'Hot', color: 'text-orange-400' };
+  if (count >= 3) return { label: 'Warm', color: 'text-yellow-400' };
+  return { label: 'Chill', color: 'text-emerald-400' };
 }
 
 export default AmisEvents;
