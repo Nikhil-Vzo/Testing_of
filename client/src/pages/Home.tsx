@@ -446,13 +446,13 @@ export const Home: React.FC = () => {
                     {/* Amis Park Entry Button */}
                     <button
                         onClick={() => setIsAmisModalOpen(true)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-neon/10 backdrop-blur-md rounded-full border border-neon/40 text-neon hover:bg-neon hover:text-white transition-all shadow-[0_0_10px_rgba(255,0,127,0.2)] hover:shadow-[0_0_20px_rgba(255,0,127,0.5)] active:scale-95"
+                        className="flex items-center gap-1 px-2.5 py-1.5 bg-neon/10 backdrop-blur-md rounded-full border border-neon/40 text-neon hover:bg-neon hover:text-white transition-all shadow-[0_0_10px_rgba(255,0,127,0.2)] hover:shadow-[0_0_20px_rgba(255,0,127,0.5)] active:scale-95 shrink-0"
                     >
-                        <span className="relative flex h-2 w-2">
+                        <span className="relative flex h-1.5 w-1.5">
                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon opacity-75" />
-                           <span className="relative inline-flex rounded-full h-2 w-2 bg-neon" />
+                           <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-neon" />
                         </span>
-                        <span className="text-[10px] font-black tracking-widest uppercase">Fest</span>
+                        <span className="text-[9px] font-black tracking-widest uppercase">Fest</span>
                     </button>
 
                     {/* Notification Button - Now rightmost for better mobile reach */}

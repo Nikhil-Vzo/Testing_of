@@ -1,13 +1,13 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Flame, Users, MapPin, Loader2, Info, Ghost } from 'lucide-react';
+import { ArrowLeft, Flame, Users, MapPin, Loader2, Info, Ghost, Smartphone } from 'lucide-react';
 import { useAmisEvents } from './useAmisData';
 
-// Map structure definition
+// Map structure definition — positions are relative to the map image container
 const ZONES = [
-  { id: 'A', name: 'High Energy', position: 'top-[35%] left-[12%]', size: '', desc: 'Main Stage & Experiences' },
-  { id: 'B', name: 'Interactive', position: 'top-[16%] left-[45%]', size: '', desc: 'Creative & Interactive' },
-  { id: 'C', name: 'Chill Hub', position: 'top-[28%] left-[80%]', size: '', desc: 'Cultural & Intellectual' },
+  { id: 'A', name: 'High Energy', position: { top: '45%', left: '15%' }, desc: 'Main Stage & Experiences' },
+  { id: 'B', name: 'Interactive', position: { top: '25%', left: '48%' }, desc: 'Creative & Interactive' },
+  { id: 'C', name: 'Chill Hub', position: { top: '35%', left: '82%' }, desc: 'Cultural & Intellectual' },
 ];
 
 export const AmisHeatmap: React.FC = () => {
@@ -44,14 +44,7 @@ export const AmisHeatmap: React.FC = () => {
   const selectedZoneStats = selectedZone ? zoneStats[selectedZone] : null;
 
   return (
-    <div className="h-full w-full bg-transparent text-white flex flex-col relative overflow-hidden">
-      
-      {/* === BACKGROUND === */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 bg-[#05000a]">
-        <img src="/map.webp" alt="Campus Map" className="absolute inset-0 w-full h-full object-contain opacity-80" />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#05000a] via-transparent to-[#05000a] opacity-90" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-black/60" />
-      </div>
+    <div className="h-full w-full bg-[#05000a] text-white flex flex-col relative overflow-hidden">
 
       {/* === HEADER === */}
       <div className="flex-none p-4 md:px-8 border-b border-gray-800/50 bg-black/40 backdrop-blur-2xl z-40 relative">
@@ -69,69 +62,87 @@ export const AmisHeatmap: React.FC = () => {
         </div>
       </div>
 
-      {/* === CONTENT === */}
-      <div className="flex-1 flex flex-col relative z-10 w-full max-w-4xl mx-auto">
-        
-        {/* Interactive Map Area (Viewport relative) */}
-        <div className={`relative flex-1 min-h-[400px] w-full transition-opacity duration-700 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
-          
-          {/* Legend */}
-          <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md border border-white/10 rounded-xl p-3 z-10 hidden sm:block">
-            <h3 className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-2 border-b border-white/10 pb-1">Heat Index</h3>
-            <div className="space-y-2">
-              {[
-                { label: 'Packed', color: 'bg-red-500' },
-                { label: 'Hot', color: 'bg-orange-500' },
-              ].map(l => (
-                <div key={l.label} className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${l.color} shadow-[0_0_8px]`} style={{ color: l.color.replace('bg-', '') }} />
-                  <span className="text-[10px] text-gray-400 font-bold uppercase">{l.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+      {/* === SCROLLABLE CONTENT === */}
+      <div className="flex-1 flex flex-col relative z-10 w-full overflow-y-auto overflow-x-hidden">
 
-          {/* Zones */}
-          {ZONES.map((zone) => {
-            const stats = zoneStats[zone.id];
-            const heat = getHeatStyle(stats?.checkins || 0);
-            const isSelected = selectedZone === zone.id;
-            
-            return (
-              <button
-                key={zone.id}
-                onClick={() => setSelectedZone(isSelected ? null : zone.id)}
-                className={`absolute ${zone.position} flex flex-col items-center justify-center transition-all duration-300 ease-out z-20 hover:scale-105 active:scale-95 group -translate-x-1/2 -translate-y-1/2 ${isSelected ? 'scale-[1.15] z-30' : ''}`}
-              >
-                {/* HUD Marker Pill */}
-                <div className={`relative flex items-center gap-2 bg-black/60 backdrop-blur-md border border-white/10 rounded-full pr-3 pl-1.5 py-1.5 shadow-2xl transition-all duration-300 ${isSelected ? 'bg-black/80 border-white/30 shadow-[0_10px_40px_rgba(0,0,0,0.8)]' : 'group-hover:border-white/20'}`}>
-                  
-                  {/* Glowing Core Dot */}
-                  <div className="relative flex items-center justify-center w-7 h-7 rounded-full shrink-0" 
-                       style={{ backgroundColor: `${heat.coreColor}20`, boxShadow: `0 0 15px ${heat.coreColor}40` }}>
-                    <div className="absolute inset-0 rounded-full animate-ping opacity-60" style={{ backgroundColor: heat.coreColor, animationDuration: '2.5s' }} />
-                    <div className="w-2.5 h-2.5 rounded-full relative z-10" style={{ backgroundColor: heat.coreColor, boxShadow: `0 0 10px ${heat.coreColor}` }} />
+        {/* Map Container — landscape-ratio box with the image and zone overlays */}
+        <div className={`relative w-full transition-opacity duration-700 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+          
+          {/* Force a landscape aspect ratio so the map always looks good */}
+          <div className="relative w-full" style={{ paddingBottom: '66%' }}>
+            {/* Map Image */}
+            <img 
+              src="/map.webp" 
+              alt="Campus Map" 
+              className="absolute inset-0 w-full h-full object-cover opacity-80" 
+            />
+            {/* Gradient overlays */}
+            <div className="absolute inset-0 bg-gradient-to-b from-[#05000a]/70 via-transparent to-[#05000a]/70" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/40" />
+
+            {/* Legend */}
+            <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md border border-white/10 rounded-xl p-2.5 z-10 hidden sm:block">
+              <h3 className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-2 border-b border-white/10 pb-1">Heat Index</h3>
+              <div className="space-y-2">
+                {[
+                  { label: 'Packed', color: 'bg-red-500' },
+                  { label: 'Hot', color: 'bg-orange-500' },
+                ].map(l => (
+                  <div key={l.label} className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${l.color} shadow-[0_0_8px]`} style={{ color: l.color.replace('bg-', '') }} />
+                    <span className="text-[10px] text-gray-400 font-bold uppercase">{l.label}</span>
                   </div>
-                  
-                  {/* Zone Text Info */}
-                  <div className="flex flex-col items-start pr-1">
-                    <span className="text-[9px] font-black tracking-widest uppercase text-white/95 leading-tight mb-0.5">BLOCK {zone.id}</span>
-                    <div className="flex items-center gap-1">
-                      <Users className="w-3 h-3 text-gray-400" />
-                      <span className="text-[10px] font-bold text-gray-300">{stats?.checkins || 0}</span>
+                ))}
+              </div>
+            </div>
+
+            {/* Zone Markers — positioned inside the aspect-ratio container */}
+            {ZONES.map((zone) => {
+              const stats = zoneStats[zone.id];
+              const heat = getHeatStyle(stats?.checkins || 0);
+              const isSelected = selectedZone === zone.id;
+              
+              return (
+                <button
+                  key={zone.id}
+                  onClick={() => setSelectedZone(isSelected ? null : zone.id)}
+                  className={`absolute flex flex-col items-center justify-center transition-all duration-300 ease-out z-20 hover:scale-105 active:scale-95 group -translate-x-1/2 -translate-y-1/2 ${isSelected ? 'scale-[1.15] z-30' : ''}`}
+                  style={{ top: zone.position.top, left: zone.position.left }}
+                >
+                  {/* HUD Marker Pill */}
+                  <div className={`relative flex items-center gap-1.5 sm:gap-2 bg-black/60 backdrop-blur-md border border-white/10 rounded-full pr-2.5 sm:pr-3 pl-1 sm:pl-1.5 py-1 sm:py-1.5 shadow-2xl transition-all duration-300 ${isSelected ? 'bg-black/80 border-white/30 shadow-[0_10px_40px_rgba(0,0,0,0.8)]' : 'group-hover:border-white/20'}`}>
+                    
+                    {/* Glowing Core Dot */}
+                    <div className="relative flex items-center justify-center w-5 h-5 sm:w-7 sm:h-7 rounded-full shrink-0" 
+                         style={{ backgroundColor: `${heat.coreColor}20`, boxShadow: `0 0 15px ${heat.coreColor}40` }}>
+                      <div className="absolute inset-0 rounded-full animate-ping opacity-60" style={{ backgroundColor: heat.coreColor, animationDuration: '2.5s' }} />
+                      <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full relative z-10" style={{ backgroundColor: heat.coreColor, boxShadow: `0 0 10px ${heat.coreColor}` }} />
+                    </div>
+                    
+                    {/* Zone Text Info */}
+                    <div className="flex flex-col items-start pr-0.5 sm:pr-1">
+                      <span className="text-[8px] sm:text-[9px] font-black tracking-widest uppercase text-white/95 leading-tight mb-0.5">BLOCK {zone.id}</span>
+                      <div className="flex items-center gap-0.5 sm:gap-1">
+                        <Users className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-gray-400" />
+                        <span className="text-[9px] sm:text-[10px] font-bold text-gray-300">{stats?.checkins || 0}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </button>
-            )
-          })}
-          
+                </button>
+              )
+            })}
+          </div>
 
+          {/* Rotate hint for mobile */}
+          <div className="flex items-center justify-center gap-2 py-3 text-gray-600 sm:hidden">
+            <Smartphone className="w-3.5 h-3.5 rotate-90" />
+            <span className="text-[9px] font-bold uppercase tracking-widest">Rotate for best view</span>
+          </div>
         </div>
 
-        {/* Selected Zone Sheet (Bottom) */}
-        <div className={`flex-none bg-black/80 backdrop-blur-2xl border-t border-white/[0.08] p-5 md:p-8 transition-transform duration-500 ease-out relative pb-28 md:pb-8 ${selectedZone ? 'translate-y-0' : 'translate-y-full absolute bottom-0 left-0 right-0 invisible'}`}>
-          {selectedZoneData && selectedZoneStats && (
+        {/* Selected Zone Sheet */}
+        {selectedZone && selectedZoneData && selectedZoneStats && (
+          <div className="flex-none bg-black/80 backdrop-blur-2xl border-t border-white/[0.08] p-5 md:p-8 pb-28 md:pb-8 animate-in slide-in-from-bottom-4">
             <div className="max-w-4xl mx-auto flex flex-col md:flex-row gap-6 md:items-center justify-between">
               <div>
                 <div className="flex items-center gap-3 mb-2">
@@ -169,7 +180,7 @@ export const AmisHeatmap: React.FC = () => {
                 </div>
 
                 <button 
-                  onClick={() => navigate(`/amis-park/events?filter=gaming`)} // Simplified for MVP since we don't have a zone filter param yet. In real app, we'd pass ?zone=A
+                  onClick={() => navigate(`/amis-park/events?filter=gaming`)}
                   className="ml-auto px-5 py-3 rounded-xl bg-neon text-white font-bold text-xs uppercase tracking-widest hover:bg-pink-600 transition-colors hidden md:block shadow-[0_0_20px_rgba(255,0,127,0.3)]"
                 >
                   View Events
@@ -186,13 +197,15 @@ export const AmisHeatmap: React.FC = () => {
               </button>
               
             </div>
-          )}
-        </div>
+          </div>
+        )}
         
         {/* Placeholder when no zone selected */}
         {!selectedZone && (
-          <div className="absolute bottom-28 md:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 text-gray-400 text-xs font-bold uppercase tracking-widest animate-pulse max-w-[80vw] mx-auto z-10">
-            <Info className="w-4 h-4" /> Tap a zone to view details
+          <div className="py-6 flex justify-center">
+            <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 text-gray-400 text-xs font-bold uppercase tracking-widest animate-pulse">
+              <Info className="w-4 h-4" /> Tap a zone to view details
+            </div>
           </div>
         )}
 
