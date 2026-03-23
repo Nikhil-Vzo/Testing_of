@@ -54,3 +54,19 @@ export const CATEGORY_META: Record<EventCategory, { label: string; emoji: string
 };
 
 export const REACTION_EMOJIS = ['🔥', '😱', '❤️', '🤯', '💀', '😂'];
+
+export interface AmisPollOption {
+  id: string;
+  poll_id: string;
+  text: string;
+  vote_count: number;
+}
+
+export interface AmisPoll {
+  id: string;
+  question: string;
+  is_active: boolean;
+  created_at: string;
+  options: AmisPollOption[];
+  user_voted_option_id?: string | null;
+}

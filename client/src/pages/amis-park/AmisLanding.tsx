@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, MapPin, Radio, ArrowRight, Flame, Ghost, Zap } from 'lucide-react';
+import { Sparkles, MapPin, Radio, ArrowRight, Flame, Ghost, Zap, BarChart2 } from 'lucide-react';
 
 export const AmisLanding: React.FC = () => {
   const navigate = useNavigate();
@@ -12,8 +12,8 @@ export const AmisLanding: React.FC = () => {
 
   const actions = [
     { label: 'Explore Events', desc: 'Browse all fest events by category', icon: Sparkles, path: '/amis-park/events', accentClass: 'from-neon to-pink-600', glow: 'rgba(255,0,127,0.4)' },
-    { label: 'See Live Crowd', desc: 'Check which zones are buzzing right now', icon: Radio, path: '/amis-park/events?filter=trending', accentClass: 'from-purple-500 to-indigo-500', glow: 'rgba(139,92,246,0.4)' },
-    { label: 'Jump to Feed', desc: 'See what people are saying live', icon: MapPin, path: '/amis-park/events', accentClass: 'from-blue-500 to-cyan-500', glow: 'rgba(59,130,246,0.4)' },
+    { label: 'Live Heatmap', desc: 'Check which zones are buzzing right now', icon: Radio, path: '/amis-park/heatmap', accentClass: 'from-purple-500 to-indigo-500', glow: 'rgba(139,92,246,0.4)' },
+    { label: 'Live Polls', desc: 'Vote on events and drop your opinions', icon: BarChart2, path: '/amis-park/polls', accentClass: 'from-blue-500 to-cyan-500', glow: 'rgba(59,130,246,0.4)' },
   ];
 
   return (

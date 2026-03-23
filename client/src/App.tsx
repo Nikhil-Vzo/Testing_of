@@ -27,6 +27,8 @@ const Confessions = lazy(() => import('./pages/Confessions').then(m => ({ defaul
 const AmisLanding = lazy(() => import('./pages/amis-park/AmisLanding').then(m => ({ default: m.AmisLanding })));
 const AmisEvents = lazy(() => import('./pages/amis-park/AmisEvents').then(m => ({ default: m.AmisEvents })));
 const AmisEventDetail = lazy(() => import('./pages/amis-park/AmisEventDetail').then(m => ({ default: m.AmisEventDetail })));
+const AmisHeatmap = lazy(() => import('./pages/amis-park/AmisHeatmap').then(m => ({ default: m.AmisHeatmap })));
+const AmisPolls = lazy(() => import('./pages/amis-park/AmisPolls').then(m => ({ default: m.AmisPolls })));
 
 // Static pages lazy loaded individually
 const About = lazy(() => import('./pages/StaticPages').then(m => ({ default: m.About })));
@@ -150,6 +152,8 @@ export default function App() {
             <Route path="/amis-park" element={<AmisLanding />} />
             <Route path="/amis-park/events" element={<AmisEvents />} />
             <Route path="/amis-park/event/:id" element={<AmisEventDetail />} />
+            <Route path="/amis-park/heatmap" element={<AmisHeatmap />} />
+            <Route path="/amis-park/polls" element={<AmisPolls />} />
           </Route>
 
           {/* Catch all */}

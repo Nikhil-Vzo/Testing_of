@@ -91,29 +91,6 @@ export const VirtualDate: React.FC = () => {
           </p>
         </div>
 
-        {/* 🎪 Amis Park Featured Card */}
-        <div
-          onClick={() => navigate('/amis-park')}
-          className="group relative rounded-3xl overflow-hidden cursor-pointer hover:scale-[1.01] transition-all duration-500 mb-8"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 via-red-500/15 to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl blur-xl -z-10" style={{ transform: 'scale(1.1)' }} />
-          <div className="relative bg-gradient-to-r from-gray-900/90 to-gray-900/70 backdrop-blur-xl border border-orange-500/20 group-hover:border-orange-500/40 rounded-3xl p-6 md:p-8 transition-all duration-300">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 via-red-500 to-purple-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300 text-3xl">
-                🎪
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <h2 className="text-xl md:text-2xl font-black text-white">Amis Park</h2>
-                  <span className="px-2 py-0.5 bg-orange-500/20 border border-orange-500/30 rounded-full text-orange-400 text-[10px] font-bold uppercase tracking-wider animate-pulse">Live</span>
-                </div>
-                <p className="text-gray-400 text-sm">Explore fest events, see live crowd, feel the vibe 🔥</p>
-              </div>
-              <ArrowRight className="w-6 h-6 text-orange-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
-            </div>
-          </div>
-        </div>
-
         {/* Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {dates.map((date, index) => {

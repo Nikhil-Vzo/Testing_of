@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
-import { AmisEvent, AmisPost, EventCategory } from './types';
+import { AmisEvent, AmisPost, EventCategory, AmisPoll } from './types';
 
 export function useAmisEvents(category?: EventCategory | 'all', search?: string) {
   const [events, setEvents] = useState<AmisEvent[]>([]);
@@ -141,4 +141,90 @@ export function useAmisEventDetail(eventId: string | undefined) {
   };
 
   return { event, posts, loading, userCheckedIn, userReaction, checkinCount, reactionCounts, toggleCheckin, toggleReaction, addPost, refetch: fetchDetail };
+}
+
+export function useAmisPolls() {
+  const [polls, setPolls] = useState<AmisPoll[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchPolls = useCallback(async () => {
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Fetch active polls & their options
+    const { data: pollsData } = await supabase
+      .from('amis_polls')
+      .select(`
+        id, question, is_active, created_at,
+        amis_poll_options (id, poll_id, text, vote_count)
+      `)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+
+    if (pollsData) {
+      if (user) {
+        // Fetch user's votes for these polls
+        const pollIds = pollsData.map((p: any) => p.id);
+        const { data: votesData } = await supabase
+          .from('amis_poll_votes')
+          .select('*')
+          .in('poll_id', pollIds)
+          .eq('user_id', user.id);
+
+        const userVotes: Record<string, string> = {};
+        (votesData || []).forEach((v: any) => {
+          userVotes[v.poll_id] = v.option_id;
+        });
+
+        setPolls(pollsData.map((p: any) => ({
+          id: p.id,
+          question: p.question,
+          is_active: p.is_active,
+          created_at: p.created_at,
+          options: p.amis_poll_options.sort((a: any, b: any) => a.text.localeCompare(b.text)),
+          user_voted_option_id: userVotes[p.id] || null
+        })));
+      } else {
+        setPolls(pollsData.map((p: any) => ({
+          id: p.id,
+          question: p.question,
+          is_active: p.is_active,
+          created_at: p.created_at,
+          options: p.amis_poll_options.sort((a: any, b: any) => a.text.localeCompare(b.text)),
+          user_voted_option_id: null
+        })));
+      }
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchPolls(); }, [fetchPolls]);
+
+  const vote = async (pollId: string, optionId: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Optimistic update
+    setPolls(prev => prev.map(p => {
+      if (p.id !== pollId) return p;
+      if (p.user_voted_option_id) return p; // Already voted
+
+      return {
+        ...p,
+        user_voted_option_id: optionId,
+        options: p.options.map(opt => 
+          opt.id === optionId ? { ...opt, vote_count: opt.vote_count + 1 } : opt
+        )
+      };
+    }));
+
+    await supabase.from('amis_poll_votes').insert({
+      poll_id: pollId,
+      option_id: optionId,
+      user_id: user.id
+    });
+    // Trigger is handling the option's vote_count increment in DB
+  };
+
+  return { polls, loading, vote, refetch: fetchPolls };
 }

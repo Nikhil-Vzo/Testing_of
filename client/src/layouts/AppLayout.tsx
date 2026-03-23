@@ -5,6 +5,7 @@ import { useNotifications } from '../context/NotificationContext';
 import { Ghost, Search, MessageCircle, Bell, CalendarHeart, User, MessageSquarePlus, Sparkles } from 'lucide-react';
 import { StarField } from '../components/StarField';
 import { supabase } from '../lib/supabase'; // Use Supabase directly
+import { AmisEntryModal } from '../components/AmisEntryModal';
 
 export const AppLayout: React.FC = () => {
   const { currentUser } = useAuth();
@@ -15,6 +16,7 @@ export const AppLayout: React.FC = () => {
   // State for Badges
   // const [unreadCount, setUnreadCount] = useState(0); // Moved to Context
   const [matchCount, setMatchCount] = useState(0);
+  const [isAmisModalOpen, setIsAmisModalOpen] = useState(false);
 
   // Fetch Badge Counts from Supabase
   useEffect(() => {
@@ -239,6 +241,20 @@ export const AppLayout: React.FC = () => {
             </button>
           </nav>
         )}
+
+        {/* Amis Park Global Floating Action Button */}
+        {!location.pathname.startsWith('/amis-park') && !location.pathname.includes('/chat/') && (
+          <button
+            onClick={() => setIsAmisModalOpen(true)}
+            className="fixed bottom-24 right-4 md:bottom-8 md:right-8 z-50 group flex items-center justify-center w-14 h-14 bg-black border border-neon/50 rounded-full shadow-[0_0_20px_rgba(255,0,127,0.4)] hover:shadow-[0_0_30px_rgba(255,0,127,0.6)] hover:scale-110 transition-all duration-300"
+          >
+            <div className="absolute inset-0 rounded-full bg-neon/20 animate-ping opacity-50" style={{ animationDuration: '3s' }}></div>
+            <Ghost className="w-6 h-6 text-neon relative z-10 group-hover:rotate-12 transition-transform" />
+            <Sparkles className="w-2.5 h-2.5 text-white absolute top-3 right-3 animate-pulse z-20" />
+          </button>
+        )}
+
+        <AmisEntryModal isOpen={isAmisModalOpen} onClose={() => setIsAmisModalOpen(false)} />
       </main>
 
 
