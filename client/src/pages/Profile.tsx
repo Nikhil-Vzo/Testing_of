@@ -31,6 +31,7 @@ export const Profile: React.FC = () => {
     const [saving, setSaving] = useState(false);
     const [showLegal, setShowLegal] = useState(false);
     const [showAccount, setShowAccount] = useState(false);
+    const [showBehindScenes, setShowBehindScenes] = useState(false);
     const [deferredPrompt, setDeferredPrompt] = useState<any>(() => (window as any).__pwaInstallPrompt);
 
     // Also listen in case it fires after mount (unlikely but safe)
@@ -468,7 +469,7 @@ export const Profile: React.FC = () => {
                                             className="w-full p-8 flex items-center justify-between text-left group"
                                         >
                                             <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                                <Scale className="w-5 h-5 text-gray-400" /> Company & Legal
+                                                <Scale className="w-5 h-5 text-gray-400" /> More from OTHRHALFF
                                             </h3>
                                             <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform duration-300 ${showLegal ? 'rotate-180' : ''}`} />
                                         </button>
@@ -559,38 +560,47 @@ export const Profile: React.FC = () => {
 
 
 
-                                {/* Behind the Scenes */}
-                                <div className="bg-gray-900/40 border border-gray-800 rounded-[2rem] p-6 backdrop-blur-md space-y-3">
-                                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Behind the Scenes</h3>
-                                    
-                                    {/* Blog Link */}
+                                {/* Behind the Scenes (Collapsible) */}
+                                <div className="bg-gray-900/40 border border-gray-800 rounded-[2rem] backdrop-blur-md overflow-hidden">
                                     <button
-                                        onClick={() => navigate('/blog')}
-                                        className="w-full p-4 rounded-xl bg-gradient-to-r from-neon/10 to-transparent border border-neon/20 hover:border-neon/50 group text-left transition-all flex items-center gap-3"
+                                        onClick={() => setShowBehindScenes(!showBehindScenes)}
+                                        className="w-full p-6 flex items-center justify-between text-left"
                                     >
-                                        <div className="p-2.5 bg-neon/10 rounded-xl text-neon group-hover:scale-110 transition-transform">
-                                            <Rocket className="w-5 h-5" />
-                                        </div>
-                                        <div className="flex-1">
-                                            <span className="font-bold text-white text-sm block group-hover:text-neon transition-colors">The OthrHalff Story</span>
-                                            <span className="text-xs text-gray-400">Read our startup blog</span>
-                                        </div>
+                                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Behind the Scenes</h3>
+                                        <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform duration-300 ${showBehindScenes ? 'rotate-180' : ''}`} />
                                     </button>
+                                    <div className={`transition-all duration-300 ease-in-out ${showBehindScenes ? 'max-h-[400px] opacity-100' : 'max-h-0 opacity-0'} overflow-hidden`}>
+                                        <div className="px-6 pb-6 space-y-3">
+                                            {/* Blog Link */}
+                                            <button
+                                                onClick={() => navigate('/blog')}
+                                                className="w-full p-4 rounded-xl bg-gradient-to-r from-neon/10 to-transparent border border-neon/20 hover:border-neon/50 group text-left transition-all flex items-center gap-3"
+                                            >
+                                                <div className="p-2.5 bg-neon/10 rounded-xl text-neon group-hover:scale-110 transition-transform">
+                                                    <Rocket className="w-5 h-5" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <span className="font-bold text-white text-sm block group-hover:text-neon transition-colors">The OthrHalff Story</span>
+                                                    <span className="text-xs text-gray-400">Read our startup blog</span>
+                                                </div>
+                                            </button>
 
-                                    {/* Developers Link */}
-                                    <button
-                                        onClick={() => navigate('/developers')}
-                                        className="w-full p-4 rounded-xl bg-gradient-to-r from-blue-600/10 to-purple-600/10 border border-blue-500/20 hover:border-blue-500/40 group text-left transition-all flex items-center gap-3"
-                                    >
-                                        <div className="p-2.5 bg-blue-500/10 rounded-xl text-blue-400 group-hover:scale-110 transition-transform">
-                                            <Code className="w-5 h-5" />
+                                            {/* Developers Link */}
+                                            <button
+                                                onClick={() => navigate('/developers')}
+                                                className="w-full p-4 rounded-xl bg-gradient-to-r from-blue-600/10 to-purple-600/10 border border-blue-500/20 hover:border-blue-500/40 group text-left transition-all flex items-center gap-3"
+                                            >
+                                                <div className="p-2.5 bg-blue-500/10 rounded-xl text-blue-400 group-hover:scale-110 transition-transform">
+                                                    <Code className="w-5 h-5" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <span className="font-bold text-white text-sm block">Meet the Devs</span>
+                                                    <span className="text-xs text-gray-400">The team building this</span>
+                                                </div>
+                                                <Users className="w-4 h-4 text-gray-500 group-hover:text-blue-400 transition-colors" />
+                                            </button>
                                         </div>
-                                        <div className="flex-1">
-                                            <span className="font-bold text-white text-sm block">Meet the Devs</span>
-                                            <span className="text-xs text-gray-400">The team building this</span>
-                                        </div>
-                                        <Users className="w-4 h-4 text-gray-500 group-hover:text-blue-400 transition-colors" />
-                                    </button>
+                                    </div>
                                 </div>
                             </div>
                         )}
