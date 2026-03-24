@@ -466,6 +466,7 @@ export const Profile: React.FC = () => {
                                         </h3>
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             {[
+                                                { label: 'Our Blog', icon: Rocket, path: '/blog' },
                                                 { label: 'About Us', icon: Info, path: '/about' },
                                                 { label: 'Privacy Policy', icon: Lock, path: '/privacy' },
                                                 { label: 'Terms of Service', icon: Scale, path: '/terms' },
