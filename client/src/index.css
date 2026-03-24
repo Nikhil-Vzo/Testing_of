@@ -9,7 +9,7 @@ body,
   width: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden;
+  overflow: auto;
   /* Prevent global scroll */
   background-color: #000;
   color: #fff;
