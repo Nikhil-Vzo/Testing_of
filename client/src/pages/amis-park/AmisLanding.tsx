@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, MapPin, Radio, ArrowRight, Flame, Ghost, Zap, BarChart2, MessageSquare, Map } from 'lucide-react';
+import { AclStreamCard } from './AclStreamCard';
 
 export const AmisLanding: React.FC = () => {
   const navigate = useNavigate();
@@ -85,6 +86,9 @@ export const AmisLanding: React.FC = () => {
             Monitored by OthrHalff <span className="opacity-50 mx-1.5 md:mx-2">&bull;</span> Not Sponsored
           </p>
         </div>
+
+        {/* ACL Stream Pinned Card */}
+        <AclStreamCard />
 
         {/* Action Cards */}
         <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
