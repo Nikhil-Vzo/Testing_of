@@ -9,7 +9,7 @@ import {
     LogOut, ChevronDown, Settings, Lock, ShieldBan,
     MessageCircle, Mail, Phone, Loader2, Heart, Search,
     Download, Smartphone, ExternalLink, Code, Scale, FileText,
-    Shield, Info, Briefcase, Users
+    Shield, Info, Briefcase, Users, Rocket
 } from 'lucide-react';
 import { AVATAR_PRESETS, LOOKING_FOR_OPTIONS, YEAR_OPTIONS } from '../constants';
 
@@ -539,19 +539,35 @@ export const Profile: React.FC = () => {
 
 
 
-                                {/* Meet the Devs */}
-                                <div className="bg-gray-900/40 border border-gray-800 rounded-[2rem] p-6 backdrop-blur-md">
+                                {/* Behind the Scenes */}
+                                <div className="bg-gray-900/40 border border-gray-800 rounded-[2rem] p-6 backdrop-blur-md space-y-3">
                                     <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Behind the Scenes</h3>
+                                    
+                                    {/* Blog Link */}
+                                    <button
+                                        onClick={() => navigate('/blog')}
+                                        className="w-full p-4 rounded-xl bg-gradient-to-r from-neon/10 to-transparent border border-neon/20 hover:border-neon/50 group text-left transition-all flex items-center gap-3"
+                                    >
+                                        <div className="p-2.5 bg-neon/10 rounded-xl text-neon group-hover:scale-110 transition-transform">
+                                            <Rocket className="w-5 h-5" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <span className="font-bold text-white text-sm block group-hover:text-neon transition-colors">The OthrHalff Story</span>
+                                            <span className="text-xs text-gray-400">Read our startup blog</span>
+                                        </div>
+                                    </button>
+
+                                    {/* Developers Link */}
                                     <button
                                         onClick={() => navigate('/developers')}
                                         className="w-full p-4 rounded-xl bg-gradient-to-r from-blue-600/10 to-purple-600/10 border border-blue-500/20 hover:border-blue-500/40 group text-left transition-all flex items-center gap-3"
                                     >
-                                        <div className="p-2.5 bg-blue-500/10 rounded-xl text-blue-400">
+                                        <div className="p-2.5 bg-blue-500/10 rounded-xl text-blue-400 group-hover:scale-110 transition-transform">
                                             <Code className="w-5 h-5" />
                                         </div>
                                         <div className="flex-1">
                                             <span className="font-bold text-white text-sm block">Meet the Devs</span>
-                                            <span className="text-xs text-gray-400">The team behind OthrHalff</span>
+                                            <span className="text-xs text-gray-400">The team building this</span>
                                         </div>
                                         <Users className="w-4 h-4 text-gray-500 group-hover:text-blue-400 transition-colors" />
                                     </button>
