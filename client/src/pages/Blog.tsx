@@ -1,376 +1,370 @@
-
-import React, { useEffect, useRef, useState } from 'react';
-import { Ghost, ArrowLeft, ArrowUp, TrendingUp, Users, Eye, Zap, Quote, Rocket, Sparkles } from 'lucide-react';
+import React, { useEffect, useRef, useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Ghost, ArrowLeft, TrendingUp, Users, Eye, Zap, Quote, Rocket, Sparkles, ArrowRight } from 'lucide-react';
+import gsap from 'gsap';
+import ScrollTrigger from 'gsap/ScrollTrigger';
+import Lenis from 'lenis';
 
-// Fade-in on scroll hook
-function useReveal() {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVisible(true); }, { threshold: 0.15 });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-  return { ref, visible };
-}
-
-const Section: React.FC<{ children: React.ReactNode; className?: string; id?: string }> = ({ children, className = '', id }) => {
-  const { ref, visible } = useReveal();
-  return (
-    <section
-      id={id}
-      ref={ref}
-      className={`transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'} ${className}`}
-    >
-      {children}
-    </section>
-  );
-};
-
-const StatCard: React.FC<{ icon: React.ReactNode; value: string; label: string; accent?: string }> = ({ icon, value, label, accent = 'text-neon' }) => (
-  <div className="bg-gray-900/60 backdrop-blur-sm border border-gray-800 rounded-2xl p-6 text-center hover:border-neon/40 transition-all duration-300 group">
-    <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gray-800 mb-4 group-hover:scale-110 transition-transform ${accent}`}>
-      {icon}
-    </div>
-    <p className={`text-3xl sm:text-4xl font-black mb-1 ${accent}`}>{value}</p>
-    <p className="text-sm text-gray-400">{label}</p>
-  </div>
-);
+gsap.registerPlugin(ScrollTrigger);
 
 export const Blog: React.FC = () => {
-  // Scroll to top
-  const [showTop, setShowTop] = useState(false);
+  const mainRef = useRef<HTMLDivElement>(null);
+
+  // Initialize Lenis for smooth scrolling
   useEffect(() => {
-    const onScroll = () => setShowTop(window.scrollY > 600);
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
+    const lenis = new Lenis({
+      lerp: 0.08,
+      smoothWheel: true,
+    });
+    lenis.on('scroll', ScrollTrigger.update);
+    gsap.ticker.add((time) => {
+      lenis.raf(time * 1000);
+    });
+    gsap.ticker.lagSmoothing(0);
+    return () => lenis.destroy();
   }, []);
 
+  // Set up GSAP animations
+  useLayoutEffect(() => {
+    let ctx = gsap.context(() => {
+      // 1. Hero Reveal
+      gsap.from('.hero-text', {
+        y: 80,
+        opacity: 0,
+        duration: 1.5,
+        stagger: 0.2,
+        ease: 'power3.out',
+        delay: 0.3
+      });
+
+      gsap.to('.hero-bg', {
+        yPercent: 30,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: '.hero-section',
+          start: 'top top',
+          end: 'bottom top',
+          scrub: true
+        }
+      });
+
+      // 2. Parallax Origin Image
+      gsap.to('.origin-img', {
+        yPercent: -20,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: '.origin-section',
+          start: 'top bottom',
+          end: 'bottom top',
+          scrub: true
+        }
+      });
+
+      gsap.from('.origin-text', {
+        y: 40,
+        opacity: 0,
+        duration: 1,
+        stagger: 0.2,
+        scrollTrigger: {
+          trigger: '.origin-section',
+          start: 'top 75%'
+        }
+      });
+
+      // 3. Staggered Thoughts (The Struggle)
+      const thoughtWords = gsap.utils.toArray<HTMLElement>('.struggle-word');
+      gsap.fromTo(thoughtWords, 
+        { opacity: 0.1, color: '#333' },
+        {
+          opacity: 1,
+          color: '#fff',
+          stagger: 1,
+          scrollTrigger: {
+            trigger: '.struggle-section',
+            start: 'top 80%',
+            end: 'bottom 50%',
+            scrub: 1.5
+          }
+        }
+      );
+
+      // 4. Counter Animation (Growth Explosion)
+      ScrollTrigger.create({
+        trigger: '.growth-section',
+        start: 'top 70%',
+        onEnter: () => {
+          gsap.to({ val: 0 }, {
+            val: 35000,
+            duration: 2.5,
+            ease: 'power3.out',
+            onUpdate: function() {
+              const counter = document.getElementById('view-counter');
+              if(counter) counter.innerText = Math.floor(this.targets()[0].val).toLocaleString() + '+ Views';
+            }
+          });
+        },
+        once: true
+      });
+
+      // 5. Floating cards (Launch)
+      gsap.from('.launch-card', {
+        scrollTrigger: {
+          trigger: '.launch-section',
+          start: 'top 80%'
+        },
+        y: 50,
+        opacity: 0,
+        rotation: 2,
+        duration: 1,
+        stagger: 0.15,
+        ease: 'back.out(1.4)'
+      });
+
+      // 6. Mentor spotlight pulse
+      gsap.fromTo('.mentor-glow', 
+        { scale: 0.8, opacity: 0 },
+        {
+          scale: 1, opacity: 0.5,
+          duration: 2,
+          yoyo: true,
+          repeat: -1,
+          ease: 'sine.inOut',
+          scrollTrigger: {
+            trigger: '.mentor-section',
+            start: 'top 80%'
+          }
+        }
+      );
+
+      // 7. The Tease background pulse
+      gsap.to('.tease-bg', {
+        scale: 1.05,
+        duration: 10,
+        repeat: -1,
+        yoyo: true,
+        ease: 'none'
+      });
+      
+    }, mainRef);
+    return () => ctx.revert();
+  }, []);
+
+  // Typography helper styles
+  const fontPlayfair = { fontFamily: "'Playfair Display', serif" };
+  const fontInstrument = { fontFamily: "'Instrument Serif', serif" };
+
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-neon selection:text-white overflow-y-auto scroll-smooth">
-      {/* ── Sticky Nav ── */}
-      <nav className="sticky top-0 z-50 bg-black/80 backdrop-blur-xl border-b border-gray-900">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 group">
-            <ArrowLeft className="w-5 h-5 text-gray-400 group-hover:text-neon transition-colors" />
-            <Ghost className="w-6 h-6 text-neon" />
-            <span className="font-black tracking-tighter text-lg">
-              <span className="group-hover:text-neon transition-colors">OTHR</span>
-              <span className="text-neon group-hover:text-white transition-colors">HALFF</span>
-            </span>
+    <div ref={mainRef} className="bg-black text-white min-h-screen overflow-hidden selection:bg-neon selection:text-white relative font-sans">
+      
+      {/* Universal Grain Overlay */}
+      <div 
+        className="pointer-events-none fixed inset-0 z-50 opacity-[0.04]" 
+        style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }}
+      ></div>
+
+      {/* Global Nav */}
+      <nav className="fixed top-0 w-full z-40 bg-black/40 backdrop-blur-md border-b border-white/10 mix-blend-difference">
+        <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-3 group">
+            <ArrowLeft className="w-5 h-5 text-gray-300 group-hover:-translate-x-1 transition-transform" />
+            <Ghost className="w-6 h-6 text-white" />
+            <span className="font-bold tracking-widest text-sm uppercase">Return</span>
           </Link>
-          <span className="text-xs text-gray-500 uppercase tracking-widest hidden sm:block">The Story So Far</span>
+          <span className="text-xs text-gray-400 uppercase tracking-[0.3em]" style={fontPlayfair}>Volume I</span>
         </div>
       </nav>
 
-      <article className="max-w-4xl mx-auto px-4 sm:px-6 pb-24">
-
-        {/* ════════════════════════════════════════════
-            1. THE HOOK
-        ════════════════════════════════════════════ */}
-        <Section className="pt-16 sm:pt-24 pb-12">
-          <p className="text-neon text-sm font-bold uppercase tracking-widest mb-6 flex items-center gap-2">
-            <Sparkles className="w-4 h-4" /> Behind the Build
-          </p>
-          <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tighter leading-[0.95] mb-8">
-            We Didn't Start a <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon via-purple-500 to-blue-500">
-              Startup.
-            </span>
-            <br />
-            We Started a <span className="text-neon">Feeling.</span>
-          </h1>
-          <p className="text-lg sm:text-xl text-gray-400 leading-relaxed max-w-2xl">
-            There was no pitch deck. No whiteboard. No "let's disrupt the market" speech.
-            There were just two developers, a shared hostel Wi‑Fi, and a question that wouldn't stop echoing:
-          </p>
-          <blockquote className="mt-8 pl-6 border-l-2 border-neon/60 text-xl sm:text-2xl text-gray-300 italic font-light leading-relaxed">
-            "Why does every campus dating app feel like it was made by people who've never lived on campus?"
-          </blockquote>
-        </Section>
-
-        {/* ════════════════════════════════════════════
-            2. THE BEGINNING
-        ════════════════════════════════════════════ */}
-        <Section className="py-12">
-          <h2 className="text-2xl sm:text-3xl font-black mb-6 tracking-tight">
-            Two People. One Dumb Idea.
-          </h2>
-          <p className="text-gray-400 leading-relaxed mb-6">
-            It started in late 2025. <strong className="text-white">Nikhil</strong> and <strong className="text-white">Avneesh</strong> — two second‑year engineering students at Amity University, Raipur — sat in a room looking at the campus dating landscape and felt nothing but frustration.
-          </p>
-          <p className="text-gray-400 leading-relaxed mb-6">
-            Every existing app was either too global, too fake, or too cringe. None of them understood the micro‑universe of a college campus — the inside jokes, the anonymity you crave, the confession boards, the fear of being "seen" liking someone from your own department.
-          </p>
-          <p className="text-gray-400 leading-relaxed mb-8">
-            So they built something. Not a product. A playground. They called it <strong className="text-neon">OTHRHALFF</strong> — because what you're looking for isn't a perfect match; it's the other half of a story you haven't written yet.
-          </p>
-
-          {/* Logo Image */}
-          <div className="rounded-2xl overflow-hidden border border-gray-800 max-w-md mx-auto">
-            <img src="/blog/logo.webp" alt="OTHRHALFF neon ghost logo" className="w-full" loading="lazy" />
-          </div>
-          <p className="text-center text-xs text-gray-600 mt-3">The neon ghost — an identity born from anonymity.</p>
-        </Section>
-
-        {/* ════════════════════════════════════════════
-            3. THE STRUGGLE
-        ════════════════════════════════════════════ */}
-        <Section className="py-12">
-          <h2 className="text-2xl sm:text-3xl font-black mb-6 tracking-tight">
-            We Could Build It. We Couldn't Sell It.
-          </h2>
-          <p className="text-gray-400 leading-relaxed mb-6">
-            The code came easy — late nights fueled by instant noodles and lo‑fi beats. Anonymous profiles? Done. Campus verification with <code className="text-neon/80 bg-gray-900 px-1.5 py-0.5 rounded text-sm">.edu</code> email? Done. Confession boards, smart matching, virtual dates? All shipped.
-          </p>
-          <p className="text-gray-400 leading-relaxed mb-6">
-            But then came the silence.
-          </p>
-          <p className="text-gray-400 leading-relaxed mb-6">
-            Marketing was a different beast entirely. Two developers trying to run Instagram campaigns is like two guitarists trying to be a full orchestra. The features were there. The users weren't.
-          </p>
-          <p className="text-gray-300 leading-relaxed font-medium">
-            We had a product nobody knew about. And that realization? It stung more than any bug at 3 AM.
-          </p>
-        </Section>
-
-        {/* ════════════════════════════════════════════
-            4. THE SHIFT
-        ════════════════════════════════════════════ */}
-        <Section className="py-12">
-          <h2 className="text-2xl sm:text-3xl font-black mb-6 tracking-tight">
-            Then Two People Changed Everything.
-          </h2>
-          <p className="text-gray-400 leading-relaxed mb-6">
-            <strong className="text-white">Austosh</strong> and <strong className="text-white">Shreyy</strong> walked in — not with code, but with conviction. They looked at what we'd built and said: <em>"This deserves to be seen."</em>
-          </p>
-          <p className="text-gray-400 leading-relaxed mb-6">
-            What happened next was unreasonable.
-          </p>
-          <div className="bg-gradient-to-r from-neon/10 via-purple-900/20 to-transparent border border-neon/20 rounded-2xl p-6 sm:p-8 mb-6">
-            <p className="text-2xl sm:text-3xl font-black text-white mb-2">
-              ~35,000 <span className="text-neon">organic views</span>
-            </p>
-            <p className="text-gray-400">on Instagram — within 20 days of launch. No paid ads. No influencer deals. Just raw, authentic storytelling.</p>
-          </div>
-          <p className="text-gray-400 leading-relaxed">
-            They understood something we'd been too close to the code to see: people don't download features — they download feelings. And they packaged OTHRHALFF as the feeling it always was.
-          </p>
-        </Section>
-
-        {/* ════════════════════════════════════════════
-            5. THE LAUNCH
-        ════════════════════════════════════════════ */}
-        <Section className="py-12">
-          <h2 className="text-2xl sm:text-3xl font-black mb-6 tracking-tight">
-            February 12. The Day It Became Real.
-          </h2>
-          <p className="text-gray-400 leading-relaxed mb-6">
-            We didn't pick Valentine's Day — too obvious. We launched two days before, on <strong className="text-white">February 12, 2026</strong>. A quiet, deliberate choice. This wasn't about romance hype. It was about planting a flag.
-          </p>
-          <p className="text-gray-400 leading-relaxed mb-8">
-            The pilot was limited to <strong className="text-neon">Amity University, Raipur</strong> — our campus, our people, our first test audience. If it worked here, in a single college with real students who'd roast us at lunch if it sucked… then we'd know it was real.
-          </p>
-
-          {/* App Screenshots Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <div className="rounded-2xl overflow-hidden border border-gray-800">
-              <img src="/blog/home-screen.png" alt="OTHRHALFF discover screen" className="w-full" loading="lazy" />
-            </div>
-            <div className="rounded-2xl overflow-hidden border border-gray-800">
-              <img src="/blog/confessions.png" alt="Campus confessions feature" className="w-full" loading="lazy" />
-            </div>
-          </div>
-          <p className="text-center text-xs text-gray-600 mb-8">The Discover feed and Campus Confessions — where it all starts.</p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <div className="rounded-2xl overflow-hidden border border-gray-800">
-              <img src="/blog/notifications.png" alt="Match notifications" className="w-full" loading="lazy" />
-            </div>
-            <div className="rounded-2xl overflow-hidden border border-gray-800">
-              <img src="/blog/virtual-dates.jpeg" alt="Virtual Dates feature" className="w-full" loading="lazy" />
-            </div>
-          </div>
-          <p className="text-center text-xs text-gray-600">Real‑time match alerts and Virtual Dates — Movie Night, Soul Sync, and more.</p>
-        </Section>
-
-        {/* ════════════════════════════════════════════
-            6. THE NUMBERS
-        ════════════════════════════════════════════ */}
-        <Section className="py-12">
-          <h2 className="text-2xl sm:text-3xl font-black mb-2 tracking-tight">
-            The Numbers Don't Lie.
-          </h2>
-          <p className="text-gray-500 text-sm mb-8">Google Analytics — 28‑day window, post‑launch.</p>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <StatCard icon={<Users className="w-6 h-6" />} value="431" label="Active Users" />
-            <StatCard icon={<Zap className="w-6 h-6" />} value="32K" label="Total Events" accent="text-purple-400" />
-            <StatCard icon={<Eye className="w-6 h-6" />} value="~35K" label="Instagram Views" accent="text-blue-400" />
-            <StatCard icon={<TrendingUp className="w-6 h-6" />} value="720" label="Referral Sessions" accent="text-green-400" />
-          </div>
-
-          {/* Traffic Breakdown */}
-          <div className="bg-gray-900/60 backdrop-blur-sm border border-gray-800 rounded-2xl p-6 sm:p-8 mb-6">
-            <h3 className="text-lg font-bold mb-4">Traffic Breakdown <span className="text-gray-500 font-normal text-sm">(Last 28 days)</span></h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-gray-500 border-b border-gray-800">
-                    <th className="text-left pb-3 font-semibold">Channel</th>
-                    <th className="text-right pb-3 font-semibold">Sessions</th>
-                    <th className="text-left pb-3 pl-6 font-semibold hidden sm:table-cell">What it means</th>
-                  </tr>
-                </thead>
-                <tbody className="text-gray-300">
-                  <tr className="border-b border-gray-800/50">
-                    <td className="py-3 font-medium">Referral</td>
-                    <td className="py-3 text-right text-neon font-bold">720</td>
-                    <td className="py-3 pl-6 text-gray-500 hidden sm:table-cell">Links from other websites — biggest source</td>
-                  </tr>
-                  <tr className="border-b border-gray-800/50">
-                    <td className="py-3 font-medium">Direct</td>
-                    <td className="py-3 text-right font-bold">410</td>
-                    <td className="py-3 pl-6 text-gray-500 hidden sm:table-cell">People typing <code className="text-gray-400 bg-gray-800 px-1 rounded text-xs">othrhalff.in</code> directly</td>
-                  </tr>
-                  <tr className="border-b border-gray-800/50">
-                    <td className="py-3 font-medium">Organic Social</td>
-                    <td className="py-3 text-right font-bold">151</td>
-                    <td className="py-3 pl-6 text-gray-500 hidden sm:table-cell">From Instagram, Twitter, etc.</td>
-                  </tr>
-                  <tr className="border-b border-gray-800/50">
-                    <td className="py-3 font-medium">Organic Search</td>
-                    <td className="py-3 text-right font-bold">50</td>
-                    <td className="py-3 pl-6 text-gray-500 hidden sm:table-cell">From Google — SEO is just starting</td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 font-medium">Unassigned</td>
-                    <td className="py-3 text-right font-bold">35</td>
-                    <td className="py-3 pl-6 text-gray-500 hidden sm:table-cell">Uncategorized traffic</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <p className="text-gray-400 leading-relaxed">
-            For a product limited to a single university campus, with zero marketing budget — these numbers carry weight. 410 people typed <code className="text-neon/80 bg-gray-900 px-1.5 py-0.5 rounded text-sm">othrhalff.in</code> into their browser. That's not traffic. That's <strong className="text-white">intent</strong>.
-          </p>
-
-          {/* Analytics Screenshot */}
-          <div className="rounded-2xl overflow-hidden border border-gray-800 mt-8">
-            <img src="/blog/analytics-overview.png" alt="Google Analytics dashboard" className="w-full" loading="lazy" />
-          </div>
-          <p className="text-center text-xs text-gray-600 mt-3">Google Analytics dashboard — a launch spike that settled into steady daily usage.</p>
-        </Section>
-
-        {/* ════════════════════════════════════════════
-            7. THE MENTORSHIP
-        ════════════════════════════════════════════ */}
-        <Section className="py-12">
-          <h2 className="text-2xl sm:text-3xl font-black mb-6 tracking-tight">
-            A Conversation That Recalibrated Us.
-          </h2>
-          <p className="text-gray-400 leading-relaxed mb-6">
-            Somewhere in the midst of the early momentum, we connected with <strong className="text-white">Shrideep Tamboli</strong> — an AI Engineer at AI Ready School, Raipur, and a speaker at the Devity Club Summit. The kind of person who's been in the trenches long enough to know what matters and what's noise.
-          </p>
-          <div className="bg-gray-900/60 backdrop-blur-sm border border-gray-800 rounded-2xl p-6 sm:p-8 mb-6">
-            <Quote className="w-8 h-8 text-neon/40 mb-4" />
-            <p className="text-lg sm:text-xl text-gray-300 italic leading-relaxed mb-4">
-              "Don't draw conclusions at month one. Build for six to twelve months. Watch how people actually use it — not how you think they'll use it. The product will tell you what it wants to become."
-            </p>
-            <p className="text-sm text-gray-500 font-medium">
-              — Shrideep Tamboli, AI Engineer at AI Ready School
-            </p>
-          </div>
-          <p className="text-gray-400 leading-relaxed">
-            That advice landed differently. It wasn't motivational — it was surgical. It reminded us that the early excitement is a trap if you mistake it for validation. The real signal comes from what users do in month three, month six. From patterns you haven't even considered yet. So we took a breath, dropped the urgency, and committed to the long game.
-          </p>
-        </Section>
-
-        {/* ════════════════════════════════════════════
-            8. WHERE WE ARE NOW
-        ════════════════════════════════════════════ */}
-        <Section className="py-12">
-          <h2 className="text-2xl sm:text-3xl font-black mb-6 tracking-tight">
-            Where We Are Now. Honestly.
-          </h2>
-          <p className="text-gray-400 leading-relaxed mb-6">
-            We're still early. Still a pilot. Still limited to one campus. And we're okay with that.
-          </p>
-          <p className="text-gray-400 leading-relaxed mb-6">
-            Every morning we open the dashboard and watch real students — people from our own hallways — confessing anonymously, matching, reacting to polls, and going on virtual movie dates. That's not a vanity metric. That's <em>life</em> happening inside something we made.
-          </p>
-          <p className="text-gray-400 leading-relaxed mb-6">
-            We owe a quiet nod to some of our professors at Amity who helped amplify the word at the right time. Their reach within the campus — both formal and informal — made a difference during those first critical days. Good teachers don't just teach curriculum; they pay attention to what their students are building. And ours did.
-          </p>
-          <p className="text-gray-400 leading-relaxed">
-            We're iterating. Squashing bugs. Reading feedback. And most importantly — <strong className="text-white">listening</strong>.
-          </p>
-        </Section>
-
-        {/* ════════════════════════════════════════════
-            9. THE TEASE
-        ════════════════════════════════════════════ */}
-        <Section className="py-12">
-          <div className="bg-gradient-to-br from-gray-900 via-gray-900 to-neon/5 border border-gray-800 rounded-3xl p-8 sm:p-12 text-center">
-            <Rocket className="w-10 h-10 text-neon mx-auto mb-6 animate-bounce" />
-            <h2 className="text-2xl sm:text-3xl font-black mb-4 tracking-tight">
-              Something Big Is Coming.
-            </h2>
-            <p className="text-gray-400 leading-relaxed max-w-lg mx-auto mb-6">
-              Our biggest update drops <strong className="text-white">next month</strong>. We can't say what it is — not yet. But if you've ever thought this app was just about swiping… you haven't seen anything.
-            </p>
-            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-neon/30 text-neon text-sm font-bold uppercase tracking-wider">
-              <span className="w-2 h-2 rounded-full bg-neon animate-pulse" />
-              Stay tuned
-            </div>
-          </div>
-        </Section>
-
-        {/* ════════════════════════════════════════════
-            10. THE CLOSING
-        ════════════════════════════════════════════ */}
-        <Section className="py-16 sm:py-24 text-center">
-          <div className="max-w-2xl mx-auto">
-            <Ghost className="w-12 h-12 text-neon mx-auto mb-8 opacity-60" />
-            <p className="text-xl sm:text-2xl md:text-3xl text-gray-300 leading-relaxed font-light italic mb-8">
-              We built something small.<br />
-              <span className="text-white font-medium not-italic">And it started breathing on its own.</span>
-            </p>
-            <p className="text-gray-500 text-sm leading-relaxed mb-10">
-              This isn't the end of the story. It isn't even the middle.<br />
-              It's the part where you decide if you want to be part of it.
-            </p>
-            <Link
-              to="/"
-              className="inline-flex items-center gap-2 px-8 py-4 bg-neon text-white font-bold uppercase tracking-wider rounded-full hover:scale-105 active:scale-95 transition-all duration-300 shadow-[0_0_30px_rgba(255,0,127,0.4)] hover:shadow-[0_0_50px_rgba(255,0,127,0.7)]"
+      <main>
+        {/* 1. HERO SECTION */}
+        <section className="hero-section relative h-screen flex items-center justify-center overflow-hidden">
+          <div className="absolute inset-0 z-0 hero-bg scale-110">
+            <video 
+              autoPlay 
+              loop 
+              muted 
+              playsInline 
+              className="w-full h-full object-cover opacity-30"
             >
-              Find Your Othrhalff
-              <ArrowLeft className="w-4 h-4 rotate-180" />
-            </Link>
+              <source src="/videoplayback.mp4" type="video/mp4" />
+            </video>
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
           </div>
-        </Section>
+          
+          <div className="relative z-10 text-center px-4 pt-20">
+            <p className="hero-text text-neon text-sm sm:text-base font-semibold uppercase tracking-[0.4em] mb-6 flex items-center justify-center gap-3">
+              <Sparkles className="w-4 h-4" /> The Prologue
+            </p>
+            <h1 className="hero-text text-5xl sm:text-7xl md:text-9xl font-black tracking-tight leading-[0.9] mb-8" style={fontPlayfair}>
+              It started as a <br />
+              <span className="italic font-light text-gray-300" style={fontInstrument}>side project.</span>
+            </h1>
+            <p className="hero-text text-lg sm:text-xl text-gray-400 font-light tracking-wide max-w-xl mx-auto">
+              No pitch deck. No whiteboard. Just a shared hostel Wi-Fi and a question that kept echoing.
+            </p>
+          </div>
+        </section>
 
-        {/* ── Author / Credits ── */}
-        <div className="border-t border-gray-900 pt-8 pb-4 text-center">
-          <p className="text-gray-600 text-xs mb-1">Written by the OTHRHALFF team</p>
-          <p className="text-gray-700 text-xs">Nikhil · Avneesh · Austosh · Shreyy</p>
-        </div>
-      </article>
+        {/* 2. ORIGIN STORY */}
+        <section className="origin-section relative py-32 px-6 sm:px-12 md:px-24 max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-16 items-center">
+            <div className="order-2 md:order-1 origin-text">
+              <h2 className="text-4xl text-gray-500 uppercase tracking-widest text-sm font-bold mb-6">01 // The Catalyst</h2>
+              <p className="text-2xl sm:text-4xl font-light leading-snug mb-8" style={fontPlayfair}>
+                "Why does every campus dating app feel like it was made by people who've never <i style={fontInstrument}>lived</i> on campus?"
+              </p>
+              <div className="space-y-6 text-gray-400 text-lg leading-relaxed font-light">
+                <p>
+                  It was late 2025. Nikhil and Avneesh, two engineering students at Amity University, Raipur, looked at the existing landscape and felt nothing but frustration.
+                </p>
+                <p>
+                  So they built a playground. Not a product. They called it <strong className="text-white font-medium">OTHRHALFF</strong> — because what you're looking for isn't a perfect match; it's the other half of a story you haven't written yet.
+                </p>
+              </div>
+            </div>
+            
+            <div className="order-1 md:order-2 relative h-[60vh] rounded-2xl overflow-hidden bg-gray-900 border border-white/10 group">
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-neon mix-blend-overlay transition-opacity duration-700 z-10"></div>
+              <img 
+                src="/blog/logo.webp" 
+                alt="OTHRHALFF Identity" 
+                className="w-full h-full object-cover origin-img scale-125 opacity-80" 
+              />
+            </div>
+          </div>
+        </section>
 
-      {/* Scroll to top */}
-      {showTop && (
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="fixed bottom-6 right-6 z-50 w-10 h-10 rounded-full bg-gray-900 border border-gray-700 flex items-center justify-center text-gray-400 hover:text-neon hover:border-neon/50 transition-all duration-300"
-        >
-          <ArrowUp className="w-4 h-4" />
-        </button>
-      )}
+        {/* 3. THE STRUGGLE */}
+        <section className="struggle-section bg-[#050505] py-40 border-y border-white/5 relative">
+          <div className="max-w-4xl mx-auto px-6 text-center">
+            <h2 className="text-4xl sm:text-6xl md:text-7xl font-light leading-[1.1]" style={fontPlayfair}>
+              {'We built it. But marketing to your own peers is like screaming into a void.'.split(' ').map((word, i) => (
+                <span key={i} className="struggle-word inline-block mr-3 mb-2">{word}</span>
+              ))}
+            </h2>
+            <p className="mt-16 text-xl text-gray-500 font-light max-w-2xl mx-auto origin-text">
+              The code came easy. Late nights, instant noodles, seamless anonymity. 
+              But a product without people is just a haunted house with the lights on.
+            </p>
+          </div>
+        </section>
+
+        {/* 4. GROWTH EXPLOSION */}
+        <section className="growth-section py-32 px-6 max-w-7xl mx-auto">
+          <div className="flex flex-col items-center justify-center text-center mb-24 origin-text">
+            <h2 className="text-sm uppercase tracking-[0.3em] text-neon font-bold mb-4">The Turning Point</h2>
+            <p className="text-3xl sm:text-5xl font-light" style={fontPlayfair}>Then Austosh and Shreyy stepped in.</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 mb-16">
+            <div className="bg-[#0a0a0a] border border-white/10 rounded-3xl p-10 flex flex-col justify-center relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-neon/10 rounded-full blur-[80px] -mr-20 -mt-20 group-hover:bg-neon/20 transition-colors duration-700"></div>
+              <h3 id="view-counter" className="text-6xl sm:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-br from-white to-gray-600 tracking-tighter mb-4">
+                0+ Views
+              </h3>
+              <p className="text-gray-400 text-lg">Organic reach on Instagram within 20 days. No ads. Just raw storytelling.</p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-8">
+               <div className="bg-[#0a0a0a] border border-white/10 rounded-3xl p-8 flex flex-col justify-center origin-text">
+                  <Users className="w-8 h-8 text-gray-500 mb-6" />
+                  <p className="text-4xl font-bold mb-2">431</p>
+                  <p className="text-sm text-gray-500 uppercase tracking-widest">Active Users</p>
+               </div>
+               <div className="bg-[#0a0a0a] border border-white/10 rounded-3xl p-8 flex flex-col justify-center origin-text">
+                  <TrendingUp className="w-8 h-8 text-neon mb-6" />
+                  <p className="text-4xl font-bold mb-2">720</p>
+                  <p className="text-sm text-gray-500 uppercase tracking-widest">Ref Sessions</p>
+               </div>
+               <div className="bg-[#0a0a0a] border border-white/10 rounded-3xl p-8 flex flex-col justify-center col-span-2 origin-text">
+                  <Zap className="w-8 h-8 text-yellow-500 mb-4" />
+                  <p className="text-3xl font-bold mb-2">32,000+</p>
+                  <p className="text-sm text-gray-500 uppercase tracking-widest">In-App Events Fired</p>
+               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 5. LAUNCH */}
+        <section className="launch-section bg-zinc-950 py-32 border-t border-white/5 px-6">
+          <div className="max-w-7xl mx-auto">
+            <h2 className="text-4xl sm:text-6xl font-light mb-16" style={fontPlayfair}>
+              February 12 <br/><span className="text-gray-600 italic" style={fontInstrument}>The quiet invasion.</span>
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[
+                { img: '/blog/home-screen.png', title: 'Discover', desc: 'The starting point.' },
+                { img: '/blog/confessions.png', title: 'Confessions', desc: 'Whispers made loud.' },
+                { img: '/blog/notifications.png', title: 'Connections', desc: 'Real-time sparks.' },
+                { img: '/blog/virtual-dates.jpeg', title: 'Virtual Dates', desc: 'Movie nights synced.' }
+              ].map((card, idx) => (
+                <div key={idx} className="launch-card group relative rounded-2xl overflow-hidden aspect-[3/4] border border-white/10">
+                  <img src={card.img} alt={card.title} className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-70 group-hover:opacity-100" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                  <div className="absolute bottom-0 left-0 p-6">
+                    <h3 className="text-xl font-bold tracking-wide">{card.title}</h3>
+                    <p className="text-sm text-gray-400 font-light">{card.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* 6. MENTORSHIP */}
+        <section className="mentor-section relative py-40 overflow-hidden flex items-center justify-center">
+          <div className="absolute inset-0 mentor-glow bg-blue-500/10 blur-[150px] rounded-full w-[80vw] h-[80vh] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+          
+          <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
+            <Quote className="w-12 h-12 text-white/20 mx-auto mb-10" />
+            <p className="text-3xl sm:text-5xl font-light leading-snug mb-10 text-gray-200" style={fontPlayfair}>
+              "Build for six to twelve months. Watch how people <i style={fontInstrument}>actually</i> use it. The product will tell you what it wants to become."
+            </p>
+            <p className="text-sm uppercase tracking-widest text-neon font-bold">Shrideep Tamboli</p>
+            <p className="text-gray-500 mt-2">AI Engineer, AI Ready School</p>
+          </div>
+        </section>
+
+        {/* 7. THE TEASE */}
+        <section className="relative py-40 overflow-hidden bg-black text-center min-h-[70vh] flex flex-col justify-center">
+          <div className="absolute inset-0 tease-bg opacity-40" style={{
+            background: 'radial-gradient(circle at center, #2e0018 0%, #000 70%)'
+          }} />
+          
+          <div className="relative z-10 px-6 max-w-3xl mx-auto origin-text">
+            <Rocket className="w-8 h-8 text-neon/50 mx-auto mb-8" />
+            <h2 className="text-5xl sm:text-7xl font-black tracking-tighter mb-8 bg-clip-text text-transparent bg-gradient-to-r from-gray-200 to-gray-600">
+              Something <span className="text-neon" style={fontPlayfair}>Bigger</span> Is Coming.
+            </h2>
+            <p className="text-xl text-gray-400 font-light mb-12">
+              Next month, the rules change. We can't say what it is yet, but if you thought OTHRHALFF was just about swiping...
+            </p>
+            <button className="px-8 py-4 rounded-full border border-neon/50 text-white font-bold uppercase tracking-widest text-sm hover:bg-neon hover:text-black transition-all duration-300 backdrop-blur-sm group">
+              <span className="flex items-center gap-3">
+                <span className="w-2 h-2 rounded-full bg-neon group-hover:bg-black animate-pulse" />
+                Stay on the radar
+              </span>
+            </button>
+          </div>
+        </section>
+
+        {/* 8. FOOTER */}
+        <footer className="border-t border-white/10 py-16 px-6 text-center bg-black relative z-10">
+          <Ghost className="w-8 h-8 text-white/20 mx-auto mb-8" />
+          <h2 className="text-2xl sm:text-4xl font-light italic mb-12 text-gray-400" style={fontInstrument}>
+            We built something small.<br/>
+            <span className="text-white not-italic" style={fontPlayfair}>And it started breathing on its own.</span>
+          </h2>
+          
+          <Link to="/" className="inline-flex items-center gap-2 text-sm uppercase tracking-widest font-bold text-gray-500 hover:text-neon transition-colors duration-300 mb-16">
+            Find Your Other Half <ArrowRight className="w-4 h-4" />
+          </Link>
+          
+          <p className="text-xs tracking-[0.2em] text-white/30 uppercase">
+            © 2026 OTHRHALFF · Nikhil, Avneesh, Austosh, Shreyy
+          </p>
+        </footer>
+      </main>
     </div>
   );
 };
