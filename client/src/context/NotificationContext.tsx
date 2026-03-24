@@ -10,6 +10,7 @@ interface NotificationItem {
     read: boolean;
     type: 'match' | 'message' | 'system' | 'like';
     fromUserId?: string;
+    actionUrl?: string;
     fromUser?: {
         id: string;
         anonymousId: string;
@@ -65,6 +66,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 read: n.read,
                 type: n.type,
                 fromUserId: n.from_user_id,
+                actionUrl: n.action_url || undefined,
                 fromUser: n.fromUser ? {
                     id: n.fromUser.id,
                     anonymousId: n.fromUser.anonymous_id,

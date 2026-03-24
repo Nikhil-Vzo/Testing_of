@@ -14,6 +14,7 @@ interface NotificationItem {
   read: boolean;
   type: 'match' | 'message' | 'system' | 'like';
   fromUserId?: string;
+  actionUrl?: string;
   fromUser?: {
     id: string;
     anonymousId: string;
@@ -36,6 +37,13 @@ export const Notifications: React.FC = () => {
       Notification.requestPermission();
     }
   }, []);
+
+  const handleSystemClick = async (notif: NotificationItem) => {
+    await markAsRead(notif.id);
+    if (notif.actionUrl) {
+      navigate(notif.actionUrl);
+    }
+  };
 
   const handleMessageClick = async (notif: NotificationItem) => {
     if (!currentUser || !supabase || !notif.fromUserId) return;
@@ -325,7 +333,10 @@ export const Notifications: React.FC = () => {
           notifications.map(notif => (
             <div
               key={notif.id}
-              onClick={() => notif.type === 'message' && handleMessageClick(notif)}
+              onClick={() => {
+                if (notif.type === 'message') handleMessageClick(notif);
+                else if (notif.type === 'system') handleSystemClick(notif);
+              }}
               className={`p-5 rounded-2xl border transition-all cursor-pointer hover:scale-[1.01] ${notif.read ? 'bg-gray-900/30 border-gray-800/50' : 'bg-gray-900 border-neon/50 shadow-[0_0_15px_rgba(255,0,127,0.05)]'
                 }`}
             >
