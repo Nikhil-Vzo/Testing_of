@@ -29,6 +29,8 @@ export const Profile: React.FC = () => {
     const [fetchedProfile, setFetchedProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [showLegal, setShowLegal] = useState(false);
+    const [showAccount, setShowAccount] = useState(false);
     const [deferredPrompt, setDeferredPrompt] = useState<any>(() => (window as any).__pwaInstallPrompt);
 
     // Also listen in case it fires after mount (unlikely but safe)
@@ -459,30 +461,38 @@ export const Profile: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* Company & Legal (Moved to Main Content) */}
-                                    <div className="bg-gray-900/40 border border-gray-800 rounded-[2rem] p-8 backdrop-blur-md mt-6">
-                                        <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                                            <Scale className="w-5 h-5 text-gray-400" /> Company & Legal
-                                        </h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            {[
-                                                { label: 'Our Blog', icon: Rocket, path: '/blog' },
-                                                { label: 'About Us', icon: Info, path: '/about' },
-                                                { label: 'Privacy Policy', icon: Lock, path: '/privacy' },
-                                                { label: 'Terms of Service', icon: Scale, path: '/terms' },
-                                                { label: 'Safety', icon: Shield, path: '/safety' },
-                                                { label: 'Guidelines', icon: FileText, path: '/guidelines' },
-                                                { label: 'Careers', icon: Briefcase, path: '/careers' },
-                                            ].map(item => (
-                                                <button
-                                                    key={item.path}
-                                                    onClick={() => navigate(item.path)}
-                                                    className="w-full p-4 rounded-2xl hover:bg-gray-800/60 group text-left transition-all flex items-center gap-3 border border-gray-800 hover:border-gray-600 bg-black/20"
-                                                >
-                                                    <item.icon className="w-5 h-5 text-gray-500 group-hover:text-white transition-colors" />
-                                                    <span className="text-sm font-medium text-gray-400 group-hover:text-white transition-colors truncate">{item.label}</span>
-                                                </button>
-                                            ))}
+                                    {/* Company & Legal (Collapsible) */}
+                                    <div className="bg-gray-900/40 border border-gray-800 rounded-[2rem] backdrop-blur-md mt-6 overflow-hidden">
+                                        <button
+                                            onClick={() => setShowLegal(!showLegal)}
+                                            className="w-full p-8 flex items-center justify-between text-left group"
+                                        >
+                                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                                <Scale className="w-5 h-5 text-gray-400" /> Company & Legal
+                                            </h3>
+                                            <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform duration-300 ${showLegal ? 'rotate-180' : ''}`} />
+                                        </button>
+                                        <div className={`transition-all duration-300 ease-in-out ${showLegal ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'} overflow-hidden`}>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-8 pb-8">
+                                                {[
+                                                    { label: 'Our Blog', icon: Rocket, path: '/blog' },
+                                                    { label: 'About Us', icon: Info, path: '/about' },
+                                                    { label: 'Privacy Policy', icon: Lock, path: '/privacy' },
+                                                    { label: 'Terms of Service', icon: Scale, path: '/terms' },
+                                                    { label: 'Safety', icon: Shield, path: '/safety' },
+                                                    { label: 'Guidelines', icon: FileText, path: '/guidelines' },
+                                                    { label: 'Careers', icon: Briefcase, path: '/careers' },
+                                                ].map(item => (
+                                                    <button
+                                                        key={item.path}
+                                                        onClick={() => navigate(item.path)}
+                                                        className="w-full p-4 rounded-2xl hover:bg-gray-800/60 group text-left transition-all flex items-center gap-3 border border-gray-800 hover:border-gray-600 bg-black/20"
+                                                    >
+                                                        <item.icon className="w-5 h-5 text-gray-500 group-hover:text-white transition-colors" />
+                                                        <span className="text-sm font-medium text-gray-400 group-hover:text-white transition-colors truncate">{item.label}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
                                 </>
@@ -492,32 +502,41 @@ export const Profile: React.FC = () => {
                         {/* Right Col: Stats & Support (Conditional) */}
                         {(isSelf && !isEditing) && (
                             <div className="md:col-span-5 space-y-6 sticky top-6">
-                                {/* Support & Contact */}
-                                <div className="bg-gray-900/40 border border-gray-800 rounded-[2rem] p-6 backdrop-blur-md space-y-3">
-                                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Account</h3>
-
+                                {/* Account (Collapsible) */}
+                                <div className="bg-gray-900/40 border border-gray-800 rounded-[2rem] backdrop-blur-md overflow-hidden">
                                     <button
-                                        onClick={() => navigate('/contact')}
-                                        className="w-full p-4 rounded-xl bg-gray-800/50 border border-gray-700 hover:bg-gray-800 hover:border-gray-500 group text-left transition-all flex items-center gap-3"
+                                        onClick={() => setShowAccount(!showAccount)}
+                                        className="w-full p-6 flex items-center justify-between text-left"
                                     >
-                                        <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400 group-hover:text-white transition-colors">
-                                            <Mail className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <span className="font-bold text-gray-200 group-hover:text-white text-sm block">Contact Support</span>
-                                            <span className="text-xs text-gray-500">Need help? Let us know.</span>
-                                        </div>
+                                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Account</h3>
+                                        <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform duration-300 ${showAccount ? 'rotate-180' : ''}`} />
                                     </button>
+                                    <div className={`transition-all duration-300 ease-in-out ${showAccount ? 'max-h-[300px] opacity-100' : 'max-h-0 opacity-0'} overflow-hidden`}>
+                                        <div className="px-6 pb-6 space-y-3">
+                                            <button
+                                                onClick={() => navigate('/contact')}
+                                                className="w-full p-4 rounded-xl bg-gray-800/50 border border-gray-700 hover:bg-gray-800 hover:border-gray-500 group text-left transition-all flex items-center gap-3"
+                                            >
+                                                <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400 group-hover:text-white transition-colors">
+                                                    <Mail className="w-5 h-5" />
+                                                </div>
+                                                <div>
+                                                    <span className="font-bold text-gray-200 group-hover:text-white text-sm block">Contact Support</span>
+                                                    <span className="text-xs text-gray-500">Need help? Let us know.</span>
+                                                </div>
+                                            </button>
 
-                                    <button
-                                        onClick={logout}
-                                        className="w-full p-4 rounded-xl bg-red-900/10 border border-red-900/30 hover:bg-red-900/20 hover:border-red-500/50 group text-left transition-all flex items-center gap-3"
-                                    >
-                                        <div className="p-2 bg-red-500/10 rounded-lg text-red-500">
-                                            <LogOut className="w-5 h-5" />
+                                            <button
+                                                onClick={logout}
+                                                className="w-full p-4 rounded-xl bg-red-900/10 border border-red-900/30 hover:bg-red-900/20 hover:border-red-500/50 group text-left transition-all flex items-center gap-3"
+                                            >
+                                                <div className="p-2 bg-red-500/10 rounded-lg text-red-500">
+                                                    <LogOut className="w-5 h-5" />
+                                                </div>
+                                                <span className="font-bold text-gray-300 group-hover:text-red-400 text-sm">Log Out</span>
+                                            </button>
                                         </div>
-                                        <span className="font-bold text-gray-300 group-hover:text-red-400 text-sm">Log Out</span>
-                                    </button>
+                                    </div>
                                 </div>
 
                                 {/* Install App */}
