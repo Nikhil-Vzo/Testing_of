@@ -154,7 +154,7 @@ export const Blog: React.FC = () => {
   const fontInstrument = { fontFamily: "'Instrument Serif', serif" };
 
   return (
-    <div ref={mainRef} className="bg-black text-white min-h-screen overflow-hidden selection:bg-neon selection:text-white relative font-sans">
+    <div ref={mainRef} className="bg-black text-white min-h-screen overflow-x-hidden selection:bg-neon selection:text-white relative font-sans">
       
       {/* Universal Grain Overlay */}
       <div 
@@ -185,7 +185,7 @@ export const Blog: React.FC = () => {
               playsInline 
               className="w-full h-full object-cover opacity-30"
             >
-              <source src="/videoplayback.mp4" type="video/mp4" />
+              <source src="https://assets.mixkit.co/videos/preview/mixkit-dust-particles-in-slow-motion-along-a-black-background-4739-large.mp4" type="video/mp4" />
             </video>
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
           </div>
