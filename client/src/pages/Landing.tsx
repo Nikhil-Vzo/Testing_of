@@ -96,6 +96,10 @@ export const Landing: React.FC = () => {
             Features
             <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-neon group-hover:w-full transition-all duration-300" />
           </a>
+          <Link to="/blog" className="hover:text-neon transition-colors relative group">
+            Blog
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-neon group-hover:w-full transition-all duration-300" />
+          </Link>
           <Link to="/developers" className="hover:text-neon transition-colors relative group">
             Meet the Developers
             <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-neon group-hover:w-full transition-all duration-300" />

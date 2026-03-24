@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, Suspense, lazy } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { useCall } from './context/CallContext';
 import { AppLayout } from './layouts/AppLayout';
@@ -32,6 +32,7 @@ const AmisPolls = lazy(() => import('./pages/amis-park/AmisPolls').then(m => ({ 
 const AmisFeed = lazy(() => import('./pages/amis-park/AmisFeed').then(m => ({ default: m.AmisFeed })));
 
 // Static pages lazy loaded individually
+const Blog = lazy(() => import('./pages/Blog').then(m => ({ default: m.Blog })));
 const About = lazy(() => import('./pages/StaticPages').then(m => ({ default: m.About })));
 const Careers = lazy(() => import('./pages/Careers').then(m => ({ default: m.Careers })));
 const Contact = lazy(() => import('./pages/Contact').then(m => ({ default: m.Contact })));
@@ -69,10 +70,14 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 export default function App() {
   const [showIntro, setShowIntro] = useState(true);
   const { isCallActive, appId, channelName, token, partnerName, partnerAvatar, endCall, incomingCall, outgoingCall, acceptCall, rejectCall, cancelOutgoingCall, callType, callSessionId } = useCall();
+  const location = useLocation();
+
+  // Skip intro for public content pages like /blog
+  const skipIntroRoutes = ['/blog'];
 
   useEffect(() => {
     const hasShown = sessionStorage.getItem('hasShownIntro');
-    if (hasShown) setShowIntro(false);
+    if (hasShown || skipIntroRoutes.includes(location.pathname)) setShowIntro(false);
   }, []);
 
   const handleIntroComplete = () => {
@@ -80,7 +85,7 @@ export default function App() {
     setShowIntro(false);
   };
 
-  if (showIntro) {
+  if (showIntro && !skipIntroRoutes.includes(location.pathname)) {
     return <IntroAnimation onComplete={handleIntroComplete} />;
   }
 
@@ -128,6 +133,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/developers" element={<Developers />} />
+          <Route path="/blog" element={<Blog />} />
 
           {/* Static Pages */}
           <Route path="/about" element={<About />} />
