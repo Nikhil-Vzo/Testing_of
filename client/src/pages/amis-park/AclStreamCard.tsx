@@ -3,7 +3,7 @@ import { Flame, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 const extractYoutubeId = (url: string) => {
-  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/);
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|live\/))([^&?]+)/);
   return match ? match[1] : null;
 };
 
