@@ -401,7 +401,12 @@ export const Home: React.FC = () => {
 
             {/* === TOP HEADER === */}
             <div className="w-full px-5 py-4 flex items-center justify-between gap-3 z-30 relative">
-                {/* Logo removed for fest period — see remember.txt */}
+                <div className="flex items-center gap-2">
+                    <Ghost className={`w-7 h-7 drop-shadow-[0_0_12px_rgba(255,0,127,0.6)] ${isRecycleMode ? 'text-yellow-400' : 'text-neon'}`} />
+                    <span className="text-xl font-black text-white tracking-tighter uppercase hidden sm:block">
+                        {isRecycleMode ? 'Second Chance' : 'Discover'}
+                    </span>
+                </div>
 
                 <div className="flex items-center gap-3">
                     {/* Premium Filter Toggle */}
