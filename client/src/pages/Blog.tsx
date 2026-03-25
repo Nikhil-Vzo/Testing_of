@@ -4,6 +4,7 @@ import { Ghost, ArrowLeft, TrendingUp, Users, Eye, Zap, Quote, Rocket, Sparkles,
 import gsap from 'gsap';
 import ScrollTrigger from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
+import { trackPageView } from '../utils/analytics';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -28,6 +29,11 @@ export const Blog: React.FC = () => {
   const outerRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // Track page view in Google Analytics
+  useEffect(() => {
+    trackPageView('/blog', 'OTHRHALFF Blog');
+  }, []);
 
   // Initialize Lenis for smooth scrolling
   useEffect(() => {
