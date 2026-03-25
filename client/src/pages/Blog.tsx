@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Ghost, ArrowLeft, TrendingUp, Users, Eye, Zap, Quote, Rocket, Sparkles, ArrowRight } from 'lucide-react';
+import { Ghost, ArrowLeft, TrendingUp, Users, Eye, Zap, Quote, Rocket, Sparkles, ArrowRight, Instagram, Linkedin, Github } from 'lucide-react';
 import gsap from 'gsap';
 import ScrollTrigger from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
@@ -351,15 +351,7 @@ export const Blog: React.FC = () => {
                       </p>
                     </div>
                     
-                    <div className="pt-4 ml-2">
-                      <Link 
-                        to="/developers" 
-                        className="inline-flex items-center justify-center gap-3 px-6 py-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/30 transition-all duration-300 group shadow-[0_0_20px_rgba(255,255,255,0.02)] hover:shadow-[0_0_30px_rgba(255,255,255,0.08)]"
-                      >
-                        <span className="text-xs font-bold tracking-widest uppercase text-gray-400 group-hover:text-white transition-colors">Meet the Devs</span>
-                        <ArrowRight className="w-3 h-3 text-gray-500 group-hover:text-white group-hover:translate-x-1 transition-all" />
-                      </Link>
-                    </div>
+                    {/* Dev Link moved to bottom */}
                   </div>
                 </div>
                 
@@ -401,7 +393,7 @@ export const Blog: React.FC = () => {
                 <h2 className="text-xs uppercase tracking-[0.5em] text-neon font-bold mb-8 flex items-center gap-3">
                   The Turning Point <Zap className="w-4 h-4 text-yellow-500" />
                 </h2>
-                <p className="text-[clamp(2rem,4vw,3.5rem)] font-light" style={fontPlayfair}>Then Ashutosh & Shreyy stepped in.</p>
+                <p className="text-[clamp(2rem,4vw,3.5rem)] font-light" style={fontPlayfair}>Then the true crew assembled.</p>
               </div>
 
               <div className="grid md:grid-cols-2 gap-6 lg:gap-10 mb-16">
@@ -410,7 +402,9 @@ export const Blog: React.FC = () => {
                   <h3 id="view-counter" className="text-[clamp(3.5rem,6vw,5.5rem)] font-black text-transparent bg-clip-text bg-gradient-to-br from-white to-gray-700 tracking-tighter mb-6 relative z-10 w-full drop-shadow-lg">
                     0+ Views
                   </h3>
-                  <p className="text-gray-400 text-[clamp(1rem,1.2vw,1.125rem)] font-light relative z-10">Organic reach on Instagram within 20 days. No paid ads. No forced virality. Just raw storytelling that resonated.</p>
+                  <p className="text-gray-400 text-[clamp(1rem,1.2vw,1.125rem)] font-light relative z-10">
+                    We brought in a highly creative force to ignite the spark. Ashutosh drove relentless, massive numbers on IG, flanked by Shreyy Sharma locking down our striking posters and social tactics. Then, Tushar Shendey gave the brand a heartbeat with elite motion graphics. Together, we generated viral, organic reach within 20 days. No paid ads. Just raw, collective momentum.
+                  </p>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-6 lg:gap-10">
@@ -451,7 +445,7 @@ export const Blog: React.FC = () => {
                     Feb 12<span className="text-neon">.</span><br/>
                     <span className="text-gray-500 italic" style={fontInstrument}>The quiet invasion.</span>
                   </h2>
-                  <p className="text-gray-400 font-light max-w-sm text-sm sm:text-base border-l border-neon/30 pl-6">We didn't pick Valentine's Day—too obvious. We launched two days prior. A deliberate choice to let the campus discover it organically.</p>
+                  <p className="text-gray-400 font-light max-w-sm text-sm sm:text-base border-l border-neon/30 pl-6">We didn't pick Valentine's Day—too obvious. We launched two days prior. To plant the seed, we stuck unauthorized posters across campus in the dead of night. Sometimes doing illegal things is exactly what paves the way. People noticed. The quiet invasion had begun.</p>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-16 px-4 sm:px-0">
@@ -519,7 +513,58 @@ export const Blog: React.FC = () => {
               </div>
             </section>
 
-            {/* 8. FOOTER */}
+            {/* 8. THE CORE TEAM */}
+            <section className="team-section relative py-20 sm:py-32 overflow-hidden bg-gradient-to-b from-[#05000a] text-center to-[#020005] z-10 border-t border-white/5">
+              <div className="max-w-6xl mx-auto px-6">
+                <h2 className="text-[clamp(2.5rem,5vw,5rem)] font-black text-white uppercase tracking-tighter mb-4">
+                  The <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon to-purple-500">Core Team</span>
+                </h2>
+                <p className="text-gray-500 font-mono text-sm tracking-widest uppercase mb-16">The minds behind the pulse</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 px-4 mb-8 text-left">
+                  {[
+                    { name: "Nikhil Yadav", title: "Developer", ig: "https://www.instagram.com/nikhil_on_clouds?igsh=MTVscTYwd3VtbzlhZw==", linkedin: "https://www.linkedin.com/in/nikhil1yadav/", github: "https://github.com/Nikhil-Vzo", gradient: "from-neon/20 to-purple-600/20", border: "border-neon/30 hover:border-neon/60", iconColor: "text-neon" },
+                    { name: "Avneesh Kumar Jha", title: "Developer", ig: "https://www.instagram.com/its_avneesh_15?igsh=bjJuOWFoM2hidzZ0", linkedin: "https://www.linkedin.com/in/avneesh-kumar-jha-443034319?utm_source=share_via&utm_content=profile&utm_medium=member_android", github: "https://github.com/techninja15", gradient: "from-blue-600/20 to-cyan-600/20", border: "border-blue-500/30 hover:border-blue-500/60", iconColor: "text-blue-400" }
+                  ].map((dev, i) => (
+                    <div key={i} className={`relative bg-gray-900/40 backdrop-blur-xl border ${dev.border} rounded-[2rem] p-8 transition-all hover:scale-[1.02] hover:bg-gray-900/60 group`}>
+                      <div className={`absolute inset-0 bg-gradient-to-br ${dev.gradient} opacity-0 group-hover:opacity-100 transition-opacity rounded-[2rem] pointer-events-none`} />
+                      <div className="relative z-10 flex flex-col items-center text-center">
+                        <h2 className="text-3xl font-bold text-white mb-2">{dev.name}</h2>
+                        <p className={`text-xs uppercase tracking-widest font-bold mb-8 ${dev.iconColor}`}>{dev.title}</p>
+                        <div className="flex gap-4 mb-4">
+                          {dev.ig && <a href={dev.ig} target="_blank" rel="noopener noreferrer" className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/30 rounded-full transition-all group-hover:-translate-y-1"><Instagram className="w-5 h-5 text-gray-300 hover:text-white" /></a>}
+                          {dev.linkedin && <a href={dev.linkedin} target="_blank" rel="noopener noreferrer" className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/30 rounded-full transition-all group-hover:-translate-y-1 delay-75"><Linkedin className="w-5 h-5 text-gray-300 hover:text-white" /></a>}
+                          {dev.github && <a href={dev.github} target="_blank" rel="noopener noreferrer" className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/30 rounded-full transition-all group-hover:-translate-y-1 delay-150"><Github className="w-5 h-5 text-gray-300 hover:text-white" /></a>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 px-4 mb-10 text-left">
+                  {[
+                    { name: "Ashutosh Sahu", title: "Growth & Strategy", ig: "https://www.instagram.com/_ashutosh.__.sahu_?igsh=dXIxdHhhcGo5N2N4", linkedin: "https://www.linkedin.com/in/ashutoshsahu-/", gradient: "from-yellow-500/20 to-orange-600/20", border: "border-yellow-500/30 hover:border-yellow-500/60", iconColor: "text-yellow-500" },
+                    { name: "Tushar Shendey", title: "Operations & Community", ig: "https://www.instagram.com/tusharr.30_?igsh=YWVqMHo2NWt2bTBh", linkedin: "https://www.linkedin.com/in/tushar-shendey-099a7334a/", gradient: "from-green-500/20 to-teal-500/20", border: "border-green-500/30 hover:border-green-500/60", iconColor: "text-green-400" },
+                    { name: "Shreyy Sharma", title: "Growth & Marketing", ig: "https://www.instagram.com/hazelxcappuccino?igsh=MTg4M3JrbGM1N3U3Nw==", linkedin: "", gradient: "from-pink-500/20 to-rose-600/20", border: "border-pink-500/30 hover:border-pink-500/60", iconColor: "text-pink-500" }
+                  ].map((member, i) => (
+                    <div key={i + 2} className={`relative bg-gray-900/40 backdrop-blur-xl border ${member.border} rounded-[2rem] p-8 transition-all hover:scale-[1.02] hover:bg-gray-900/60 group`}>
+                      <div className={`absolute inset-0 bg-gradient-to-br ${member.gradient} opacity-0 group-hover:opacity-100 transition-opacity rounded-[2rem] pointer-events-none`} />
+                      <div className="relative z-10 flex flex-col items-center text-center">
+                        <h2 className="text-2xl font-bold text-white mb-2">{member.name}</h2>
+                        <p className={`text-xs uppercase tracking-widest font-bold mb-8 ${member.iconColor}`}>{member.title}</p>
+                        <div className="flex gap-4 mb-4">
+                          {member.ig && <a href={member.ig} target="_blank" rel="noopener noreferrer" className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/30 rounded-full transition-all group-hover:-translate-y-1"><Instagram className="w-4 h-4 text-gray-300 hover:text-white" /></a>}
+                          {member.linkedin && <a href={member.linkedin} target="_blank" rel="noopener noreferrer" className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/30 rounded-full transition-all group-hover:-translate-y-1 delay-75"><Linkedin className="w-4 h-4 text-gray-300 hover:text-white" /></a>}
+                          {(!member.ig && !member.linkedin) && <div className="h-[42px] flex items-center"><span className="text-xs text-gray-500 italic uppercase">On the grind</span></div>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* 9. FOOTER */}
             <footer className="border-t border-pink-900/30 pt-16 pb-8 px-6 text-center bg-[#05000a] relative z-10 overflow-hidden">
               <video 
                 autoPlay 
