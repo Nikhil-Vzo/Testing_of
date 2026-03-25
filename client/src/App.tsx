@@ -24,12 +24,7 @@ const MusicDate = lazy(() => import('./pages/virtual-dates/MusicDate').then(m =>
 const Profile = lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })));
 const Developers = lazy(() => import('./pages/Developers').then(m => ({ default: m.Developers })));
 const Confessions = lazy(() => import('./pages/Confessions').then(m => ({ default: m.Confessions })));
-const AmisLanding = lazy(() => import('./pages/amis-park/AmisLanding').then(m => ({ default: m.AmisLanding })));
-const AmisEvents = lazy(() => import('./pages/amis-park/AmisEvents').then(m => ({ default: m.AmisEvents })));
-const AmisEventDetail = lazy(() => import('./pages/amis-park/AmisEventDetail').then(m => ({ default: m.AmisEventDetail })));
-const AmisHeatmap = lazy(() => import('./pages/amis-park/AmisHeatmap').then(m => ({ default: m.AmisHeatmap })));
-const AmisPolls = lazy(() => import('./pages/amis-park/AmisPolls').then(m => ({ default: m.AmisPolls })));
-const AmisFeed = lazy(() => import('./pages/amis-park/AmisFeed').then(m => ({ default: m.AmisFeed })));
+
 
 // Static pages lazy loaded individually
 const Blog = lazy(() => import('./pages/Blog').then(m => ({ default: m.Blog })));
@@ -156,12 +151,7 @@ export default function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/:id" element={<Profile />} />
             <Route path="/confessions" element={<Confessions />} />
-            <Route path="/amis-park" element={<AmisLanding />} />
-            <Route path="/amis-park/events" element={<AmisEvents />} />
-            <Route path="/amis-park/event/:id" element={<AmisEventDetail />} />
-            <Route path="/amis-park/heatmap" element={<AmisHeatmap />} />
-            <Route path="/amis-park/polls" element={<AmisPolls />} />
-            <Route path="/amis-park/feed" element={<AmisFeed />} />
+
           </Route>
 
           {/* Catch all */}

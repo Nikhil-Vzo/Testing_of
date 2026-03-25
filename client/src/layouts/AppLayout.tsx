@@ -5,14 +5,14 @@ import { useNotifications } from '../context/NotificationContext';
 import { Ghost, Search, MessageCircle, Bell, CalendarHeart, User, MessageSquarePlus, Sparkles } from 'lucide-react';
 import { StarField } from '../components/StarField';
 import { supabase } from '../lib/supabase';
-import { AmisEntryModal } from '../components/AmisEntryModal';
+
 
 export const AppLayout: React.FC = () => {
   const { currentUser } = useAuth();
   const { unreadCount } = useNotifications();
   const location = useLocation();
   const navigate = useNavigate();
-  const [showFestPopup, setShowFestPopup] = useState(true);
+
 
   // State for Badges
   // const [unreadCount, setUnreadCount] = useState(0); // Moved to Context
@@ -243,8 +243,7 @@ export const AppLayout: React.FC = () => {
         )}
       </main>
 
-      {/* Fest Entry Popup - shows on every visit/refresh */}
-      <AmisEntryModal isOpen={showFestPopup} onClose={() => setShowFestPopup(false)} />
+
     </div>
   );
 };
