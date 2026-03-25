@@ -401,7 +401,7 @@ export const Blog: React.FC = () => {
                 <h2 className="text-xs uppercase tracking-[0.5em] text-neon font-bold mb-8 flex items-center gap-3">
                   The Turning Point <Zap className="w-4 h-4 text-yellow-500" />
                 </h2>
-                <p className="text-[clamp(2rem,4vw,3.5rem)] font-light" style={fontPlayfair}>Then Austosh & Shreyy stepped in.</p>
+                <p className="text-[clamp(2rem,4vw,3.5rem)] font-light" style={fontPlayfair}>Then Ashutosh & Shreyy stepped in.</p>
               </div>
 
               <div className="grid md:grid-cols-2 gap-6 lg:gap-10 mb-16">
