@@ -43,11 +43,16 @@ export const Landing: React.FC = () => {
 
   // Text reveal animation
   const [textRevealed, setTextRevealed] = useState(false);
+  
+  // Page loader
+  const [pageLoaded, setPageLoaded] = useState(false);
 
   useEffect(() => {
     // Trigger text reveal after mount
     const timer = setTimeout(() => setTextRevealed(true), 100);
-    return () => clearTimeout(timer);
+    // Dismiss loader after a brief branded reveal
+    const loaderTimer = setTimeout(() => setPageLoaded(true), 1600);
+    return () => { clearTimeout(timer); clearTimeout(loaderTimer); };
   }, []);
 
   useEffect(() => {
@@ -97,6 +102,30 @@ export const Landing: React.FC = () => {
 
       {/* Heart Cursor */}
       <HeartCursor />
+
+      {/* Branded Loader */}
+      <div 
+        className={`fixed inset-0 z-[9999] bg-[#05000a] flex flex-col items-center justify-center transition-all duration-700 ${
+          pageLoaded ? 'opacity-0 pointer-events-none scale-110' : 'opacity-100'
+        }`}
+      >
+        <div className="flex items-center gap-2 mb-6">
+          <Ghost className="w-8 h-8 text-neon animate-pulse" />
+          <span className="font-black tracking-tighter text-3xl text-white">
+            <span>OTHR</span><span className="text-neon">HALFF</span>
+          </span>
+        </div>
+        <div className="w-48 h-[2px] bg-gray-800 rounded-full overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-neon to-purple-500 rounded-full animate-[loading_1.4s_ease-in-out_infinite]" />
+        </div>
+        <style>{`
+          @keyframes loading {
+            0% { width: 0%; transform: translateX(0); }
+            50% { width: 100%; transform: translateX(0); }
+            100% { width: 100%; transform: translateX(100%); }
+          }
+        `}</style>
+      </div>
 
       {/* Subtle noise overlay */}
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay pointer-events-none z-[1]"></div>
@@ -200,17 +229,19 @@ export const Landing: React.FC = () => {
           {/* Main Video Reveal */}
           <ScrollReveal>
             <div className="max-w-[100rem] mx-auto px-4 sm:px-6 w-full relative">
-              <div className="relative w-full aspect-[4/5] sm:aspect-video lg:aspect-[2.5/1] rounded-3xl md:rounded-[3rem] overflow-hidden group">
-                {/* Glowing backdrop to give the video volume since we are blending the black away */}
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-900/20 via-neon/10 to-blue-900/20 blur-3xl rounded-full scale-150 group-hover:opacity-80 opacity-40 transition-opacity duration-1000" />
+              <div 
+                className="relative w-full aspect-[4/5] sm:aspect-video lg:aspect-[2.5/1] group"
+              >
                 
                 <video 
                   autoPlay 
                   loop 
                   muted 
                   playsInline 
+                  preload="none"
                   src="/blog/go-beyond-dating.mp4" 
-                  className="absolute inset-0 w-full h-full object-cover sm:object-contain mix-blend-screen opacity-90 group-hover:opacity-100 group-hover:scale-[1.02] transition-all duration-[1.5s] ease-[cubic-bezier(0.25,1,0.5,1)]" 
+                  style={{ borderRadius: '40px' }}
+                  className="absolute inset-0 w-full h-full object-cover mix-blend-screen opacity-90 group-hover:opacity-100 group-hover:scale-[1.02] transition-all duration-[1.5s] ease-[cubic-bezier(0.25,1,0.5,1)]" 
                 />
               </div>
             </div>
@@ -254,7 +285,7 @@ export const Landing: React.FC = () => {
           {/* Creative Layout 2: Massive Background Typography (Ghost Mode) */}
           <div className="relative w-full py-20 md:py-32 overflow-hidden flex items-center justify-center min-h-[500px] isolate">
             {/* Gigantic BG Text */}
-            <h2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[clamp(8rem,25vw,30rem)] font-black text-white/[0.03] tracking-tighter leading-none select-none pointer-events-none whitespace-nowrap z-0">
+            <h2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[clamp(5rem,20vw,30rem)] font-black text-white/[0.06] tracking-tighter leading-none select-none pointer-events-none whitespace-nowrap z-0">
               GHOST
             </h2>
             
@@ -299,7 +330,7 @@ export const Landing: React.FC = () => {
           </div>
 
           {/* Creative Layout 4: Double Opposing Infinite Marquees (True Edge-to-Edge) */}
-          <div className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] pb-32 overflow-hidden flex flex-col items-center">
+          <div className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] pb-12 overflow-hidden flex flex-col items-center">
             <style>{`
               @keyframes marquee-left {
                 0% { transform: translateX(0%); }
