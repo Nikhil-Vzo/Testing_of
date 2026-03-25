@@ -760,35 +760,43 @@ export const MusicDate = () => {
 
     if (mode === 'landing') {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[100dvh] w-full bg-black relative overflow-hidden pt-24 pb-32 md:py-8">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] md:w-[800px] h-[600px] md:h-[800px] bg-violet-600/20 rounded-full blur-[120px] pointer-events-none -z-0 animate-pulse" style={{ animationDuration: '4s' }} />
+            <div className="flex flex-col items-center justify-start md:justify-center min-h-[100dvh] w-full bg-[#03000a] relative overflow-y-auto overflow-x-hidden pt-20 pb-16 md:py-8">
+                {/* Background Ambience - Optimized */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] md:w-[800px] h-[600px] md:h-[800px] rounded-full bg-[radial-gradient(circle_at_center,_rgba(124,58,237,0.15)_0%,_transparent_70%)] pointer-events-none -z-0 will-change-transform animate-blob" />
+                <div className="absolute top-[20%] right-[-10%] w-[40vw] h-[40vw] rounded-full bg-[radial-gradient(circle_at_center,_rgba(79,70,229,0.15)_0%,_transparent_70%)] pointer-events-none -z-0 will-change-transform animate-blob animation-delay-2000" />
 
-                <button onClick={() => navigate('/virtual-date')} className="absolute top-20 md:top-6 left-4 md:left-6 p-2 md:p-3 bg-gray-900/50 hover:bg-gray-800 rounded-full transition-colors z-20 border border-gray-800 shadow-xl">
-                    <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 text-gray-400 hover:text-white" />
+                <button onClick={() => navigate('/virtual-date')} className="absolute top-4 md:top-6 left-4 md:left-6 p-2 md:p-3 bg-white/5 hover:bg-white/10 rounded-full transition-colors z-20 border border-white/10 backdrop-blur-md">
+                    <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 text-white/70 hover:text-white" />
                 </button>
 
                 <div className="text-center mb-10 md:mb-16 relative z-10 px-4">
-                    <h2 className="text-4xl md:text-7xl font-black mb-4 text-white tracking-tighter">
-                        SOUL <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-600">SYNC</span>
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-white/70 text-sm font-medium mb-6 backdrop-blur-md">
+                        <Music className="w-4 h-4 text-violet-400" />
+                        <span className="tracking-wide uppercase text-xs">Soul Sync</span>
+                    </div>
+                    <h2 className="text-4xl md:text-7xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-200 to-gray-500 tracking-tighter">
+                        SOUL <span className="bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-indigo-600">SYNC</span>
                     </h2>
-                    <p className="text-gray-400 max-w-md mx-auto text-sm md:text-base">Listen to your favorite tracks together in perfect harmony.</p>
+                    <p className="text-gray-400 max-w-md mx-auto text-sm md:text-base font-light">Create a private room and sing like karaoke with live synced lyrics.</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 w-full px-4 max-w-2xl relative z-10">
-                    <button onClick={() => setMode('create_room')} className="group flex flex-col items-center p-8 md:p-10 bg-gray-900/40 backdrop-blur-md hover:bg-gray-800/80 border-2 border-gray-800 hover:border-violet-500 rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-violet-500/20">
-                        <div className="p-5 md:p-6 rounded-full bg-violet-500/10 text-violet-500 mb-4 md:mb-6 group-hover:scale-110 transition-transform shadow-lg">
+                    <button onClick={() => setMode('create_room')} className="group relative flex flex-col items-center p-8 md:p-10 bg-white/5 backdrop-blur-xl border border-white/10 hover:border-violet-500/50 rounded-[2rem] transition-all duration-300 overflow-hidden">
+                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-2xl -z-10 bg-violet-500/20" />
+                        <div className="p-5 md:p-6 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 text-violet-400 mb-4 md:mb-6 group-hover:scale-110 transition-transform shadow-[0_0_30px_rgba(139,92,246,0.2)] border border-violet-500/20">
                             <PlusCircle className="w-10 h-10 md:w-12 md:h-12" />
                         </div>
-                        <h3 className="text-xl md:text-2xl font-bold text-white mb-2">Create Jam</h3>
-                        <p className="text-gray-400 text-sm">Host a new music session</p>
+                        <h3 className="text-xl md:text-2xl font-bold text-white mb-2 tracking-tight">Create Jam</h3>
+                        <p className="text-white/50 text-sm font-light">Host a new music session</p>
                     </button>
 
-                    <button onClick={() => setMode('join_room')} className="group flex flex-col items-center p-8 md:p-10 bg-gray-900/40 backdrop-blur-md hover:bg-gray-800/80 border-2 border-gray-800 hover:border-indigo-500 rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-500/20">
-                        <div className="p-5 md:p-6 rounded-full bg-indigo-500/10 text-indigo-500 mb-4 md:mb-6 group-hover:scale-110 transition-transform shadow-lg">
+                    <button onClick={() => setMode('join_room')} className="group relative flex flex-col items-center p-8 md:p-10 bg-white/5 backdrop-blur-xl border border-white/10 hover:border-indigo-500/50 rounded-[2rem] transition-all duration-300 overflow-hidden">
+                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-2xl -z-10 bg-indigo-500/20" />
+                        <div className="p-5 md:p-6 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-blue-500/20 text-indigo-400 mb-4 md:mb-6 group-hover:scale-110 transition-transform shadow-[0_0_30px_rgba(99,102,241,0.2)] border border-indigo-500/20">
                             <LogIn className="w-10 h-10 md:w-12 md:h-12" />
                         </div>
-                        <h3 className="text-xl md:text-2xl font-bold text-white mb-2">Join Jam</h3>
-                        <p className="text-gray-400 text-sm">Enter a room code</p>
+                        <h3 className="text-xl md:text-2xl font-bold text-white mb-2 tracking-tight">Join Jam</h3>
+                        <p className="text-white/50 text-sm font-light">Enter a room code</p>
                     </button>
                 </div>
             </div>
@@ -798,29 +806,52 @@ export const MusicDate = () => {
     if (mode === 'create_room' || mode === 'join_room') {
         const isCreate = mode === 'create_room';
         return (
-            <div className="flex flex-col items-center justify-center min-h-[100dvh] w-full bg-black relative px-4 pt-24 pb-32 md:py-8">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none" />
-                <button onClick={() => setMode('landing')} className="absolute top-20 md:top-6 left-4 md:left-6 p-2 md:p-3 bg-gray-900/50 hover:bg-gray-800 rounded-full z-20 border border-gray-800 shadow-xl">
-                    <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 text-gray-400 hover:text-white" />
+            <div className="flex flex-col items-center justify-center min-h-[100dvh] w-full bg-[#03000a] relative px-4 pt-24 pb-32 md:py-8 overflow-hidden">
+                <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[140px] pointer-events-none animate-blob ${isCreate ? 'bg-violet-600/20' : 'bg-indigo-600/20'}`} />
+                <button onClick={() => setMode('landing')} className="absolute top-4 md:top-6 left-4 md:left-6 p-2 md:p-3 bg-white/5 hover:bg-white/10 rounded-full transition-colors z-20 group border border-white/10 backdrop-blur-md">
+                    <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 text-white/70 group-hover:text-white" />
                 </button>
 
-                <div className="bg-gray-900/60 backdrop-blur-xl border border-gray-800 rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl relative z-10">
-                    <div className="text-center mb-6 md:mb-8">
-                        <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">{isCreate ? 'Create Jam Room' : 'Join Jam Room'}</h2>
-                        <p className="text-sm text-gray-400">{isCreate ? 'Give your room a fun name' : 'Enter the host\'s code'}</p>
+                <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2rem] p-8 md:p-10 w-full max-w-md shadow-2xl relative z-10 transition-all duration-500">
+                    <div className="text-center mb-8">
+                        <div className={`inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-6 shadow-[0_0_30px_rgba(139,92,246,0.2)] border ${isCreate ? 'bg-gradient-to-br from-violet-500/20 to-purple-500/20 text-violet-400 border-violet-500/20' : 'bg-gradient-to-br from-indigo-500/20 to-blue-500/20 text-indigo-400 border-indigo-500/20'}`}>
+                            {isCreate ? <PlusCircle className="w-10 h-10" /> : <LogIn className="w-10 h-10" />}
+                        </div>
+                        <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">{isCreate ? 'Create Your Jam' : 'Join a Jam'}</h2>
+                        <p className="text-sm text-white/50 font-light">{isCreate ? 'Give your room a fun name' : "Enter the host's code"}</p>
                     </div>
-                    {error && <div className="mb-4 text-red-500 text-sm text-center bg-red-500/10 py-2 rounded-xl">{error}</div>}
-                    <div className="space-y-4">
+                    {error && <div className="mb-6 text-red-400 text-sm text-center bg-red-500/10 border border-red-500/20 py-3 rounded-xl backdrop-blur-md">{error}</div>}
+                    <div className="space-y-6">
                         {isCreate ? (
-                            <input type="text" value={roomName} onChange={e => setRoomName(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleCreateRoom()} placeholder="e.g., Midnight Vibes 🌙" maxLength={30} className="w-full bg-black/50 border-2 border-gray-700 rounded-xl px-4 py-3 md:py-4 text-white focus:border-violet-500 focus:outline-none transition-colors" autoFocus />
+                            <div>
+                                <label className="block text-sm font-medium text-white/60 mb-2">Room Name</label>
+                                <input type="text" value={roomName} onChange={e => setRoomName(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleCreateRoom()} placeholder="e.g., Midnight Vibes 🌙" maxLength={30} disabled={isConnecting} className="w-full bg-[#0a001a]/50 border border-white/10 rounded-xl px-5 py-4 text-white placeholder-white/30 focus:border-violet-500/50 focus:outline-none transition-all disabled:opacity-50 text-base shadow-inner backdrop-blur-md" autoFocus />
+                                <div className="text-xs text-white/30 mt-2 text-right">{roomName.length}/30</div>
+                            </div>
                         ) : (
-                            <input type="text" value={joinCode} onChange={e => {
-                                const val = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
-                                setJoinCode(val.length === 3 && !val.includes('-') ? val + '-' : val.slice(0, 7));
-                            }} onKeyPress={e => e.key === 'Enter' && handleJoinRoom()} placeholder="ABC-123" className="w-full bg-black/50 border-2 border-gray-700 rounded-xl px-4 py-3 md:py-4 text-center text-xl md:text-2xl tracking-widest text-white focus:border-indigo-500 focus:outline-none transition-colors font-mono" autoFocus />
+                            <div>
+                                <label className="block text-sm font-medium text-white/60 mb-2">Room Code</label>
+                                <input type="text" value={joinCode} onChange={e => {
+                                    const val = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+                                    setJoinCode(val.length === 3 && !val.includes('-') ? val + '-' : val.slice(0, 7));
+                                }} onKeyPress={e => e.key === 'Enter' && handleJoinRoom()} placeholder="ABC-123" disabled={isConnecting} className="w-full bg-[#0a001a]/50 border border-white/10 rounded-xl px-5 py-4 text-center text-xl md:text-2xl tracking-widest text-white placeholder-white/20 focus:border-indigo-500/50 focus:outline-none transition-all font-mono disabled:opacity-50 shadow-inner backdrop-blur-md" autoFocus />
+                                <div className="text-xs text-white/30 mt-3 text-center tracking-widest">FORMAT: ABC-123</div>
+                            </div>
                         )}
-                        <button onClick={isCreate ? handleCreateRoom : handleJoinRoom} disabled={isConnecting} className={`w-full bg-gradient-to-r text-white font-bold py-3 md:py-4 rounded-xl shadow-lg transition-all hover:scale-[1.02] flex items-center justify-center gap-2 ${isCreate ? 'from-violet-500 to-indigo-500 shadow-violet-500/20' : 'from-indigo-500 to-purple-500 shadow-indigo-500/20'}`}>
-                            {isConnecting ? <Loader className="w-5 h-5 animate-spin" /> : (isCreate ? 'Start Jam' : 'Join Jam')}
+                        <button onClick={isCreate ? handleCreateRoom : handleJoinRoom} disabled={isConnecting || (isCreate ? !roomName.trim() : joinCode.replace('-', '').length !== 6)} className={`w-full bg-gradient-to-r text-white font-bold py-4 rounded-xl shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 ${isCreate ? 'from-violet-500 to-purple-500 shadow-[0_0_20px_rgba(139,92,246,0.3)]' : 'from-indigo-500 to-blue-500 shadow-[0_0_20px_rgba(99,102,241,0.3)]'}`}>
+                            {isConnecting ? (
+                                <>
+                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    {isCreate ? 'Creating...' : 'Joining...'}
+                                </>
+                            ) : (isCreate ? 'Start Jam' : 'Join Jam')}
+                        </button>
+                        <button
+                            onClick={() => setMode('landing')}
+                            disabled={isConnecting}
+                            className="w-full text-white/40 hover:text-white py-2 text-sm transition-colors disabled:opacity-50 font-medium"
+                        >
+                            Cancel
                         </button>
                     </div>
                 </div>

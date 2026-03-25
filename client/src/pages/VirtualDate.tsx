@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Film, Music, Gamepad2, Layers, Stars, Zap, Sparkles, Heart, ArrowRight, Lock } from 'lucide-react';
+import { Film, Music, Gamepad2, Layers, Stars, Zap, Heart, ArrowRight, Lock, Sparkles, Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const VirtualDate: React.FC = () => {
@@ -10,173 +10,194 @@ export const VirtualDate: React.FC = () => {
     {
       id: 'cinema',
       title: 'Movie Night',
-      desc: 'Watch YouTube videos or short films together in a synchronized private room.',
+      desc: 'Watch YouTube videos or short films together in a synchronized private room. Feel the magic of cinema from anywhere.',
       icon: Film,
-      gradient: 'from-rose-500 via-pink-500 to-purple-500',
-      bgGlow: 'rgba(236, 72, 153, 0.3)',
+      gradient: 'from-[#ff007f] to-[#7928ca]',
+      borderColor: 'group-hover:border-[#ff007f]/50',
+      glow: 'rgba(255, 0, 127, 0.4)',
       available: true,
+      bentoClass: 'md:col-span-2 lg:col-span-2 md:row-span-1',
+      image: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=1200&auto=format&fit=crop',
     },
     {
       id: 'music',
-      title: 'Soul Sync (Music Jam)',
-      desc: 'Listen to music in real-time with a shared visualizer and queue system.',
+      title: 'Soul Sync',
+      desc: 'Create a private room and sing like karaoke with live synced lyrics.',
       icon: Music,
-      gradient: 'from-violet-500 via-purple-500 to-indigo-500',
-      bgGlow: 'rgba(139, 92, 246, 0.3)',
+      gradient: 'from-[#8a2be2] to-[#4b0082]',
+      borderColor: 'group-hover:border-[#8a2be2]/50',
+      glow: 'rgba(138, 43, 226, 0.4)',
       available: true,
+      bentoClass: 'md:col-span-2 lg:col-span-2 md:row-span-1',
+      image: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=800&auto=format&fit=crop',
     },
     {
       id: 'games',
       title: 'Neon Arcade',
-      desc: 'Compete in mini-games like Truth or Dare, Pictionary, and Rapid Fire.',
+      desc: 'Compete in fast-paced mini-games.',
       icon: Gamepad2,
-      gradient: 'from-emerald-400 via-green-500 to-teal-500',
-      bgGlow: 'rgba(34, 197, 94, 0.3)',
+      gradient: 'from-[#00f2fe] to-[#4facfe]',
+      borderColor: 'group-hover:border-[#00f2fe]/50',
+      glow: 'rgba(0, 242, 254, 0.4)',
       available: false,
+      bentoClass: 'md:col-span-1 lg:col-span-1 md:row-span-1',
     },
     {
       id: 'cards',
       title: 'The Deck',
-      desc: 'Flip through deep conversation cards designed to spark meaningful connection.',
+      desc: 'Spark meaningful deep conversations.',
       icon: Layers,
-      gradient: 'from-pink-500 via-rose-500 to-red-500',
-      bgGlow: 'rgba(244, 63, 94, 0.3)',
+      gradient: 'from-[#ff0844] to-[#ffb199]',
+      borderColor: 'group-hover:border-[#ff0844]/50',
+      glow: 'rgba(255, 8, 68, 0.4)',
       available: false,
+      bentoClass: 'md:col-span-1 lg:col-span-1 md:row-span-1',
     },
-    {
-      id: 'stars',
-      title: 'Stargazing',
-      desc: 'Relax under a digital sky. Connect stars and just talk in a lo-fi ambient room.',
-      icon: Stars,
-      gradient: 'from-amber-400 via-yellow-400 to-orange-400',
-      bgGlow: 'rgba(251, 191, 36, 0.3)',
-      available: false,
-    },
+
   ];
 
-  const handleDateClick = (id: string, title: string, available: boolean) => {
+  const handleDateClick = (id: string, available: boolean) => {
     if (available) {
-      if (id === 'cinema') {
-        navigate('/virtual-date/cinema');
-      } else if (id === 'music') {
-        navigate('/virtual-date/music');
-      }
+      navigate(`/virtual-date/${id}`);
     }
   };
 
   return (
-    <div className="h-full bg-black text-white overflow-y-auto overflow-x-hidden pb-24 md:pb-8">
-      {/* Ambient background */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-gradient-to-br from-neon/20 to-purple-600/10 blur-[120px] animate-pulse" style={{ animationDuration: '8s' }} />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-gradient-to-tl from-blue-600/15 to-pink-600/10 blur-[100px] animate-pulse" style={{ animationDuration: '10s' }} />
+    <div className="h-full bg-[#03000a] text-white overflow-y-auto overflow-x-hidden pb-24 md:pb-12 virtual-date-container">
+      {/* Ambient background orbs - Optimized for performance */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-[radial-gradient(circle_at_center,_rgba(79,70,229,0.15)_0%,_transparent_70%)] will-change-transform animate-blob" />
+        <div className="absolute top-[20%] right-[-10%] w-[40vw] h-[40vw] rounded-full bg-[radial-gradient(circle_at_center,_rgba(219,39,119,0.15)_0%,_transparent_70%)] will-change-transform animate-blob animation-delay-2000" />
+        <div className="absolute bottom-[-20%] left-[20%] w-[60vw] h-[60vw] rounded-full bg-[radial-gradient(circle_at_center,_rgba(91,33,182,0.15)_0%,_transparent_70%)] will-change-transform animate-blob animation-delay-4000" />
       </div>
 
-      {/* Content */}
-      <div className="relative z-10 px-4 md:px-8 py-8 md:py-12 max-w-6xl mx-auto">
-
+      <div className="relative z-10 px-4 md:px-8 py-12 md:py-20 max-w-7xl mx-auto">
+        
         {/* Header Section */}
-        <div className="text-center mb-12 md:mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-neon/10 border border-neon/20 rounded-full text-neon text-sm font-medium mb-6">
-            <Sparkles className="w-4 h-4" />
-            <span>Experience Connection</span>
-          </div>
+        <div className="flex flex-col items-center md:items-start mb-16 text-center md:text-left">
 
-          <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-4 bg-gradient-to-r from-white via-gray-100 to-gray-400 bg-clip-text text-transparent">
+          
+          <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6 text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-200 to-gray-500">
             Virtual Dates
           </h1>
-
-          <p className="text-gray-400 text-lg max-w-md mx-auto leading-relaxed">
-            Choose an experience and create unforgettable moments together, no matter the distance.
+          
+          <p className="text-gray-400 text-lg md:text-xl max-w-2xl leading-relaxed font-light">
+            Transcend distance. Share synchronized cinema, music, and interactive spaces together.
           </p>
         </div>
 
-        {/* Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+        {/* Bento Box Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 auto-rows-[minmax(240px,auto)]">
           {dates.map((date, index) => {
             const Icon = date.icon;
             const isHovered = hoveredCard === date.id;
+            const isCinema = date.id === 'cinema';
+            const isHero = date.id === 'cinema' || date.id === 'music';
 
             return (
               <div
                 key={date.id}
-                className={`group relative rounded-3xl overflow-hidden transition-all duration-500 ${date.available
-                  ? 'cursor-pointer hover:scale-[1.02]'
-                  : 'opacity-60'
-                  }`}
+                className={`group relative rounded-[2rem] overflow-hidden transition-all duration-300 ${date.available ? 'cursor-pointer hover:scale-[1.01]' : 'opacity-70'} ${date.bentoClass}`}
                 onMouseEnter={() => setHoveredCard(date.id)}
                 onMouseLeave={() => setHoveredCard(null)}
-                onClick={() => handleDateClick(date.id, date.title, date.available)}
-                style={{
-                  animationDelay: `${index * 100}ms`,
-                }}
+                onClick={() => handleDateClick(date.id, date.available)}
+                style={{ animationDelay: `${index * 100}ms` }}
               >
+                {/* Background Image/Overlay for larger cards */}
+                {date.image && (
+                  <div className="absolute inset-0 z-0 overflow-hidden">
+                    <img 
+                      src={date.image} 
+                      alt={date.title} 
+                      className="w-full h-full object-cover opacity-20 group-hover:opacity-30 group-hover:scale-105 transition-all duration-500 ease-out"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#050012] via-[#050012]/80 to-transparent" />
+                  </div>
+                )}
+
                 {/* Card glow effect */}
                 <div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl blur-xl -z-10"
-                  style={{ background: date.bgGlow, transform: 'scale(1.1)' }}
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-2xl -z-10"
+                  style={{ background: date.glow }}
                 />
 
-                {/* Card background */}
-                <div className="relative bg-gray-900/80 backdrop-blur-xl border border-gray-800 group-hover:border-gray-700 rounded-3xl p-6 md:p-8 h-full transition-all duration-300">
-
-                  {/* Icon with gradient background */}
-                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${date.gradient} flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                    <Icon className="w-7 h-7 text-white" />
+                {/* Glass Background */}
+                <div className={`relative z-10 w-full h-full bg-white/5 backdrop-blur-xl border border-white/10 group-hover:bg-white/10 ${date.borderColor} p-8 flex flex-col transition-all duration-300`}>
+                  
+                  {/* Top Header: Icon & Title */}
+                  <div className="flex items-start justify-between mb-auto">
+                    <div className="flex flex-col gap-4">
+                      <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${date.gradient} p-[1px] shadow-2xl group-hover:shadow-[0_0_30px_rgba(255,255,255,0.3)] transition-all duration-300`}>
+                        <div className="w-full h-full bg-[#050012]/80 backdrop-blur-md rounded-2xl flex items-center justify-center">
+                          <Icon className="w-6 h-6 text-white" />
+                        </div>
+                      </div>
+                      <h2 className={`font-bold tracking-tight text-white ${isHero ? 'text-4xl' : 'text-2xl'}`}>
+                        {date.title}
+                      </h2>
+                    </div>
+                    {date.available ? (
+                      <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 delay-100">
+                        <ArrowRight className="w-5 h-5 text-white" />
+                      </div>
+                    ) : (
+                      <div className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 flex items-center gap-1.5 text-xs font-medium text-white/50 backdrop-blur-md">
+                        <Lock className="w-3 h-3" />
+                        SOON
+                      </div>
+                    )}
                   </div>
 
-                  {/* Title */}
-                  <h2 className="text-xl md:text-2xl font-bold mb-3 text-white group-hover:text-white transition-colors">
-                    {date.title}
-                  </h2>
-
-                  {/* Description */}
-                  <p className="text-gray-400 text-sm leading-relaxed mb-6">
-                    {date.desc}
-                  </p>
-
-                  {/* Action Button */}
-                  {date.available ? (
-                    <button className={`w-full py-3 px-6 rounded-xl bg-gradient-to-r ${date.gradient} text-white font-semibold text-sm flex items-center justify-center gap-2 group-hover:shadow-lg transition-all duration-300`}>
-                      <Heart className="w-4 h-4" />
-                      Start Date
-                      <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
-                    </button>
-                  ) : (
-                    <div className="w-full py-3 px-6 rounded-xl bg-gray-800 border border-gray-700 text-gray-500 font-medium text-sm flex items-center justify-center gap-2">
-                      <Lock className="w-4 h-4" />
-                      Coming Soon
-                    </div>
-                  )}
-
-                  {/* Decorative corner gradient */}
-                  <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl ${date.gradient} opacity-5 group-hover:opacity-10 rounded-bl-full transition-opacity duration-500`} />
+                  {/* Bottom Content: Desc & CTA */}
+                  <div className="mt-6">
+                    <p className={`text-white/60 font-light leading-relaxed mb-6 group-hover:text-white/80 transition-colors ${isHero ? 'text-lg max-w-md' : 'text-sm'}`}>
+                      {date.desc}
+                    </p>
+                    
+                    {date.available && date.id === 'cinema' && (
+                      <button className="flex w-max items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-pink-500 to-violet-500 text-white font-semibold text-sm hover:shadow-[0_0_20px_rgba(236,72,153,0.4)] transition-all duration-300">
+                        <Play className="w-4 h-4 fill-white" />
+                        Enter Theatre
+                      </button>
+                    )}
+                    {date.available && date.id === 'music' && (
+                      <button className="flex w-max items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-semibold text-sm hover:shadow-[0_0_20px_rgba(139,92,246,0.4)] transition-all duration-300">
+                        <Music className="w-4 h-4 text-white" />
+                        Enter Studio
+                      </button>
+                    )}
+                    {date.available && !isHero && (
+                      <button className="flex w-max items-center gap-2 text-sm font-semibold text-white group-hover:text-violet-300 transition-colors">
+                        Launch Experience <ArrowRight className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Subtle decorative gradient slash */}
+                  <div className={`absolute -bottom-24 -right-24 w-48 h-48 bg-gradient-to-br ${date.gradient} rounded-full blur-[60px] opacity-0 group-hover:opacity-30 transition-opacity duration-300`} />
                 </div>
               </div>
             );
           })}
 
-          {/* More Coming Card */}
-          <div className="group relative rounded-3xl overflow-hidden opacity-50">
-            <div className="relative bg-gray-900/60 backdrop-blur-xl border border-gray-800 border-dashed rounded-3xl p-6 md:p-8 h-full flex flex-col items-center justify-center text-center">
-              <div className="w-14 h-14 rounded-2xl bg-gray-800 flex items-center justify-center mb-5">
-                <Zap className="w-7 h-7 text-gray-500" />
-              </div>
-              <h2 className="text-xl font-bold mb-3 text-gray-400">More Experiences</h2>
-              <p className="text-gray-500 text-sm leading-relaxed">
-                Our love engineers are building more magical experiences for you.
-              </p>
+          {/* More Coming Bento Box */}
+          <div className="group relative rounded-[2rem] overflow-hidden md:col-span-2 lg:col-span-2 md:row-span-1 border border-white/5 bg-gradient-to-br from-white/5 to-transparent flex items-center justify-center">
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom,white,transparent)]" />
+            <div className="relative z-10 text-center p-8 flex flex-col items-center">
+               <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-4">
+                 <Zap className="w-5 h-5 text-white/40" />
+               </div>
+               <h3 className="text-xl font-bold text-white/60 tracking-tight mb-2">More Dimensions Expanding</h3>
+               <p className="text-white/40 text-sm">Our engineers are synthesizing new experiences.</p>
             </div>
           </div>
+
         </div>
 
-        {/* Bottom decorative text */}
-        <div className="text-center mt-16 md:mt-20">
-          <p className="text-gray-600 text-sm flex items-center justify-center gap-2">
-            <Heart className="w-4 h-4 text-neon/50" />
-            Made for meaningful connections
-            <Heart className="w-4 h-4 text-neon/50" />
-          </p>
+        <div className="text-center mt-20 pb-8 flex items-center justify-center gap-3 opacity-50">
+          <div className="h-[1px] w-12 bg-gradient-to-r from-transparent to-white/30" />
+          <Heart className="w-4 h-4 text-white" />
+          <div className="h-[1px] w-12 bg-gradient-to-l from-transparent to-white/30" />
         </div>
       </div>
     </div>

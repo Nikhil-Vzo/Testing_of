@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactPlayer from 'react-player';
-import { ArrowLeft, Link as LinkIcon, AlertCircle, Monitor, FolderOpen, Youtube, X, Hash, Users, Copy, PlusCircle, LogIn, LogOut, MonitorPlay, Home, Gamepad, Settings as SettingsIcon, Mic, MicOff, Video, VideoOff, MonitorUp, Send, MessageSquare, Maximize, Minimize } from 'lucide-react';
+import { ArrowLeft, Link as LinkIcon, AlertCircle, Monitor, FolderOpen, Youtube, X, Hash, Users, Copy, PlusCircle, LogIn, LogOut, MonitorPlay, Home, Gamepad, Settings as SettingsIcon, Mic, MicOff, Video, VideoOff, MonitorUp, Send, MessageSquare, Maximize, Minimize, Sparkles } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Peer, { DataConnection } from 'peerjs';
 import { useAuth } from '../../context/AuthContext';
@@ -1144,73 +1144,80 @@ export const CinemaDate: React.FC = () => {
     // Helper to render video elements (Moved to top level)
 
     const renderLandingScreen = () => (
-        <div className="flex flex-col items-center justify-center min-h-screen w-full animate-fade-in-up bg-black relative overflow-hidden">
-            {/* Background Ambience */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] md:w-[800px] h-[600px] md:h-[800px] bg-neon/10 rounded-full blur-[120px] pointer-events-none -z-0" />
+        <div className="flex flex-col items-center justify-start md:justify-center min-h-[100dvh] w-full bg-[#03000a] relative overflow-y-auto overflow-x-hidden pt-20 pb-16 md:py-8">
+            {/* Background Ambience - Optimized */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] md:w-[800px] h-[600px] md:h-[800px] rounded-full bg-[radial-gradient(circle_at_center,_rgba(124,58,237,0.15)_0%,_transparent_70%)] pointer-events-none -z-0 will-change-transform animate-blob" />
+            <div className="absolute top-[20%] right-[-10%] w-[40vw] h-[40vw] rounded-full bg-[radial-gradient(circle_at_center,_rgba(79,70,229,0.15)_0%,_transparent_70%)] pointer-events-none -z-0 will-change-transform animate-blob animation-delay-2000" />
 
             <button
                 onClick={() => navigate('/virtual-date')}
-                className="absolute top-4 md:top-6 left-4 md:left-6 p-2 md:p-3 bg-gray-900/50 hover:bg-gray-800 rounded-full transition-colors z-20 group border border-gray-800"
+                className="absolute top-4 md:top-6 left-4 md:left-6 p-2 md:p-3 bg-white/5 hover:bg-white/10 rounded-full transition-colors z-20 group border border-white/10 backdrop-blur-md"
             >
-                <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 text-gray-400 group-hover:text-white" />
+                <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 text-white/70 group-hover:text-white" />
             </button>
 
-            <div className="text-center mb-8 md:mb-16 px-4">
-                <h2 className="text-3xl md:text-6xl font-black mb-4 text-white tracking-tighter relative z-10">
-                    CINEMA <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon to-purple-500">PARADISO</span>
+            <div className="text-center mb-10 md:mb-16 relative z-10 px-4">
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-white/70 text-sm font-medium mb-6 backdrop-blur-md">
+                    <Sparkles className="w-4 h-4 text-pink-400" />
+                    <span className="tracking-wide uppercase text-xs">Movie Night</span>
+                </div>
+                <h2 className="text-4xl md:text-7xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-br from-white via-gray-200 to-gray-500 tracking-tighter">
+                    CINEMA <span className="bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-purple-500">PARADISO</span>
                 </h2>
-                <p className="text-sm md:text-base text-gray-400 max-w-md mx-auto">Watch together, anywhere. Create a room or join with a code.</p>
+                <p className="text-sm md:text-base text-gray-400 max-w-md mx-auto font-light">Watch together, anywhere. Synchronized streaming in a private theatre.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 w-full px-4 max-w-2xl relative z-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full px-4 max-w-2xl relative z-10">
                 <button
                     onClick={() => setMode('create_room')}
-                    className="group flex flex-col items-center justify-center p-8 md:p-10 bg-gray-900/40 backdrop-blur-md hover:bg-gray-800/60 border-2 border-gray-800 hover:border-neon rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-neon/10"
+                    className="group relative flex flex-col items-center justify-center p-8 md:p-10 bg-white/5 backdrop-blur-xl border border-white/10 hover:border-violet-500/50 rounded-[2rem] transition-all duration-300 overflow-hidden"
                 >
-                    <div className="p-5 md:p-6 rounded-full bg-neon/10 text-neon mb-4 md:mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-neon/20">
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-2xl -z-10 bg-violet-500/20" />
+                    <div className="p-5 md:p-6 rounded-2xl bg-gradient-to-br from-pink-500/20 to-purple-500/20 text-pink-400 mb-4 md:mb-6 group-hover:scale-110 transition-transform shadow-[0_0_30px_rgba(236,72,153,0.2)] border border-pink-500/20">
                         <PlusCircle className="w-10 h-10 md:w-12 md:h-12" />
                     </div>
-                    <h3 className="text-xl md:text-2xl font-bold text-white mb-2">Create Room</h3>
-                    <p className="text-gray-400 text-center text-sm">Host a new movie session</p>
+                    <h3 className="text-xl md:text-2xl font-bold text-white mb-2 tracking-tight">Create Room</h3>
+                    <p className="text-white/50 text-center text-sm font-light">Host a new movie session</p>
                 </button>
 
                 <button
                     onClick={() => setMode('join_room')}
-                    className="group flex flex-col items-center justify-center p-8 md:p-10 bg-gray-900/40 backdrop-blur-md hover:bg-gray-800/60 border-2 border-gray-800 hover:border-purple-500 rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-purple-500/10"
+                    className="group relative flex flex-col items-center justify-center p-8 md:p-10 bg-white/5 backdrop-blur-xl border border-white/10 hover:border-purple-500/50 rounded-[2rem] transition-all duration-500 overflow-hidden"
                 >
-                    <div className="p-5 md:p-6 rounded-full bg-purple-500/10 text-purple-500 mb-4 md:mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-purple-500/20">
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-2xl -z-10 bg-purple-500/20" />
+                    <div className="p-5 md:p-6 rounded-2xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 text-purple-400 mb-4 md:mb-6 group-hover:scale-110 transition-transform shadow-[0_0_30px_rgba(168,85,247,0.2)] border border-purple-500/20">
                         <LogIn className="w-10 h-10 md:w-12 md:h-12" />
                     </div>
-                    <h3 className="text-xl md:text-2xl font-bold text-white mb-2">Join Room</h3>
-                    <p className="text-gray-400 text-center text-sm">Enter a room code</p>
+                    <h3 className="text-xl md:text-2xl font-bold text-white mb-2 tracking-tight">Join Room</h3>
+                    <p className="text-white/50 text-center text-sm font-light">Enter a room code</p>
                 </button>
             </div>
         </div>
     );
 
     const renderCreateRoomScreen = () => (
-        <div className="flex flex-col items-center justify-center min-h-screen w-full bg-black relative overflow-hidden px-4">
+        <div className="flex flex-col items-center justify-center min-h-[100dvh] w-full bg-[#03000a] relative overflow-hidden px-4">
             {/* Background Ambience */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-neon/10 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-pink-600/20 rounded-full blur-[140px] pointer-events-none animate-blob" />
 
             <button
                 onClick={() => setMode('landing')}
-                className="absolute top-4 md:top-6 left-4 md:left-6 p-2 md:p-3 bg-gray-900/50 hover:bg-gray-800 rounded-full transition-colors z-20 group border border-gray-800"
+                className="absolute top-4 md:top-6 left-4 md:left-6 p-2 md:p-3 bg-white/5 hover:bg-white/10 rounded-full transition-colors z-20 group border border-white/10 backdrop-blur-md"
             >
-                <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 text-gray-400 group-hover:text-white" />
+                <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 text-white/70 group-hover:text-white" />
             </button>
 
-            <div className="bg-gray-900/60 backdrop-blur-xl border border-gray-800 rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl relative z-10">
-                <div className="text-center mb-6 md:mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-full bg-neon/10 text-neon mb-4">
-                        <PlusCircle className="w-8 h-8 md:w-10 md:h-10" />
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2rem] p-8 md:p-10 w-full max-w-md shadow-2xl relative z-10 transition-all duration-500">
+                <div className="text-center mb-8">
+                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-pink-500/20 to-purple-500/20 text-pink-400 mb-6 shadow-[0_0_30px_rgba(236,72,153,0.2)] border border-pink-500/20">
+                        <PlusCircle className="w-10 h-10" />
                     </div>
-                    <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Create Your Room</h2>
-                    <p className="text-sm text-gray-400">Choose a fun name for your movie night</p>
+                    <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">Create Your Room</h2>
+                    <p className="text-sm text-white/50 font-light">Choose a fun name for your movie night</p>
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">Room Name</label>
+                        <label className="block text-sm font-medium text-white/60 mb-2">Room Name</label>
                         <input
                             type="text"
                             value={roomName}
@@ -1219,15 +1226,15 @@ export const CinemaDate: React.FC = () => {
                             placeholder="e.g., Movie Night 🍿"
                             maxLength={30}
                             disabled={isConnecting}
-                            className="w-full bg-black/50 border-2 border-gray-700 rounded-xl px-4 py-3 md:py-4 text-white placeholder-gray-600 focus:border-neon focus:outline-none transition-colors disabled:opacity-50 text-base"
+                            className="w-full bg-[#0a001a]/50 border border-white/10 rounded-xl px-5 py-4 text-white placeholder-white/30 focus:border-pink-500/50 focus:outline-none transition-all disabled:opacity-50 text-base shadow-inner backdrop-blur-md"
                             autoFocus
                         />
-                        <div className="text-xs text-gray-500 mt-1 text-right">{roomName.length}/30</div>
+                        <div className="text-xs text-white/30 mt-2 text-right">{roomName.length}/30</div>
                     </div>
                     <button
                         onClick={handleCreateRoom}
                         disabled={isConnecting || !roomName.trim()}
-                        className="w-full bg-gradient-to-r from-neon to-purple-500 hover:from-neon/90 hover:to-purple-500/90 text-white font-bold py-3 md:py-4 rounded-xl shadow-lg shadow-neon/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+                        className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white font-bold py-4 rounded-xl shadow-[0_0_20px_rgba(236,72,153,0.3)] transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
                     >
                         {isConnecting ? (
                             <>
@@ -1241,7 +1248,7 @@ export const CinemaDate: React.FC = () => {
                     <button
                         onClick={() => setMode('landing')}
                         disabled={isConnecting}
-                        className="w-full text-gray-500 hover:text-white py-2 text-sm transition-colors disabled:opacity-50"
+                        className="w-full text-white/40 hover:text-white py-2 text-sm transition-colors disabled:opacity-50 font-medium"
                     >
                         Cancel
                     </button>
@@ -1262,28 +1269,28 @@ export const CinemaDate: React.FC = () => {
     };
 
     const renderJoinRoomScreen = () => (
-        <div className="flex flex-col items-center justify-center min-h-screen w-full bg-black relative overflow-hidden px-4">
+        <div className="flex flex-col items-center justify-center min-h-[100dvh] w-full bg-[#03000a] relative overflow-hidden px-4">
             {/* Background Ambience */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-500/10 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-600/20 rounded-full blur-[140px] pointer-events-none animate-blob" />
 
             <button
                 onClick={() => setMode('landing')}
-                className="absolute top-4 md:top-6 left-4 md:left-6 p-2 md:p-3 bg-gray-900/50 hover:bg-gray-800 rounded-full transition-colors z-20 group border border-gray-800"
+                className="absolute top-4 md:top-6 left-4 md:left-6 p-2 md:p-3 bg-white/5 hover:bg-white/10 rounded-full transition-colors z-20 group border border-white/10 backdrop-blur-md"
             >
-                <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 text-gray-400 group-hover:text-white" />
+                <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 text-white/70 group-hover:text-white" />
             </button>
 
-            <div className="bg-gray-900/60 backdrop-blur-xl border border-gray-800 rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl relative z-10">
-                <div className="text-center mb-6 md:mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-full bg-purple-500/10 text-purple-500 mb-4">
-                        <LogIn className="w-8 h-8 md:w-10 md:h-10" />
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2rem] p-8 md:p-10 w-full max-w-md shadow-2xl relative z-10 transition-all duration-500">
+                <div className="text-center mb-8">
+                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 text-purple-400 mb-6 shadow-[0_0_30px_rgba(168,85,247,0.2)] border border-purple-500/20">
+                        <LogIn className="w-10 h-10" />
                     </div>
-                    <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Join a Room</h2>
-                    <p className="text-sm text-gray-400">Enter the 6-character room code</p>
+                    <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">Join a Room</h2>
+                    <p className="text-sm text-white/50 font-light">Enter the 6-character room code</p>
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">Room Code</label>
+                        <label className="block text-sm font-medium text-white/60 mb-2">Room Code</label>
                         <div className="relative">
                             <input
                                 type="text"
@@ -1301,24 +1308,24 @@ export const CinemaDate: React.FC = () => {
                                 onKeyPress={(e) => e.key === 'Enter' && handleJoinRoom()}
                                 placeholder="ABC-123"
                                 disabled={isConnecting}
-                                className="w-full bg-black/50 border-2 border-gray-700 rounded-xl px-4 py-3 md:py-4 pr-12 text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none transition-colors font-mono text-center text-xl md:text-2xl tracking-widest disabled:opacity-50"
+                                className="w-full bg-[#0a001a]/50 border border-white/10 rounded-xl px-5 py-4 pr-12 text-white placeholder-white/30 focus:border-purple-500/50 focus:outline-none transition-all font-mono text-center text-xl md:text-2xl tracking-widest disabled:opacity-50 shadow-inner backdrop-blur-md"
                                 autoFocus
                             />
                             <button
                                 onClick={handlePasteCode}
                                 disabled={isConnecting}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white disabled:opacity-50"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 hover:bg-white/10 rounded-lg transition-colors text-white/40 hover:text-white disabled:opacity-50"
                                 title="Paste code"
                             >
-                                <Copy className="w-4 h-4" />
+                                <Copy className="w-5 h-5" />
                             </button>
                         </div>
-                        <div className="text-xs text-gray-500 mt-2 text-center">Format: ABC-123</div>
+                        <div className="text-xs text-white/30 mt-3 text-center tracking-widest">FORMAT: ABC-123</div>
                     </div>
                     <button
                         onClick={handleJoinRoom}
                         disabled={isConnecting || joinCode.replace('-', '').length !== 6}
-                        className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-bold py-3 md:py-4 rounded-xl shadow-lg shadow-purple-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+                        className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold py-4 rounded-xl shadow-[0_0_20px_rgba(168,85,247,0.3)] transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
                     >
                         {isConnecting ? (
                             <>
@@ -1332,7 +1339,7 @@ export const CinemaDate: React.FC = () => {
                     <button
                         onClick={() => setMode('landing')}
                         disabled={isConnecting}
-                        className="w-full text-gray-500 hover:text-white py-2 text-sm transition-colors disabled:opacity-50"
+                        className="w-full text-white/40 hover:text-white py-2 text-sm transition-colors disabled:opacity-50 font-medium"
                     >
                         Cancel
                     </button>
