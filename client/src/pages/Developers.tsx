@@ -8,7 +8,7 @@ export const Developers: React.FC = () => {
   const team = [
     {
       name: "Nikhil Yadav",
-      title: "Founder & Developer",
+      title: "Developer",
       ig: "https://www.instagram.com/nikhil_on_clouds?igsh=MTVscTYwd3VtbzlhZw==",
       linkedin: "https://www.linkedin.com/in/nikhil1yadav/",
       github: "https://github.com/Nikhil-Vzo",
@@ -18,7 +18,7 @@ export const Developers: React.FC = () => {
     },
     {
       name: "Avneesh Kumar Jha",
-      title: "Founder & Developer",
+      title: "Developer",
       ig: "https://www.instagram.com/its_avneesh_15?igsh=bjJuOWFoM2hidzZ0",
       linkedin: "https://www.linkedin.com/in/avneesh-kumar-jha-443034319?utm_source=share_via&utm_content=profile&utm_medium=member_android",
       github: "https://github.com/techninja15",
@@ -55,7 +55,7 @@ export const Developers: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen w-full overflow-y-auto overflow-x-hidden bg-black flex flex-col items-center justify-center relative py-20 px-6">
+    <div className="h-screen h-[100dvh] w-full overflow-y-auto overflow-x-hidden bg-black flex flex-col items-center relative py-20 px-6" style={{ WebkitOverflowScrolling: 'touch' }}>
       {/* Background Ambience */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-[-20%] right-[10%] w-[800px] h-[800px] bg-neon/5 blur-[120px] rounded-full animate-pulse-slow" />
