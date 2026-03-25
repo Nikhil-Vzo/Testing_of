@@ -1,11 +1,29 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Ghost, Heart, Shield, ArrowRight, Instagram, Twitter, Sparkles } from 'lucide-react';
+import { Ghost, Heart, Shield, ArrowRight, Instagram, Twitter, Sparkles, MessageSquarePlus, Zap, MapPin, Users, PlaySquare, Music } from 'lucide-react';
 import { NeonButton } from '../components/Common';
 import { useNavigate, Link } from 'react-router-dom';
 import { LiquidBackground } from '../components/LiquidBackground';
+import { ChromaKeyVideo } from '../components/ChromaKeyVideo';
 import { HeartCursor } from '../components/HeartCursor';
 import { useAuth } from '../context/AuthContext';
+
+const ScrollReveal = ({ children, className = '' }: { children: React.ReactNode, className?: string }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) setIsVisible(true);
+    }, { threshold: 0.2 });
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <div ref={ref} className={`transition-all duration-[1200ms] transform ease-out ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20'} ${className}`}>
+      {children}
+    </div>
+  );
+};
 
 export const Landing: React.FC = () => {
   const navigate = useNavigate();
@@ -82,6 +100,13 @@ export const Landing: React.FC = () => {
 
       {/* Subtle noise overlay */}
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay pointer-events-none z-[1]"></div>
+      
+      {/* Premium Cinematic Background Gradients */}
+      <div className="fixed inset-0 pointer-events-none z-[0] overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-neon/10 blur-[150px] rounded-full mix-blend-screen animate-pulse-slow" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-purple-600/10 blur-[150px] rounded-full mix-blend-screen" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-[40%] left-[20%] w-[40vw] h-[40vw] bg-blue-600/5 blur-[150px] rounded-full mix-blend-screen animate-pulse-slow" style={{ animationDelay: '4s' }} />
+      </div>
 
       <nav className="relative z-20 px-4 sm:px-6 py-4 sm:py-8 flex justify-between items-center max-w-7xl mx-auto w-full">
         <div className="flex items-center gap-2 cursor-pointer group" onClick={() => navigate('/')}>
@@ -146,9 +171,9 @@ export const Landing: React.FC = () => {
             transition: 'all 0.8s ease-out 1.2s',
           }}
         >
-          The anonymous dating experience designed for campus life.
+          The exclusive network mapped to your exact campus.
           <br className="hidden sm:block" />
-          <span className="text-gray-300"> Connect based on vibes, verify with email, reveal when you're ready.</span>
+          <span className="text-gray-300"> Connect with the people who pass you every day. No randoms. Just chemistry.</span>
         </p>
 
         <div
@@ -170,71 +195,201 @@ export const Landing: React.FC = () => {
           </button>
         </div>
 
-        <div
-          id="features"
-          ref={featuresRef}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 mt-16 sm:mt-32 max-w-6xl mx-auto w-full px-4"
-        >
-          {/* Feature Card 1 */}
-          <div
-            className={`group relative bg-gray-900/50 backdrop-blur-sm border border-gray-800 p-8 rounded-3xl transition-all duration-700 cursor-default overflow-hidden ${featuresVisible
-              ? 'opacity-100 translate-y-0'
-              : 'opacity-0 translate-y-12'
-              }`}
-            style={{ transitionDelay: featuresVisible ? '0ms' : '0ms' }}
-          >
-            {/* Hover glow */}
-            <div className="absolute inset-0 bg-gradient-to-br from-neon/0 via-neon/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="absolute inset-0 border border-neon/0 group-hover:border-neon/50 rounded-3xl transition-all duration-500" />
-
-            <div className="relative z-10">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gray-800 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-neon/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                <Shield className="w-6 h-6 sm:w-7 sm:h-7 group-hover:text-neon transition-colors" />
+        <div className="mt-16 sm:mt-32 md:mt-48 w-full relative z-10 flex flex-col gap-24 sm:gap-32 md:gap-48 pb-16 md:pb-32">
+          
+          {/* Main Video Reveal */}
+          <ScrollReveal>
+            <div className="max-w-[100rem] mx-auto px-4 sm:px-6 w-full relative">
+              <div className="relative w-full aspect-[4/5] sm:aspect-video lg:aspect-[2.5/1] rounded-3xl md:rounded-[3rem] overflow-hidden group">
+                {/* Glowing backdrop to give the video volume since we are blending the black away */}
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-900/20 via-neon/10 to-blue-900/20 blur-3xl rounded-full scale-150 group-hover:opacity-80 opacity-40 transition-opacity duration-1000" />
+                
+                <video 
+                  autoPlay 
+                  loop 
+                  muted 
+                  playsInline 
+                  src="/blog/go-beyond-dating.mp4" 
+                  className="absolute inset-0 w-full h-full object-cover sm:object-contain mix-blend-screen opacity-90 group-hover:opacity-100 group-hover:scale-[1.02] transition-all duration-[1.5s] ease-[cubic-bezier(0.25,1,0.5,1)]" 
+                />
               </div>
-              <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 group-hover:text-neon transition-colors">Verified Students Only</h3>
-              <p className="text-sm sm:text-base text-gray-400 group-hover:text-gray-300 transition-colors">No bots, no randoms. We verify every user via their official .edu email address.</p>
+            </div>
+          </ScrollReveal>
+
+          {/* Creative Layout 1: Sticky Typography + Campus Radar (The Pulse) */}
+          <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 py-12 md:py-24 flex flex-col md:flex-row items-center justify-between gap-12 md:gap-16">
+            <div className="w-full md:w-1/2 md:pr-12 pointer-events-none">
+              <h3 className="text-[clamp(3rem,6vw,5rem)] font-black text-white leading-none tracking-tighter relative z-20">
+                <span className="text-neon block text-lg sm:text-2xl mb-4 font-bold tracking-widest uppercase">01 / The Pulse</span>
+                Campus <br/>Heatmap.
+              </h3>
+              <p className="mt-8 text-xl md:text-2xl text-gray-400 font-light max-w-md leading-relaxed">
+                Know exactly what's buzzing on the ground in real-time. Live event streams, anonymous confessions, and dynamic campus polls.
+              </p>
+            </div>
+            
+            <div className="w-full md:w-1/2 flex justify-center items-center">
+              <ScrollReveal className="w-full">
+                <div className="relative w-full aspect-square max-w-md mx-auto rounded-full border border-white/10 bg-black/60 backdrop-blur-2xl flex items-center justify-center overflow-hidden shadow-[0_0_80px_rgba(59,130,246,0.15)] group">
+                  {/* Radar Sweep Effect */}
+                  <div className="absolute inset-0 bg-[conic-gradient(from_0deg,transparent_70%,rgba(59,130,246,0.3)_100%)] animate-[spin_4s_linear_infinite] rounded-full opacity-50" />
+                  <div className="absolute w-full h-[1px] bg-blue-500/20 top-1/2 -translate-y-1/2 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
+                  <div className="absolute h-full w-[1px] bg-blue-500/20 left-1/2 -translate-x-1/2 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
+                  
+                  {/* Concentric circles */}
+                  <div className="absolute w-3/4 h-3/4 rounded-full border border-blue-500/10" />
+                  <div className="absolute w-1/2 h-1/2 rounded-full border border-blue-500/10" />
+                  
+                  <MapPin className="w-10 h-10 text-blue-400 relative z-10 animate-pulse drop-shadow-[0_0_20px_rgba(59,130,246,1)]" />
+                  
+                  {/* Pings */}
+                  <div className="absolute w-4 h-4 rounded-full bg-neon/80 top-[20%] left-[30%] animate-ping" style={{ animationDelay: '0s', animationDuration: '3s' }} />
+                  <div className="absolute w-3 h-3 rounded-full bg-purple-500/80 bottom-[30%] right-[20%] animate-ping" style={{ animationDelay: '1.5s', animationDuration: '3s' }} />
+                  <div className="absolute w-5 h-5 rounded-full bg-blue-400/80 top-[60%] right-[15%] animate-ping" style={{ animationDelay: '2.5s', animationDuration: '3s' }} />
+                </div>
+              </ScrollReveal>
             </div>
           </div>
 
-          {/* Feature Card 2 */}
-          <div
-            className={`group relative bg-gray-900/50 backdrop-blur-sm border border-gray-800 p-8 rounded-3xl transition-all duration-700 cursor-default overflow-hidden ${featuresVisible
-              ? 'opacity-100 translate-y-0'
-              : 'opacity-0 translate-y-12'
-              }`}
-            style={{ transitionDelay: featuresVisible ? '150ms' : '0ms' }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 via-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="absolute inset-0 border border-purple-500/0 group-hover:border-purple-500/50 rounded-3xl transition-all duration-500" />
-
-            <div className="relative z-10">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gray-800 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-purple-500/20 group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300">
-                <Ghost className="w-6 h-6 sm:w-7 sm:h-7 group-hover:text-purple-400 transition-colors" />
+          {/* Creative Layout 2: Massive Background Typography (Ghost Mode) */}
+          <div className="relative w-full py-20 md:py-32 overflow-hidden flex items-center justify-center min-h-[500px] isolate">
+            {/* Gigantic BG Text */}
+            <h2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[clamp(8rem,25vw,30rem)] font-black text-white/[0.03] tracking-tighter leading-none select-none pointer-events-none whitespace-nowrap z-0">
+              GHOST
+            </h2>
+            
+            <ScrollReveal className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 flex flex-col items-center">
+              <div className="w-full max-w-3xl backdrop-blur-3xl bg-purple-900/5 border border-purple-500/10 p-6 sm:p-12 md:p-24 rounded-3xl md:rounded-[3rem] text-center shadow-[0_0_100px_rgba(168,85,247,0.1)] hover:bg-purple-900/10 transition-colors duration-700 group relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+                <Ghost className="w-16 h-16 sm:w-20 sm:h-20 text-purple-400 mx-auto mb-8 sm:mb-12 drop-shadow-[0_0_30px_rgba(168,85,247,0.8)] group-hover:-translate-y-4 transition-transform duration-700 relative z-10" />
+                <h3 className="text-[clamp(2.5rem,5vw,4.5rem)] font-black text-white tracking-tight leading-none mb-6 relative z-10">
+                  Chemistry <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">First.</span>
+                </h3>
+                <p className="text-gray-400 text-lg sm:text-2xl font-light leading-relaxed relative z-10">
+                  Identity locked. Visuals hidden. Connect strictly through shared aesthetics and raw conversation. Reveal your face only when the trust is truly earned.
+                </p>
               </div>
-              <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 group-hover:text-purple-400 transition-colors">Total Anonymity</h3>
-              <p className="text-sm sm:text-base text-gray-400 group-hover:text-gray-300 transition-colors">Your photos and name stay hidden. Chat, vibe, and reveal only when you trust them.</p>
+            </ScrollReveal>
+          </div>
+
+          {/* Creative Layout 3: Horizontal Asymmetry (Virtual Dates) */}
+          <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-32 md:py-48">
+            <div className="flex flex-col md:flex-row items-center gap-16 md:gap-8">
+              <ScrollReveal className="w-full md:w-5/12 z-20">
+                <div className="relative border-l-4 border-neon pl-8 md:pl-12">
+                  <span className="text-neon block text-lg sm:text-2xl mb-4 font-bold tracking-widest uppercase">03 / Experience</span>
+                  <h3 className="text-[clamp(3rem,6vw,5rem)] font-black text-white tracking-tighter leading-none mb-8">
+                    Virtual <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-neon to-purple-500">Dates.</span>
+                  </h3>
+                  <p className="text-gray-400 text-xl md:text-2xl font-light leading-relaxed max-w-md">
+                    Don't just text into the void. Step into synchronized virtual auditoriums. Share a cinematic movie night or a high-fidelity music stream right in the app.
+                  </p>
+                </div>
+              </ScrollReveal>
+              
+              <div className="w-full md:w-7/12 relative min-h-[400px] sm:min-h-[500px]">
+                <ScrollReveal className="absolute right-0 bottom-0 w-[80%] aspect-[4/3] rounded-2xl md:rounded-[2rem] bg-gradient-to-br from-purple-900/40 to-[#05000a] border border-purple-500/30 backdrop-blur-xl flex items-center justify-center overflow-hidden z-10 shadow-[0_20px_80px_rgba(168,85,247,0.3)] transform sm:translate-y-12 transition-transform hover:scale-105 duration-700">
+                  <PlaySquare className="w-20 h-20 text-purple-400 drop-shadow-xl" />
+                </ScrollReveal>
+                <ScrollReveal className="absolute left-0 top-0 w-[60%] aspect-square rounded-3xl md:rounded-[3rem] bg-gradient-to-tr from-neon/40 to-[#05000a] border border-neon/40 backdrop-blur-2xl flex items-center justify-center overflow-hidden z-20 shadow-[0_20px_80px_rgba(255,0,127,0.3)] hover:-translate-y-4 hover:-rotate-3 transition-transform duration-700">
+                  <Music className="w-20 h-20 text-white drop-shadow-2xl" />
+                </ScrollReveal>
+              </div>
             </div>
           </div>
 
-          {/* Feature Card 3 */}
-          <div
-            className={`group relative bg-gray-900/50 backdrop-blur-sm border border-gray-800 p-8 rounded-3xl transition-all duration-700 cursor-default overflow-hidden ${featuresVisible
-              ? 'opacity-100 translate-y-0'
-              : 'opacity-0 translate-y-12'
-              }`}
-            style={{ transitionDelay: featuresVisible ? '300ms' : '0ms' }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="absolute inset-0 border border-blue-500/0 group-hover:border-blue-500/50 rounded-3xl transition-all duration-500" />
-
-            <div className="relative z-10">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gray-800 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-blue-500/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                <Heart className="w-6 h-6 sm:w-7 sm:h-7 group-hover:text-blue-400 group-hover:animate-pulse transition-colors" />
+          {/* Creative Layout 4: Double Opposing Infinite Marquees (True Edge-to-Edge) */}
+          <div className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] pb-32 overflow-hidden flex flex-col items-center">
+            <style>{`
+              @keyframes marquee-left {
+                0% { transform: translateX(0%); }
+                100% { transform: translateX(-50%); }
+              }
+              @keyframes marquee-right {
+                0% { transform: translateX(-50%); }
+                100% { transform: translateX(0%); }
+              }
+              .animate-marquee-left {
+                animation: marquee-left 40s linear infinite;
+                display: inline-flex;
+              }
+              .animate-marquee-right {
+                animation: marquee-right 40s linear infinite;
+                display: inline-flex;
+              }
+            `}</style>
+            
+            <div className="w-[110vw] transform -rotate-2 bg-[#ff007f]/5 backdrop-blur-md border-y border-neon/30 py-6 sm:py-10 shadow-[0_0_80px_rgba(255,0,127,0.1)] z-10">
+              <div className="flex whitespace-nowrap overflow-hidden py-2 border-y border-neon/10">
+                <div className="animate-marquee-left text-white/90 font-black text-5xl sm:text-7xl md:text-9xl uppercase tracking-tighter block">
+                  <span className="mx-8 drop-shadow-[0_0_15px_rgba(255,0,127,0.8)]">FIND YOUR GYM SPOTTER • <span className="text-neon/70">ROW 2</span> LECTURE PARTNER • LATE NIGHT STUDY BUDDY •</span>
+                  <span className="mx-8 drop-shadow-[0_0_15px_rgba(255,0,127,0.8)]">FIND YOUR GYM SPOTTER • <span className="text-neon/70">ROW 2</span> LECTURE PARTNER • LATE NIGHT STUDY BUDDY •</span>
+                </div>
               </div>
-              <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 group-hover:text-blue-400 transition-colors">Smart Matching</h3>
-              <p className="text-sm sm:text-base text-gray-400 group-hover:text-gray-300 transition-colors">Our AI analyzes interests and campus vibes to find someone you'll actually click with.</p>
+            </div>
+
+            <div className="w-[110vw] transform rotate-1 -mt-8 sm:-mt-12 bg-blue-900/10 backdrop-blur-lg border-y border-blue-500/30 py-4 sm:py-8 shadow-[0_0_80px_rgba(59,130,246,0.1)] z-0 mix-blend-screen">
+              <div className="flex whitespace-nowrap overflow-hidden py-2 border-y border-blue-500/10">
+                <div className="animate-marquee-right text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 font-light italic text-4xl sm:text-6xl md:text-8xl uppercase tracking-widest block">
+                  <span className="mx-12">THE MICROSCOPIC GEOGRAPHY OF COLLEGE •</span>
+                  <span className="mx-12">THE MICROSCOPIC GEOGRAPHY OF COLLEGE •</span>
+                  <span className="mx-12">THE MICROSCOPIC GEOGRAPHY OF COLLEGE •</span>
+                  <span className="mx-12">THE MICROSCOPIC GEOGRAPHY OF COLLEGE •</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 mt-16 sm:mt-24 relative z-20 text-center">
+              <ScrollReveal>
+                <div className="w-24 h-24 rounded-3xl mx-auto bg-[#05000a] border border-neon/30 flex items-center justify-center mb-8 shadow-[0_20px_60px_rgba(255,0,127,0.2)] rotate-3">
+                  <Users className="w-10 h-10 text-neon drop-shadow-[0_0_20px_rgba(255,0,127,0.8)]" />
+                </div>
+                <h3 className="text-[clamp(2.5rem,5vw,4.5rem)] font-black text-white tracking-tighter leading-none mb-8">
+                  Hyper-Local <br className="sm:hidden" /><span className="text-transparent bg-clip-text bg-gradient-to-r from-neon to-purple-500">Synergy.</span>
+                </h3>
+                <p className="text-gray-400 text-xl md:text-3xl font-light max-w-3xl mx-auto leading-relaxed">
+                  We meticulously map the microscopic geography of your daily college life. We don't ask for generic profiles—we look at the spaces you inhabit. The perfect connection isn't oceans away. It's right in your lecture hall.
+                </p>
+              </ScrollReveal>
             </div>
           </div>
+
+          {/* Massive Final Call To Action */}
+          <ScrollReveal className="mt-4">
+            <div className="max-w-3xl mx-auto px-4 w-full flex flex-col items-center justify-center pb-16">
+              
+              {/* Ticket Asset — hero centerpiece */}
+              <div className="relative w-full max-w-md mx-auto mb-2 z-10">
+                <ChromaKeyVideo 
+                  src="/blog/ticket-rip.webm" 
+                  className="w-full h-auto"
+                  rThreshold={100}
+                />
+                {/* Subtle glow behind the ticket */}
+                <div className="absolute inset-0 bg-neon/10 blur-[80px] rounded-full pointer-events-none -z-10" />
+              </div>
+
+              {/* Divider */}
+              <div className="w-24 h-px bg-gradient-to-r from-transparent via-neon/60 to-transparent mb-6" />
+
+              {/* Tagline */}
+              <p className="text-gray-400 text-xs sm:text-sm font-medium tracking-[0.25em] uppercase mb-8 text-center">
+                Our biggest, baddest & loveliest updates are yet to arrive.
+              </p>
+              
+              {/* CTA Button — brand-matched */}
+              <button
+                onClick={onEnter}
+                className="group relative px-10 py-4 sm:px-14 sm:py-5 bg-gradient-to-r from-neon to-purple-600 text-white font-bold text-base sm:text-lg uppercase tracking-[0.2em] rounded-full hover:scale-105 active:scale-95 transition-all duration-300 shadow-[0_0_40px_rgba(255,0,127,0.35)] hover:shadow-[0_0_60px_rgba(255,0,127,0.5)] overflow-hidden"
+              >
+                <div className="absolute inset-0 w-full h-full bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                <span className="flex items-center gap-3 relative z-10">
+                  Enter Othrhalff
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform duration-300" />
+                </span>
+              </button>
+            </div>
+          </ScrollReveal>
         </div>
       </main>
 
@@ -291,7 +446,7 @@ export const Landing: React.FC = () => {
           <div className="border-t border-gray-900 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-gray-600 text-xs">&copy; {new Date().getFullYear()} Othrhalff Inc. All rights reserved.</p>
             <p className="text-gray-500 text-xs font-medium flex items-center gap-1">
-              Built with <Heart className="w-3 h-3 text-neon fill-current animate-pulse" /> by The Dev Team
+              Built with <Heart className="w-3 h-3 text-neon fill-current animate-pulse" /> to help find what you'd love
             </p>
           </div>
         </div>
